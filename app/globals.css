@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #0f172a;
+  --ink2: #334155;
+  --ink3: #64748b;
+  --paper: #ffffff;
+  --paper2: #f8fafc;
+  --paper3: #e2e8f0;
+  --gold: #256EA5;
+  --gold2: #0d9488;
+  --gold-light: #fef3c7;
+  --teal: #0d9488;
+  --teal-light: #ccfbf1;
+  --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.75); } }
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+.fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.65s ease, transform 0.65s ease; }
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--paper3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+
+/* ============================================================
+   Responsive — landing page
+   ============================================================ */
+@media (max-width: 900px) {
+  .hero-section {
+    grid-template-columns: 1fr !important;
+    padding: 90px 24px 60px !important;
+    gap: 48px !important;
+  }
+  .hero-right { display: none !important; }
+
+  .ai-grid { grid-template-columns: 1fr !important; }
+  .pricing-grid { grid-template-columns: 1fr !important; max-width: 420px !important; }
+
+  .templates-header { flex-direction: column !important; align-items: flex-start !important; }
+}
+
+@media (max-width: 640px) {
+  .nav-links { display: none !important; }
+  .nav-cta { display: none !important; }
+  .nav-mobile-cta { display: inline-block !important; }
+
+  .hero-section { padding: 80px 16px 48px !important; gap: 32px !important; }
+  .hero-stats { gap: 20px !important; flex-wrap: wrap !important; }
+
+  .pricing-grid { grid-template-columns: 1fr !important; max-width: 100% !important; }
+  .pricing-featured { transform: scale(1) !important; }
+
+  .footer-inner { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+}
+
+/* ============================================================
+   Print
+   ============================================================ */
+@media print {
+  @page { size: A4; margin: 0; }
+
+  /* Force background colors so colored templates print correctly */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide all UI panels */
+  .no-print, .no-print * { display: none !important; }
+
+  /* Reset editor layout wrappers to block flow */
+  html, body { background: white !important; overflow: visible !important; height: auto !important; }
+  .editor-outer { display: block !important; height: auto !important; overflow: visible !important; }
+  .editor-content { display: block !important; height: auto !important; overflow: visible !important; }
+  .editor-canvas-container { display: block !important; height: auto !important; overflow: visible !important; background: white !important; }
+
+  /* Canvas area */
+  .print-canvas {
+    display: block !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  /* Reset zoom transform */
+  .print-scale-wrapper { transform: none !important; }
+
+  /* Pages wrapper: remove gap and center alignment */
+  .resume-pages-wrapper {
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  /* Each page frame */
+  .resume-page {
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    overflow: hidden !important;
+  }
+  .resume-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
