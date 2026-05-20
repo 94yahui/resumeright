@@ -6,7 +6,7 @@ export const maxDuration = 10
 
 // Pack URL must match the installed @sparticuz/chromium-min version (148.x)
 const CHROMIUM_PACK_URL =
-  'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.tar'
+  'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar'
 
 export async function POST(req: NextRequest) {
   const { data, templateId, color, docTitle, breakPoints, totalHeight, htmlContent } = await req.json()
