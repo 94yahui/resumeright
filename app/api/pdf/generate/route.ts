@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { storePdfEntry, deletePdfEntry } from '../../../lib/pdf-store'
 
-export const maxDuration = 60
+export const maxDuration = 10
 
 // Pack URL must match the installed @sparticuz/chromium-min version (148.x)
 const CHROMIUM_PACK_URL =
