@@ -23,8 +23,16 @@ export interface ResumeData {
   phone: string
   city: string
   website: string
+  extraWebsites?: string[]   // additional website links beyond the first
   photo: string  // base64 data URL or empty
+  photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number }  // crop: x/y fractions of circle size, scale ≥ 1, natW/natH = source px
   summary: string
+
+  // Contact visibility (undefined = visible)
+  hideEmail?: boolean
+  hidePhone?: boolean
+  hideCity?: boolean
+  hideWebsite?: boolean
 
   // Visibility flags
   hasSummary: boolean
@@ -51,6 +59,16 @@ export interface ResumeData {
 export type SectionKey =
   | 'exp' | 'edu' | 'project' | 'award'
   | 'cert' | 'volunteer' | 'interest' | 'language'
+
+export interface AISuggestion {
+  id: string
+  section: string                        // 'summary' | 'exp' | 'project' | 'skills'
+  entryIndex?: number
+  field: 'bullets' | 'summary' | 'skills'
+  label: string                          // human-readable label, e.g. "工作经历 · 前端工程师"
+  tip: string                            // short improvement hint
+  optimizedContent: string | string[]    // string for summary, string[] for bullets
+}
 
 export type SelectionType =
   | { kind: 'none' }
@@ -132,6 +150,82 @@ export const DEMO_DATA: ResumeData = {
   volunteer: [],
   interest: [],
   language: [],
+}
+
+// Maps a raw Gemini-parsed object to a valid ResumeData, filling missing fields with safe defaults.
+export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
+  const stripTrailingPeriod = (s: string) => s.replace(/[。.！!？?]+$/, '').trim()
+  function cleanEntries(arr: unknown, prefix: string): Entry[] {
+    if (!Array.isArray(arr)) return []
+    return arr.map((e, i) => ({
+      id: String((e as Record<string, unknown>).id ?? `${prefix}${i + 1}`),
+      title: String((e as Record<string, unknown>).title ?? ''),
+      sub: String((e as Record<string, unknown>).sub ?? ''),
+      date: String((e as Record<string, unknown>).date ?? ''),
+      bullets: Array.isArray((e as Record<string, unknown>).bullets)
+        ? ((e as Record<string, unknown>).bullets as unknown[]).map(b => stripTrailingPeriod(String(b)))
+        : [],
+    }))
+  }
+  const exp = cleanEntries(raw.exp, 'e')
+  const edu = cleanEntries(raw.edu, 'd')
+  const project = cleanEntries(raw.project, 'p')
+  const award = cleanEntries(raw.award, 'aw')
+  const cert = cleanEntries(raw.cert, 'cr')
+  const volunteer = cleanEntries(raw.volunteer, 'vl')
+  const interest = cleanEntries(raw.interest, 'it')
+  const language = cleanEntries(raw.language, 'ln')
+  const skills = Array.isArray(raw.skills) ? (raw.skills as unknown[]).map(s => String(s)) : []
+
+  // Normalize links: collect ALL URLs from website + extraWebsites, then distribute:
+  // first URL → website field, rest → extraWebsites array (mirrors editor's "添加链接" flow).
+  // LLMs often ignore extraWebsites and pack multiple URLs into one string.
+  const isUrl = (s: string) =>
+    s.includes('://') || s.startsWith('http') || /[a-z0-9]\.[a-z]{2,}/i.test(s)
+  const splitIntoUrls = (s: string): string[] =>
+    s.split(/[,;\s|]+/).map(u => u.trim()).filter(u => u.length > 0 && isUrl(u))
+
+  const rawWebsiteStr = String(raw.website ?? '')
+  // extraWebsites may come back as an array OR as a comma/space-separated string
+  const rawExtraArr: string[] = Array.isArray(raw.extraWebsites)
+    ? (raw.extraWebsites as unknown[]).map(u => String(u)).filter(u => u.length > 0)
+    : typeof raw.extraWebsites === 'string' && raw.extraWebsites.trim()
+      ? splitIntoUrls(raw.extraWebsites as string)
+      : []
+
+  const fromWebsite = splitIntoUrls(rawWebsiteStr)
+  // Fall back to the raw string as a single entry if no URL-like tokens were found
+  const websiteTokens = fromWebsite.length > 0 ? fromWebsite : (rawWebsiteStr ? [rawWebsiteStr] : [])
+
+  // Merge all URLs deduped, preserving order: website tokens first, then extra
+  const seen = new Set<string>()
+  const allUrls: string[] = []
+  for (const u of [...websiteTokens, ...rawExtraArr]) {
+    if (!seen.has(u)) { seen.add(u); allUrls.push(u) }
+  }
+  const websiteVal = allUrls[0] ?? ''
+  const extraVal = allUrls.length > 1 ? allUrls.slice(1) : undefined
+
+  return {
+    name: String(raw.name ?? ''),
+    jobtitle: String(raw.jobtitle ?? ''),
+    email: String(raw.email ?? ''),
+    phone: String(raw.phone ?? ''),
+    city: String(raw.city ?? ''),
+    website: websiteVal,
+    extraWebsites: extraVal,
+    photo: '',
+    summary: stripTrailingPeriod(String(raw.summary ?? '')),
+    hasSummary: !!raw.hasSummary || String(raw.summary ?? '').length > 0,
+    hasSkills: !!raw.hasSkills || skills.length > 0,
+    hasProject: !!raw.hasProject || project.length > 0,
+    hasLanguage: !!raw.hasLanguage || language.length > 0,
+    hasAward: !!raw.hasAward || award.length > 0,
+    hasCert: !!raw.hasCert || cert.length > 0,
+    hasVolunteer: !!raw.hasVolunteer || volunteer.length > 0,
+    hasInterest: !!raw.hasInterest || interest.length > 0,
+    exp, edu, project, award, cert, volunteer, interest, language, skills,
+  }
 }
 
 export const THUMB_DATA: ResumeData = {

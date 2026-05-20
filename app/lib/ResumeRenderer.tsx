@@ -2,12 +2,16 @@
 import React from 'react'
 import { ResumeData, SelectionType, SectionKey, Entry } from './types'
 import { TemplateConfig } from './templates-config'
+import { Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
 
 // ============================================================
 // Unified Resume Renderer
 // All paper is white. Layout/typography differ by template.
 // Used for editor, thumbnail, preview, and print.
 // ============================================================
+
+type DragState = { sec: SectionKey; idx: number }
+type DropState = { sec: SectionKey; idx: number; half: 'top' | 'bottom' }
 
 interface Props {
   data: ResumeData
@@ -17,18 +21,48 @@ interface Props {
   selection?: SelectionType
   onSelect?: (s: SelectionType) => void
   onPhotoUpload?: () => void
+  onReorderSection?: (sec: SectionKey, fromIdx: number, toIdx: number) => void
   /** Total page count — sidebar layouts extend background to fill all pages */
   pageCount?: number
+  /** Shared across all page instances in PaginatedResume to enable cross-page DnD */
+  sharedDragRef?: React.MutableRefObject<DragState | null>
+  sharedDropTarget?: DropState | null
+  onSharedDropTargetChange?: (dt: DropState | null) => void
+  /** Keys like 'summary', 'skills', 'exp:0', 'exp:1', 'project:0' that have AI suggestions */
+  aiSuggestionSections?: Set<string>
 }
 
 const PAGE_WIDTH = 794   // A4 width @ 96dpi
 const PAGE_HEIGHT = 1123 // A4 height @ 96dpi
 
 export default function ResumeRenderer({
-  data, template, color, interactive = false, selection, onSelect, onPhotoUpload, pageCount = 1,
+  data, template, color, interactive = false, selection, onSelect, onPhotoUpload, onReorderSection, pageCount = 1,
+  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections,
 }: Props) {
 
+  // Internal fallbacks used when not in a paginated context (thumbnails, print layer, etc.)
+  const _internalDragRef = React.useRef<DragState | null>(null)
+  const [_internalDropTarget, _setInternalDropTarget] = React.useState<DropState | null>(null)
+
+  // Prefer shared state (provided by PaginatedResume) so drag events cross page boundaries
+  const dragRef = sharedDragRef ?? _internalDragRef
+  const dropTarget = onSharedDropTargetChange !== undefined ? (sharedDropTarget ?? null) : _internalDropTarget
+  const setDropTarget = onSharedDropTargetChange ?? _setInternalDropTarget
+
   const accent = color || template.accentColor
+  const aiSectionSet = aiSuggestionSections ?? new Set<string>()
+
+  const AIChip = () => (
+    <div className="no-print" style={{
+      display: 'inline-flex', alignItems: 'center', gap: '3px',
+      padding: '2px 7px',
+      background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
+      borderRadius: '10px',
+      fontSize: '10px', color: 'white', fontWeight: 700,
+      flexShrink: 0, whiteSpace: 'nowrap', cursor: 'default',
+      lineHeight: 1.4,
+    }}>✦ AI建议</div>
+  )
 
   const fontMap = {
     'modern-sans': "Inter, 'Noto Sans SC', sans-serif",
@@ -57,10 +91,11 @@ export default function ResumeRenderer({
     const sel_ = isSelected(sel)
     return {
       cursor: 'pointer',
-      outline: sel_ ? `2px solid ${accent}` : '2px solid transparent',
-      outlineOffset: '2px',
+      // inset box-shadow stays strictly inside the element — no extension outside the border box,
+      // so it cannot bleed past page-break clip boundaries (unlike outline + outlineOffset).
+      boxShadow: sel_ ? `inset 0 0 0 2px ${accent}` : 'none',
       borderRadius: '3px',
-      transition: 'outline 0.1s, background 0.1s',
+      transition: 'box-shadow 0.1s, background 0.1s',
       background: sel_ ? `${accent}10` : 'transparent',
     }
   }
@@ -75,27 +110,27 @@ export default function ResumeRenderer({
       letterSpacing: template.fontPair === 'serif-heading' ? '0.5px' : '1.5px',
       textTransform: template.fontPair === 'serif-heading' ? 'none' : 'uppercase',
       color: titleColor,
-      marginBottom: '12px',
+      marginBottom: '5px',
     }
 
     switch (template.accentStyle) {
       case 'underline-bar':
         return (
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '5px' }}>
             <div style={baseProps}>{children}</div>
             <div style={{ height: '2px', background: titleColor, width: '36px' }} />
           </div>
         )
       case 'left-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
             <div style={{ width: '4px', height: '16px', background: titleColor }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
           </div>
         )
       case 'side-icon':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
             <div style={{ width: '8px', height: '8px', background: titleColor, borderRadius: '50%' }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.3 }} />
@@ -103,31 +138,33 @@ export default function ResumeRenderer({
         )
       case 'background-pill':
         return (
-          <div style={{
-            display: 'inline-block',
-            background: titleColor,
-            color: '#fff',
-            padding: '4px 12px',
-            borderRadius: '4px',
-            fontFamily: headingFont,
-            fontSize: '12px',
-            fontWeight: 700,
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            marginBottom: '14px',
-          }}>{children}</div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{
+              display: 'inline-block',
+              background: onDark ? 'rgba(255,255,255,0.22)' : titleColor,
+              color: '#fff',
+              padding: '4px 12px',
+              borderRadius: '4px',
+              fontFamily: headingFont,
+              fontSize: '12px',
+              fontWeight: 700,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              marginBottom: '7px',
+            }}>{children}</div>
+          </div>
         )
       case 'thin-line':
         return (
-          <div style={{ marginBottom: '12px', borderBottom: `1px solid ${titleColor}`, paddingBottom: '6px' }}>
+          <div style={{ marginBottom: '5px', borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
             <div style={{ ...baseProps, marginBottom: 0, fontWeight: 500 }}>{children}</div>
           </div>
         )
       case 'double-line':
         return (
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ height: '1px', background: titleColor, marginBottom: '4px' }} />
-            <div style={{ ...baseProps, textAlign: 'center', marginBottom: '4px' }}>{children}</div>
+          <div style={{ marginBottom: '5px' }}>
+            <div style={{ height: '1px', background: titleColor, marginBottom: '3px' }} />
+            <div style={{ ...baseProps, textAlign: 'center', marginBottom: '3px' }}>{children}</div>
             <div style={{ height: '1px', background: titleColor }} />
           </div>
         )
@@ -138,58 +175,136 @@ export default function ResumeRenderer({
   }
 
   // ============ ENTRY ITEM (with bullets) ============
-  const EntryItem = ({ entry, sec, idx, onDark = false }: {
-    entry: Entry; sec: SectionKey; idx: number; onDark?: boolean
+  const EntryItem = ({ entry, sec, idx, onDark = false, isLast = false }: {
+    entry: Entry; sec: SectionKey; idx: number; onDark?: boolean; isLast?: boolean
   }) => {
     const titleC = onDark ? '#fff' : '#0f172a'
     const subC = onDark ? 'rgba(255,255,255,0.7)' : '#475569'
     const dateC = onDark ? 'rgba(255,255,255,0.6)' : '#64748b'
     const bodyC = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
 
+    const isDropTop = interactive && dropTarget?.sec === sec && dropTarget.idx === idx && dropTarget.half === 'top'
+    const isDropBottom = interactive && dropTarget?.sec === sec && dropTarget.idx === idx && dropTarget.half === 'bottom'
+
     return (
       <div
         data-entry="1"
+        draggable={interactive}
         onClick={click({ kind: 'entry', sec, idx })}
+        onDragStart={interactive ? (e) => {
+          dragRef.current = { sec, idx }
+          e.dataTransfer.effectAllowed = 'move'
+          e.stopPropagation()
+          const el = e.currentTarget as HTMLElement
+          const bcr = el.getBoundingClientRect()
+          const visualScale = el.offsetWidth > 0 ? bcr.width / el.offsetWidth : 1
+          // Build ghost at canvas zoom level so it matches the visual entry size
+          const ghost = document.createElement('div')
+          ghost.style.cssText = `position:fixed;top:-9999px;left:0;width:${bcr.width}px;height:${bcr.height}px;overflow:hidden;pointer-events:none;background:white;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);`
+          const inner = document.createElement('div')
+          inner.style.cssText = `transform:scale(${visualScale});transform-origin:top left;width:${el.offsetWidth}px;`
+          const clone = el.cloneNode(true) as HTMLElement
+          clone.style.marginLeft = '0'  // cancel negative margin so ghost isn't left-clipped
+          inner.appendChild(clone)
+          ghost.appendChild(inner)
+          document.body.appendChild(ghost)
+          e.dataTransfer.setDragImage(ghost, e.clientX - bcr.left, e.clientY - bcr.top)
+          setTimeout(() => ghost.parentNode?.removeChild(ghost), 0)
+          requestAnimationFrame(() => {
+            el.style.opacity = '0.4'
+            el.style.transition = 'opacity 0.1s'
+          })
+        } : undefined}
+        onDragOver={interactive ? (e) => {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          if (!dragRef.current || dragRef.current.sec !== sec) return
+          const srcIdx = dragRef.current.idx
+          if (srcIdx === idx) return  // hovering over self — no indicator
+          // Direction-based: dragging up → show target's top indicator; down → bottom
+          const half: 'top' | 'bottom' = srcIdx > idx ? 'top' : 'bottom'
+          if (dropTarget?.sec !== sec || dropTarget.idx !== idx || dropTarget.half !== half) {
+            setDropTarget({ sec, idx, half })
+          }
+        } : undefined}
+        onDragLeave={interactive ? (e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            if (dropTarget?.sec === sec && dropTarget.idx === idx) setDropTarget(null)
+          }
+        } : undefined}
+        onDrop={interactive ? (e) => {
+          e.preventDefault()
+          const from = dragRef.current
+          dragRef.current = null
+          setDropTarget(null)
+          if (!from || from.sec !== sec) return
+          const fromIdx = from.idx
+          if (fromIdx === idx) return
+          // Direction-based: dragging up inserts before target; down inserts after
+          const isDraggingUp = fromIdx > idx
+          let toIdx = isDraggingUp ? idx : idx + 1
+          if (fromIdx < toIdx) toIdx -= 1
+          if (fromIdx !== toIdx) onReorderSection?.(sec, fromIdx, toIdx)
+        } : undefined}
+        onDragEnd={interactive ? (e) => {
+          const el = e.currentTarget as HTMLElement
+          el.style.opacity = ''
+          el.style.transition = ''
+          dragRef.current = null
+          setDropTarget(null)
+        } : undefined}
         style={{
           ...editStyle({ kind: 'entry', sec, idx }),
-          marginBottom: '14px',
-          padding: interactive ? '6px 8px' : '0',
-          marginLeft: interactive ? '-8px' : 0,
+          position: 'relative',
+          marginBottom: isLast ? 0 : '6px',
+          padding: interactive ? '0 6px' : '0',
+          marginLeft: interactive ? '-6px' : 0,
           breakInside: 'avoid',
           pageBreakInside: 'avoid',
         }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '4px' }}>
+        {/* Drop indicator: top edge */}
+        {isDropTop && (
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            height: '2px', background: accent, borderRadius: '1px', zIndex: 10,
+          }} />
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '2px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: headingFont, fontSize: '14px', fontWeight: 600, color: titleC, lineHeight: 1.35 }}>
+            <div style={{ fontFamily: headingFont, fontSize: '14px', fontWeight: 600, color: titleC, lineHeight: 1.3 }}>
               {entry.title}
             </div>
             {entry.sub && (
-              <div style={{ fontSize: '12.5px', color: subC, marginTop: '2px' }}>
+              <div style={{ fontSize: '12.5px', color: subC, marginTop: '1px' }}>
                 {entry.sub}
               </div>
             )}
           </div>
-          {entry.date && (
-            <div style={{ fontSize: '11.5px', color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
-              {entry.date}
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {interactive && aiSectionSet.has(`${sec}:${idx}`) && <AIChip />}
+            {entry.date && (
+              <div style={{ fontSize: '11.5px', color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
+                {entry.date}
+              </div>
+            )}
+          </div>
         </div>
         {/* Bullets */}
         {entry.bullets && entry.bullets.length > 0 && (
           <ul style={{
             listStyle: 'none',
-            margin: '6px 0 0',
+            margin: '3px 0 0',
             padding: 0,
           }}>
-            {entry.bullets.map((b, i) => (
+            {entry.bullets.filter(b => b.trim()).map((b, i) => (
               <li key={i} style={{
                 fontSize: '12px',
                 color: bodyC,
-                lineHeight: 1.65,
+                lineHeight: 1.55,
                 paddingLeft: '14px',
                 position: 'relative',
-                marginBottom: '3px',
+                marginBottom: '1px',
               }}>
                 <span style={{
                   position: 'absolute',
@@ -203,20 +318,78 @@ export default function ResumeRenderer({
             ))}
           </ul>
         )}
+
+        {/* Drop indicator: bottom edge */}
+        {isDropBottom && (
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: '2px', background: accent, borderRadius: '1px', zIndex: 10,
+          }} />
+        )}
       </div>
     )
   }
 
   // ============ SECTION ============
+  // ============ LANGUAGE — horizontal wrapping pills ============
+  const LanguageSection = ({ onDark = false }: { onDark?: boolean }) => {
+    if (!data.hasLanguage || data.language.length === 0) return null
+    const textC = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
+    const pillBg = onDark ? 'rgba(255,255,255,0.12)' : `${accent}12`
+    const pillBorder = onDark ? 'rgba(255,255,255,0.22)' : `${accent}35`
+    return (
+      <div data-section-start="1" style={{ marginBottom: '10px' }}>
+        <SectionTitle onDark={onDark}>语言能力</SectionTitle>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {data.language.map((entry, idx) => {
+            const sel = isSelected({ kind: 'entry', sec: 'language', idx })
+            return (
+              <div
+                key={entry.id}
+                data-entry="1"
+                onClick={click({ kind: 'entry', sec: 'language', idx })}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  padding: '4px 12px',
+                  background: sel ? `${accent}20` : pillBg,
+                  border: `1.5px solid ${sel ? accent : pillBorder}`,
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  color: textC,
+                  cursor: interactive ? 'pointer' : 'default',
+                  transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
+                  boxShadow: sel ? `inset 0 0 0 1.5px ${accent}` : 'none',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
+                {entry.sub && (
+                  <>
+                    <span style={{ opacity: 0.35 }}>·</span>
+                    <span style={{ opacity: 0.75 }}>{entry.sub}</span>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   const Section = ({ sec, label, items, onDark = false }: {
     sec: SectionKey; label: string; items: Entry[]; onDark?: boolean
   }) => {
     if (!items || items.length === 0) return null
+    const hasSectionAI = interactive && items.some((_, idx) => aiSectionSet.has(`${sec}:${idx}`))
     return (
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle onDark={onDark}>{label}</SectionTitle>
+      <div style={{ marginBottom: '10px' }}>
+        <div data-section-start="1" style={hasSectionAI ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' } : undefined}>
+          <div style={hasSectionAI ? { flex: 1 } : undefined}>
+            <SectionTitle onDark={onDark}>{label}</SectionTitle>
+          </div>
+        </div>
         {items.map((entry, idx) => (
-          <EntryItem key={entry.id} entry={entry} sec={sec} idx={idx} onDark={onDark} />
+          <EntryItem key={entry.id} entry={entry} sec={sec} idx={idx} onDark={onDark} isLast={idx === items.length - 1} />
         ))}
       </div>
     )
@@ -227,8 +400,11 @@ export default function ResumeRenderer({
     if (!data.hasSummary) return null
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
     return (
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle onDark={onDark}>个人简介</SectionTitle>
+      <div data-section-start="1" style={{ marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+          <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>个人简介</SectionTitle></div>
+          {interactive && aiSectionSet.has('summary') && <AIChip />}
+        </div>
         <p onClick={click({ kind: 'field', field: 'summary' })}
           style={{
             ...editStyle({ kind: 'field', field: 'summary' }),
@@ -248,8 +424,11 @@ export default function ResumeRenderer({
 
     if (asPills) {
       return (
-        <div style={{ marginBottom: '20px' }}>
-          <SectionTitle onDark={onDark}>专业技能</SectionTitle>
+        <div data-section-start="1" style={{ marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>专业技能</SectionTitle></div>
+            {interactive && aiSectionSet.has('skills') && <AIChip />}
+          </div>
           <div onClick={click({ kind: 'skills' })}
             style={{
               ...editStyle({ kind: 'skills' }),
@@ -258,9 +437,10 @@ export default function ResumeRenderer({
             }}>
             {data.skills.map((s, i) => (
               <span key={i} style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '4px 12px',
                 borderRadius: '4px',
-                fontSize: '11.5px',
+                fontSize: '11.5px', lineHeight: 1,
                 fontWeight: 500,
                 background: onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
                 color: onDark ? '#fff' : accent,
@@ -273,27 +453,30 @@ export default function ResumeRenderer({
     }
 
     return (
-      <div onClick={click({ kind: 'skills' })}
-        style={{ ...editStyle({ kind: 'skills' }), marginBottom: '20px', padding: interactive ? '4px' : 0 }}>
+      // Outer wrapper has no interactive padding so SectionTitle stays flush with ContactInline above it
+      <div data-section-start="1" style={{ marginBottom: '10px' }}>
         <SectionTitle onDark>专业技能</SectionTitle>
-        {data.skills.map((s, i) => (
-          <div key={i} style={{
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.9)',
-            marginBottom: '4px',
-            paddingLeft: '12px',
-            position: 'relative',
-          }}>
-            <span style={{
-              position: 'absolute',
-              left: 0, top: '7px',
-              width: '4px', height: '4px',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.6)',
-            }} />
-            {s}
-          </div>
-        ))}
+        <div onClick={click({ kind: 'skills' })}
+          style={{ ...editStyle({ kind: 'skills' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
+          {data.skills.map((s, i) => (
+            <div key={i} style={{
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.9)',
+              marginBottom: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              <span style={{
+                width: '4px', height: '4px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.6)',
+                flexShrink: 0,
+              }} />
+              {s}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -301,12 +484,15 @@ export default function ResumeRenderer({
   // ============ CONTACT BAR ============
   const ContactInline = ({ onDark = false, vertical = false }: { onDark?: boolean; vertical?: boolean }) => {
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#475569'
+    const toWebHref = (url: string) =>
+      /^https?:\/\//i.test(url) ? url : `https://${url}`
     const items = [
-      data.email && { icon: '📧', text: data.email },
-      data.phone && { icon: '📞', text: data.phone },
-      data.city && { icon: '📍', text: data.city },
-      data.website && { icon: '🌐', text: data.website },
-    ].filter(Boolean) as { icon: string; text: string }[]
+      (!data.hideEmail && data.email) && { icon: <Mail size={10} color={c} strokeWidth={2} />, text: data.email, href: `mailto:${data.email}` },
+      (!data.hidePhone && data.phone) && { icon: <Phone size={10} color={c} strokeWidth={2} />, text: data.phone, href: `tel:${data.phone.replace(/[\s()\-]/g, '')}` },
+      (!data.hideCity && data.city) && { icon: <MapPin size={10} color={c} strokeWidth={2} />, text: data.city },
+      (!data.hideWebsite && data.website) && { icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: data.website, href: toWebHref(data.website) },
+      ...(data.extraWebsites || []).filter(Boolean).map(w => ({ icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: w, href: toWebHref(w) })),
+    ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
 
     return (
       <div onClick={click({ kind: 'contact' })}
@@ -323,7 +509,19 @@ export default function ResumeRenderer({
         }}>
         {items.map((it, i) => (
           <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
-            <span style={{ opacity: 0.7 }}>{it.icon}</span> {it.text}
+            <span style={{ opacity: 0.85 }}>{it.icon}</span>
+            {it.href ? (
+              <a
+                href={it.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                // In the editor, prevent navigation — let the click bubble to the contact selector
+                onClick={interactive ? (e) => e.preventDefault() : undefined}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
+                {it.text}
+              </a>
+            ) : it.text}
           </span>
         ))}
       </div>
@@ -332,12 +530,27 @@ export default function ResumeRenderer({
 
   // ============ PHOTO ============
   const PhotoBlock = ({ size = 90, onDark = false }: { size?: number; onDark?: boolean }) => {
+    const meta = data.photoMeta
+
+    // Compute rendered image dimensions preserving natural aspect ratio.
+    // Without natW/natH (legacy photos), fall back to object-fit: cover on a square.
+    let imgW = size, imgH = size, imgLeft = 0, imgTop = 0, hasMeta = false
+    if (meta && meta.natW && meta.natH) {
+      hasMeta = true
+      const coverScale = Math.max(size / meta.natW, size / meta.natH)
+      imgW = meta.natW * coverScale * meta.scale
+      imgH = meta.natH * coverScale * meta.scale
+      imgLeft = (size - imgW) / 2 + meta.x * size
+      imgTop  = (size - imgH) / 2 + meta.y * size
+    }
+
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation()
       if (interactive && onPhotoUpload) onPhotoUpload()
     }
     return (
       <div onClick={interactive ? handleClick : undefined}
+        className={interactive ? 'resume-photo-circle' : undefined}
         style={{
           width: size, height: size,
           borderRadius: '50%',
@@ -351,19 +564,26 @@ export default function ResumeRenderer({
           position: 'relative',
         }}>
         {data.photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.photo} alt=""
+              style={hasMeta ? {
+                position: 'absolute',
+                width: `${imgW}px`, height: `${imgH}px`,
+                left: `${imgLeft}px`, top: `${imgTop}px`,
+                pointerEvents: 'none', userSelect: 'none',
+              } : {
+                width: '100%', height: '100%', objectFit: 'cover',
+              }}
+            />
+          </>
         ) : '👤'}
-        {interactive && (
+        {interactive && !data.photo && (
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             background: 'rgba(0,0,0,0.6)', color: 'white',
             fontSize: '9px', textAlign: 'center', padding: '2px',
-            opacity: 0, transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
-          >上传</div>
+          }}>上传</div>
         )}
       </div>
     )
@@ -406,7 +626,7 @@ export default function ResumeRenderer({
       <Section sec="exp" label="工作经历" items={data.exp} onDark={onDark} />
       {data.hasProject && <Section sec="project" label="项目经历" items={data.project} onDark={onDark} />}
       <Section sec="edu" label="教育背景" items={data.edu} onDark={onDark} />
-      {data.hasLanguage && <Section sec="language" label="语言能力" items={data.language} onDark={onDark} />}
+      {data.hasLanguage && <LanguageSection onDark={onDark} />}
       {data.hasAward && <Section sec="award" label="荣誉奖项" items={data.award} onDark={onDark} />}
       {data.hasCert && <Section sec="cert" label="资质证书" items={data.cert} onDark={onDark} />}
       {data.hasVolunteer && <Section sec="volunteer" label="志愿服务" items={data.volunteer} onDark={onDark} />}
@@ -440,7 +660,7 @@ export default function ResumeRenderer({
             color: '#fff',
           }}>
             {template.showPhoto && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                 <PhotoBlock size={100} onDark />
               </div>
             )}
@@ -449,7 +669,7 @@ export default function ResumeRenderer({
               <NameBlock onDark centered big={false} />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '10px' }}>
               <SectionTitle onDark>联系方式</SectionTitle>
               <ContactInline onDark vertical />
             </div>
@@ -480,14 +700,14 @@ export default function ResumeRenderer({
             flexShrink: 0,
           }}>
             {template.showPhoto && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                 <PhotoBlock size={88} />
               </div>
             )}
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <NameBlock centered big={false} />
             </div>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '10px' }}>
               <SectionTitle>联系方式</SectionTitle>
               <ContactInline vertical />
             </div>
@@ -521,7 +741,7 @@ export default function ResumeRenderer({
             flexShrink: 0,
           }}>
             {template.showPhoto && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                 <PhotoBlock size={88} />
               </div>
             )}
@@ -605,13 +825,15 @@ export default function ResumeRenderer({
             <SummaryBlock />
             <Section sec="exp" label="工作经历" items={data.exp} />
             {data.hasProject && <Section sec="project" label="项目经历" items={data.project} />}
+            {data.hasVolunteer && <Section sec="volunteer" label="志愿服务" items={data.volunteer} />}
+            {data.hasInterest && <Section sec="interest" label="兴趣爱好" items={data.interest} />}
           </div>
           <div style={{ flex: 1 }}>
             <Section sec="edu" label="教育背景" items={data.edu} />
             <SkillsBlock />
-            {data.hasLanguage && <Section sec="language" label="语言能力" items={data.language} />}
+            {data.hasLanguage && <LanguageSection />}
             {data.hasAward && <Section sec="award" label="荣誉奖项" items={data.award} />}
-            {data.hasCert && <Section sec="cert" label="证书" items={data.cert} />}
+            {data.hasCert && <Section sec="cert" label="资质证书" items={data.cert} />}
           </div>
         </div>
       </div>

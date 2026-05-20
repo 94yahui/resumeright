@@ -11,8 +11,8 @@ export default function Footer() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexWrap: 'wrap', gap: '20px',
       }}>
-        <div style={{ fontSize: '20px', color: 'var(--paper)' }}>
-          简历帮
+        <div style={{ fontSize: '20px', color: 'var(--paper)', fontWeight: 500 }}>
+          简力全开
         </div>
         <div style={{ display: 'flex', gap: '24px' }}>
           {['关于我们', '隐私政策', '使用条款', '帮助中心'].map(l => (
@@ -24,7 +24,7 @@ export default function Footer() {
             >{l}</a>
           ))}
         </div>
-        <div style={{ fontSize: '12px', color: 'rgba(250,248,244,0.3)' }}>© 2026 简历帮</div>
+        <div style={{ fontSize: '12px', color: 'rgba(250,248,244,0.3)' }}>© 2026 简力全开</div>
       </div>
     </footer>
   )

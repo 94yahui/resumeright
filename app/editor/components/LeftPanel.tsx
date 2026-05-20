@@ -1,8 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import {
+  Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
+  Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
+  Trash2, Lock, Lightbulb, History, Plus, X,
+} from 'lucide-react'
 import { TEMPLATES, TemplateConfig } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
 import { ResumeData, Entry } from '../../lib/types'
+import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
 
 const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   summary: 'hasSummary',
@@ -15,21 +21,21 @@ const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   interest: 'hasInterest',
 }
 
-const MODULES = [
-  { key: 'exp',       label: '工作经历', icon: '💼', bg: '#ccfbf1', isEntry: true },
-  { key: 'edu',       label: '教育背景', icon: '🎓', bg: '#fef3c7', isEntry: true },
-  { key: 'summary',   label: '个人简介', icon: '📝', bg: '#f1f5f9', isEntry: false },
-  { key: 'skills',    label: '专业技能', icon: '⚡', bg: '#fee2e2', isEntry: false },
-  { key: 'project',   label: '项目经历', icon: '🌐', bg: '#dbeafe', isEntry: true },
-  { key: 'language',  label: '语言能力', icon: '🗣️', bg: '#ede9fe', isEntry: true },
-  { key: 'award',     label: '荣誉奖项', icon: '🏆', bg: '#fef3c7', isEntry: true },
-  { key: 'cert',      label: '资质证书', icon: '📜', bg: '#ccfbf1', isEntry: true },
-  { key: 'volunteer', label: '志愿服务', icon: '🤝', bg: '#f1f5f9', isEntry: true },
-  { key: 'interest',  label: '兴趣爱好', icon: '✨', bg: '#fee2e2', isEntry: true },
+const MODULES: { key: string; label: string; icon: React.ReactNode; bg: string; isEntry: boolean }[] = [
+  { key: 'exp',       label: '工作经历', icon: <Briefcase size={14} color="#334155" />,     bg: '#dbeafe', isEntry: true },
+  { key: 'edu',       label: '教育背景', icon: <GraduationCap size={14} color="#334155" />,  bg: '#fef3c7', isEntry: true },
+  { key: 'summary',   label: '个人简介', icon: <FileText size={14} color="#334155" />,       bg: '#f1f5f9', isEntry: false },
+  { key: 'skills',    label: '专业技能', icon: <Zap size={14} color="#334155" />,            bg: '#fee2e2', isEntry: false },
+  { key: 'project',   label: '项目经历', icon: <Globe size={14} color="#334155" />,          bg: '#dbeafe', isEntry: true },
+  { key: 'language',  label: '语言能力', icon: <MessageSquare size={14} color="#334155" />,  bg: '#ede9fe', isEntry: true },
+  { key: 'award',     label: '荣誉奖项', icon: <Trophy size={14} color="#334155" />,         bg: '#fef3c7', isEntry: true },
+  { key: 'cert',      label: '资质证书', icon: <FileCheck size={14} color="#334155" />,      bg: '#dbeafe', isEntry: true },
+  { key: 'volunteer', label: '志愿服务', icon: <HandHelping size={14} color="#334155" />,    bg: '#f1f5f9', isEntry: true },
+  { key: 'interest',  label: '兴趣爱好', icon: <Sparkles size={14} color="#334155" />,       bg: '#fee2e2', isEntry: true },
 ]
 
 const COLORS = [
-  '#0f172a', '#1e3a8a', '#0d9488', '#d4a017',
+  '#0f172a', '#1e3a8a', '#0789ec', '#d4a017',
   '#dc2626', '#7c3aed', '#ec4899', '#0891b2',
   '#ea580c', '#16a34a',
 ]
@@ -42,16 +48,59 @@ interface Props {
   onAddModule: (key: string) => void
   data: ResumeData
   onUpdate: (patch: Partial<ResumeData>) => void
+  onSaveHistory?: () => void
+  onLoadHistory?: (entry: HistoryEntry) => void
+  onHistoryDelete?: (id: string) => void
+  historyRefreshKey?: number
+  currentHistoryId?: string | null
+  currentDocTitle?: string
+  isMobile?: boolean
+  onClose?: () => void
+  forceTab?: 'tpl' | 'mod' | 'color' | 'hist'
+  disabled?: boolean
 }
 
 export default function LeftPanel({
   templateId, onTemplateChange, onColorChange, currentColor, onAddModule, data, onUpdate,
+  onSaveHistory, onLoadHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
+  isMobile, onClose, forceTab, disabled,
 }: Props) {
-  const [tab, setTab] = useState<'tpl' | 'mod' | 'color'>('tpl')
+  const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
+
+  useEffect(() => {
+    if (forceTab) setTab(forceTab)
+  }, [forceTab])
   const [showPro, setShowPro] = useState(false)
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([])
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const freeTpls = TEMPLATES.filter(t => t.free)
   const proTpls = TEMPLATES.filter(t => !t.free)
+
+  useEffect(() => {
+    if (tab === 'hist') {
+      setHistoryEntries(loadHistory())
+    }
+  }, [tab])
+
+  useEffect(() => {
+    if (historyRefreshKey && historyRefreshKey > 0) {
+      setTab('hist')
+      setHistoryEntries(loadHistory())
+    }
+  }, [historyRefreshKey])
+
+  function formatDate(ts: number): string {
+    const d = new Date(ts)
+    const month = d.getMonth() + 1
+    const day = d.getDate()
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    return `${month}月${day}日 ${hh}:${mm}`
+  }
+
+  const TABS = ['tpl', 'mod', 'color', 'hist'] as const
+  const TAB_LABELS = ['模板', '模块', '颜色', '我的']
 
   return (
     <div style={{
@@ -59,9 +108,10 @@ export default function LeftPanel({
       borderRight: '1px solid #e2e8f0',
       display: 'flex', flexDirection: 'column',
       flexShrink: 0, overflow: 'hidden',
+      height: '100%',
     }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
-        {(['tpl', 'mod', 'color'] as const).map((t, i) => (
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+        {TABS.map((t, i) => (
           <button key={t} onClick={() => setTab(t)} style={{
             flex: 1, padding: '12px 4px',
             fontSize: '12px', fontWeight: 600,
@@ -70,16 +120,26 @@ export default function LeftPanel({
             border: 'none', fontFamily: 'var(--font-sans)',
             borderBottom: `2px solid ${tab === t ? '#0f172a' : 'transparent'}`,
             transition: 'all 0.15s',
-          }}>{['模板', '模块', '颜色'][i]}</button>
+          }}>{TAB_LABELS[i]}</button>
         ))}
+        {isMobile && (
+          <button onClick={onClose} style={{
+            padding: '8px 10px', cursor: 'pointer',
+            background: 'transparent', border: 'none',
+            color: '#64748b', display: 'flex', alignItems: 'center',
+            flexShrink: 0,
+          }}>
+            <X size={16} />
+          </button>
+        )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="overlay-scroll" style={{ flex: 1, overflowY: 'auto' }}>
 
         {/* ===== TEMPLATE TAB ===== */}
         {tab === 'tpl' && (
           <div>
-            <div style={{ padding: '14px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: '#0d9488' }}>
+            <div style={{ padding: '14px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--theme-blue)' }}>
               免费模板 ({freeTpls.length})
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
@@ -98,7 +158,7 @@ export default function LeftPanel({
                 cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
               }}>
-                🔒 Pro 模板 ({proTpls.length}) {showPro ? '▲' : '▼'}
+                <Lock size={11} /> Pro 模板 ({proTpls.length}) {showPro ? '▲' : '▼'}
               </button>
             </div>
 
@@ -114,25 +174,25 @@ export default function LeftPanel({
 
         {/* ===== MODULE TAB ===== */}
         {tab === 'mod' && (
-          <div>
+          <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
             {/* Personal info */}
             <div style={{ padding: '12px 14px 8px', fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b' }}>
               个人信息
             </div>
             <div style={{ padding: '0 10px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <button onClick={() => onAddModule('name')} style={infoBtn}>
-                👤 姓名 / 职位
+                <UserRound size={13} /> 姓名 / 职位
               </button>
               <button onClick={() => onAddModule('contact')} style={infoBtn}>
-                📧 联系方式
+                <Mail size={13} /> 联系方式
               </button>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button onClick={() => onAddModule('photo')} style={{ ...infoBtn, flex: 1 }}>
-                  📷 上传照片
+                  <Camera size={13} /> 上传照片
                 </button>
                 {data.photo && (
                   <button onClick={() => onAddModule('photo-clear')} style={{ ...infoBtn, flex: 1, color: '#dc2626', borderColor: 'rgba(220,38,38,0.25)' }}>
-                    🗑 移除照片
+                    <Trash2 size={13} /> 移除照片
                   </button>
                 )}
               </div>
@@ -169,12 +229,17 @@ export default function LeftPanel({
                               return
                             }
                           }
+                          // Skills: delegate to onAddModule so sample data is injected when empty
+                          if (m.key === 'skills' && data.skills.length === 0) {
+                            onAddModule(m.key)
+                            return
+                          }
                           onUpdate({ [flagKey]: true } as Partial<ResumeData>)
                         } else {
                           onUpdate({ [flagKey]: false } as Partial<ResumeData>)
                         }
                       }}
-                      style={{ accentColor: '#0d9488', flexShrink: 0, width: '14px', height: '14px', cursor: 'pointer' }}
+                      style={{ accentColor: '#0789ec', flexShrink: 0, width: '14px', height: '14px', cursor: 'pointer' }}
                     />
                   ) : (
                     <div style={{ width: '14px', flexShrink: 0 }} />
@@ -183,7 +248,7 @@ export default function LeftPanel({
                     width: '28px', height: '28px', borderRadius: '6px',
                     background: m.bg,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '13px', flexShrink: 0,
+                    flexShrink: 0,
                   }}>{m.icon}</div>
                   <span style={{
                     flex: 1, fontSize: '12.5px',
@@ -195,7 +260,7 @@ export default function LeftPanel({
                     style={{
                       padding: '3px 10px', borderRadius: '5px', fontSize: '12px',
                       border: '1px solid #e2e8f0', background: 'white',
-                      color: '#0d9488', fontWeight: 600, cursor: 'pointer',
+                      color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
                       fontFamily: 'var(--font-sans)', flexShrink: 0,
                     }}
                   >
@@ -249,9 +314,138 @@ export default function LeftPanel({
               marginTop: '24px', padding: '14px',
               background: '#f8fafc', borderRadius: '8px',
               fontSize: '12px', color: '#64748b', lineHeight: 1.6,
+              display: 'flex', alignItems: 'flex-start', gap: '6px',
             }}>
-              💡 主题色影响标题、边框等强调元素，切换模板后会保持
+              <Lightbulb size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
+              主题色影响标题、边框等强调元素，切换模板后会保持
             </div>
+          </div>
+        )}
+
+        {/* ===== HISTORY TAB ===== */}
+        {tab === 'hist' && (
+          <div style={{ padding: '14px' }}>
+            <button
+              onClick={disabled ? undefined : () => onSaveHistory?.()}
+              disabled={disabled}
+              style={{
+                width: '100%', padding: '9px 14px',
+                borderRadius: '8px', border: `1px solid ${disabled ? '#e2e8f0' : 'var(--theme-blue)'}`,
+                background: disabled ? '#f8fafc' : '#e0f0fd', fontSize: '12.5px',
+                color: disabled ? '#94a3b8' : 'var(--theme-blue)', fontWeight: 600,
+                cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-sans)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                marginBottom: '14px', opacity: disabled ? 0.5 : 1,
+              }}
+            >
+              <Plus size={13} /> 保存当前
+            </button>
+
+            {historyEntries.length === 0 ? (
+              <div style={{
+                textAlign: 'center', color: '#94a3b8',
+                fontSize: '13px', padding: '32px 0',
+              }}>
+                暂无保存记录
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {historyEntries.map(entry => (
+                  <div key={entry.id} style={{
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${confirmDeleteId === entry.id ? '#fca5a5' : '#e2e8f0'}`,
+                    background: confirmDeleteId === entry.id ? '#fff5f5' : '#f8fafc',
+                    transition: 'all 0.15s',
+                  }}>
+                    {confirmDeleteId === entry.id ? (
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600, marginBottom: '8px', wordBreak: 'break-word' }}>
+                          确定删除「{entry.name}」？
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => {
+                              deleteHistory(entry.id)
+                              setHistoryEntries(loadHistory())
+                              setConfirmDeleteId(null)
+                              onHistoryDelete?.(entry.id)
+                            }}
+                            style={{
+                              flex: 1, padding: '5px', borderRadius: '5px', fontSize: '12px',
+                              border: 'none', background: '#dc2626',
+                              color: 'white', fontWeight: 600, cursor: 'pointer',
+                              fontFamily: 'var(--font-sans)',
+                            }}
+                          >删除</button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            style={{
+                              flex: 1, padding: '5px', borderRadius: '5px', fontSize: '12px',
+                              border: '1px solid #e2e8f0', background: 'white',
+                              color: '#64748b', cursor: 'pointer',
+                              fontFamily: 'var(--font-sans)',
+                            }}
+                          >取消</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: '12.5px', fontWeight: 600, color: '#0f172a',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{entry.id === currentHistoryId && currentDocTitle !== undefined ? currentDocTitle : entry.name}</div>
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                            {formatDate(entry.savedAt)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                          {entry.id === currentHistoryId ? (
+                            <div style={{
+                              padding: '4px 8px', borderRadius: '5px', fontSize: '11px',
+                              background: '#e0f0fd', color: 'var(--theme-blue)', fontWeight: 600,
+                              border: '1px solid rgba(13,148,136,0.3)',
+                              display: 'flex', alignItems: 'center', gap: '3px',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              ✦ 当前编辑
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const fresh = loadHistory().find(h => h.id === entry.id) ?? entry
+                                setHistoryEntries(loadHistory())
+                                onLoadHistory?.(fresh)
+                              }}
+                              style={{
+                                padding: '4px 10px', borderRadius: '5px', fontSize: '12px',
+                                border: '1px solid var(--theme-blue)', background: 'white',
+                                color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
+                                fontFamily: 'var(--font-sans)',
+                              }}
+                            >
+                              加载
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setConfirmDeleteId(entry.id)}
+                            style={{
+                              padding: '4px 7px', borderRadius: '5px', fontSize: '12px',
+                              border: '1px solid #e2e8f0', background: 'white',
+                              color: '#94a3b8', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -285,7 +479,10 @@ function TplCard({ tpl, active, onClick, isPro }: {
           position: 'absolute', top: '4px', right: '4px',
           background: '#0f172a', color: 'white',
           fontSize: '8px', padding: '2px 5px', borderRadius: '3px',
-        }}>🔒</div>
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Lock size={8} color="white" />
+        </div>
       )}
       <div style={{ padding: '6px 8px', borderTop: '1px solid #e2e8f0' }}>
         <div style={{

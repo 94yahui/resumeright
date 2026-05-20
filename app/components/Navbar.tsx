@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import logo from "../../public/resume-logo.png";
+import blackLogo from "../../public/logo-black.png";
+import whiteLogo from "../../public/logo-white.png";
 import Image from 'next/image'
 
 export default function Navbar({ onUploadClick }: { onUploadClick: () => void }) {
@@ -9,6 +10,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick: () => void })
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
+    handler(); // sync initial state in case page loads already scrolled
     window.addEventListener("scroll", handler);
     return () => window.removeEventListener("scroll", handler);
   }, []);
@@ -16,7 +18,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick: () => void })
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      background: scrolled ? "rgba(250,248,244,0.92)" : "transparent",
+      background: scrolled ? "rgba(250,250,250,0.88)" : "transparent",
       backdropFilter: scrolled ? "blur(16px)" : "none",
       borderBottom: scrolled ? "1px solid var(--paper3)" : "1px solid transparent",
       padding: "0 24px", height: "60px",
@@ -28,14 +30,19 @@ export default function Navbar({ onUploadClick }: { onUploadClick: () => void })
         display: "flex", alignItems: "center", gap: "8px",
         textDecoration: "none",
       }}>
-        <Image src={logo} alt="Logo" width={30} />
-        简历帮
+        <Image src={scrolled? blackLogo : whiteLogo} alt="Logo" width={30} />
+        <span style={{color: scrolled ? 'black' : 'white', fontWeight: 500}}>简力全开</span>
       </Link>
 
       {/* Desktop nav */}
       <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-        {(["模板", "编辑器", "AI功能", "定价"] as const).map((label, i) => (
-          <a key={label} href={`#${["templates", "editor", "ai", "pricing"][i]}`} style={{
+        {[
+          { label: '简历分析✦', href: '#analysis' },
+          { label: '模板', href: '#templates' },
+          { label: 'AI功能', href: '#ai' },
+          { label: '定价', href: '#pricing' },
+        ].map(({ label, href }) => (
+          <a key={label} href={href} style={{
             fontSize: "14px", fontWeight: 500, color: "var(--ink2)",
             textDecoration: "none", transition: "color 0.2s",
           }}

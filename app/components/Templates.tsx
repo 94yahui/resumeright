@@ -18,10 +18,9 @@ export default function Templates() {
   const visible = showAll ? filtered : filtered.slice(0, 12)
 
   return (
-    <section id="templates" style={{
-      background: '#f8fafc',
+    <section id="templates" className="templates-section" style={{
+      background: 'var(--paper2)',
       padding: '80px 32px',
-      borderTop: '1px solid #e2e8f0',
       borderBottom: '1px solid #e2e8f0',
     }}>
       <div style={{
@@ -38,7 +37,7 @@ export default function Templates() {
             fontSize: '38px', letterSpacing: '-1px', lineHeight: 1.15,
             fontWeight: 700, color: '#0f172a',
           }}>
-            找到<span style={{ color: '#256EA5' }}>属于你</span>的风格
+            找到<span style={{ color: 'var(--theme-blue)' }}>属于你</span>的风格
           </h2>
           <p style={{ fontSize: '15px', color: '#64748b', marginTop: '10px', fontWeight: 400 }}>
             {TEMPLATES.length} 套专业设计，{FREE_COUNT} 套免费 · {PRO_COUNT} 套 Pro
@@ -71,11 +70,11 @@ export default function Templates() {
         </div>
       </div>
 
-      <div style={{
+      <div className="templates-grid" style={{
         maxWidth: '1280px', margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '20px',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: '28px',
       }}>
         {visible.map((tpl, i) => (
           <TemplateCard key={tpl.id} tpl={tpl} delay={Math.min(i, 11) * 0.04} />
@@ -93,7 +92,7 @@ export default function Templates() {
             background: 'white',
             fontFamily: 'var(--font-sans)', transition: 'all 0.2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#0f172a'; e.currentTarget.style.background = '#f8fafc' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink3)'; e.currentTarget.style.background = '#f8fafc' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white' }}
           >
             {showAll ? '收起' : `查看全部 ${filtered.length} 套`} {showAll ? '↑' : '↓'}
@@ -114,65 +113,64 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
   const [hovered, setHovered] = useState(false)
 
   return (
-    <div className="fade-in"
+    // Outer: scroll-fade stagger only
+    // minWidth:0 prevents CSS Grid from expanding the track to the child's max-content width
+    <div className="fade-in" style={{ transitionDelay: `${delay}s`, minWidth: 0 }}>
+    {/* Inner: hover — zero delay, always instant */}
+    <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        border: `1.5px solid ${hovered ? 'transparent' : '#e2e8f0'}`,
         cursor: 'pointer',
-        transition: 'all 0.25s',
-        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
-        boxShadow: hovered ? '0 12px 36px rgba(15, 23, 42, 0.14)' : 'none',
-        transitionDelay: `${delay}s`,
+        transition: 'transform 0.22s',
+        transform: hovered ? 'translateY(-5px)' : 'translateY(0)',
       }}
     >
+      {/* Thumbnail — A4 paper fills full cell width, shadow sits on paper edges */}
       <div style={{
         position: 'relative',
-        background: '#f1f5f9',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '14px 10px',
-        height: '280px',
         overflow: 'hidden',
+        boxShadow: hovered
+          ? '0 16px 48px rgba(15, 23, 42, 0.30)'
+          : '0 2px 12px rgba(15, 23, 42, 0.10)',
+        transition: 'box-shadow 0.22s',
       }}>
-        <TemplateThumbnail template={tpl} width={180} />
+        <TemplateThumbnail template={tpl} fillWidth />
         <div style={{
-          position: 'absolute', top: '12px', right: '12px',
-          background: tpl.free ? '#0d9488' : '#0f172a',
+          position: 'absolute', top: '10px', right: '10px',
+          background: tpl.free ? 'var(--teal)' : '#0f172a',
           color: 'white',
           padding: '3px 10px', borderRadius: '5px',
           fontSize: '10px', fontWeight: 600,
-        }}>{tpl.free ? '免费' : '🔒 Pro'}</div>
+        }}>{tpl.free ? '免费' : 'Pro'}</div>
       </div>
 
+      {/* Info below thumbnail — no card wrapper */}
       <div style={{
-        padding: '12px 16px',
-        borderTop: '1px solid #e2e8f0',
+        padding: '10px 4px 0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
         <div>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{tpl.name}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{tpl.tag}</div>
+          <div style={{ background: 'var(--ink)', borderRadius:'3px', paddingInline: '5px', fontSize: '11px', color: '#fff', marginTop: '2px' }}>{tpl.tag}</div>
         </div>
         <Link href={`/editor?template=${tpl.id}`} style={{
-          background: tpl.free ? '#0d9488' : '#0f172a',
+          background: 'var(--theme-blue)',
           color: '#fff',
           padding: '6px 14px', borderRadius: '7px',
           fontSize: '12px', fontWeight: 600,
           textDecoration: 'none',
           opacity: hovered ? 1 : 0,
           transform: hovered ? 'scale(1)' : 'scale(0.9)',
-          transition: 'all 0.2s',
+          transition: 'opacity 0.2s, transform 0.2s',
           display: 'inline-block',
           whiteSpace: 'nowrap',
-        }}>{tpl.free ? '使用' : '解锁'}</Link>
+          flexShrink: 0,
+        }}>{tpl.free ? '使用' : '使用'}</Link>
       </div>
+    </div>
     </div>
   )
 }

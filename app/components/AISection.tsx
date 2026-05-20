@@ -1,29 +1,30 @@
 'use client'
+import { Sparkles, FileText, Target, MessageCircle } from 'lucide-react'
 
 const features = [
   {
-    icon: '✦',
+    icon: <Sparkles size={20} color="var(--theme-blue)" />,
     iconBg: 'var(--teal-light)',
     title: '智能内容优化',
     desc: '选中任意文字模块，一键让 AI 帮你改写成更专业、更有力的表达。数字化成果、量化描述、行业术语——AI 全部帮你处理。',
     tag: '内容优化',
   },
   {
-    icon: '📄',
+    icon: <FileText size={20} color="#d4a017" />,
     iconBg: 'var(--gold-light)',
     title: '简历智能解析',
     desc: '上传你的旧简历（PDF / Word），AI 自动识别所有内容，并按照你选择的新模板重新排版填充，秒级完成迁移。',
     tag: '文档解析',
   },
   {
-    icon: '🎯',
+    icon: <Target size={20} color="#e05252" />,
     iconBg: '#fde8e8',
     title: '岗位匹配分析',
     desc: '粘贴目标职位的 JD，AI 分析你的简历与岗位要求的匹配度，并给出具体的优化建议和关键词补充。',
     tag: 'Pro 功能',
   },
   {
-    icon: '💬',
+    icon: <MessageCircle size={20} color="#7c3aed" />,
     iconBg: '#f0e8fd',
     title: '面试问题预测',
     desc: '基于你的简历内容，AI 预测面试官可能提问的问题，并帮你准备 STAR 法则结构的参考回答。',
@@ -44,7 +45,7 @@ export default function AISection() {
             AI 智能功能
           </div>
           <h2 style={{ fontFamily: "'Inter', 'Noto Sans SC', sans-serif", fontSize: 'clamp(26px, 4vw, 36px)', letterSpacing: '-1px' }}>
-            让 AI 成为你的<em style={{ fontStyle: 'italic', color: 'var(--gold)' }}>简历顾问</em>
+            让 AI 成为你的<em style={{ fontStyle: 'italic', color: 'var(--theme-blue)' }}>简历顾问</em>
           </h2>
         </div>
 
@@ -63,12 +64,14 @@ export default function AISection() {
 
 function AICard({ feature, delay }: { feature: typeof features[0], delay: number }) {
   return (
-    <div className="fade-in" style={{
-      background: 'white', borderRadius: '16px',
+    // Outer: handles scroll-fade stagger only
+    <div className="fade-in" style={{ transitionDelay: `${delay}s` }}>
+    {/* Inner: handles hover with zero delay so it's always instant */}
+    <div style={{
+      background: 'white', borderRadius: '0 0 16px 16px',
       padding: '32px', border: '1px solid var(--paper3)',
       position: 'relative', overflow: 'hidden',
-      transition: 'all 0.25s',
-      transitionDelay: `${delay}s`,
+      transition: 'box-shadow 0.25s, transform 0.25s',
     }}
     onMouseEnter={e => {
       e.currentTarget.style.boxShadow = '0 4px 16px rgba(26,24,20,0.10)'
@@ -81,7 +84,7 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
     >
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-        background: 'linear-gradient(90deg, var(--teal), var(--gold))',
+        background: 'linear-gradient(90deg, var(--theme-blue), var(--theme-blue))',
       }} />
 
       <div style={{
@@ -101,9 +104,10 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
       <div style={{
         display: 'inline-block', marginTop: '16px',
         padding: '4px 12px',
-        background: 'var(--teal-light)', color: 'var(--teal)',
+        background: 'var(--theme-blue)', color: 'var(--paper)',
         borderRadius: '20px', fontSize: '11px', fontWeight: 600,
       }}>{feature.tag}</div>
+    </div>
     </div>
   )
 }

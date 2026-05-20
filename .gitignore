@@ -1,6 +1,39 @@
-.next/
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
 out/
-*.local
-tsconfig.tsbuildinfo
-.claude/
+build/
+
+# Environment
+.env
+.env.local
+.env.production
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Vercel/Cloudflare cache
+.vercel
+.wrangler/
+
+# Misc
+*.pem
+.cache/
+EOF

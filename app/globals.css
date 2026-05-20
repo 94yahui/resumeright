@@ -11,25 +11,33 @@
   --paper: #ffffff;
   --paper2: #f8fafc;
   --paper3: #e2e8f0;
-  --gold: #256EA5;
-  --gold2: #0d9488;
+  --theme-blue: #0789ec;
+  --gold2: #0edad3;
   --gold-light: #fef3c7;
   --teal: #0d9488;
   --teal-light: #ccfbf1;
+  --ai-color-1: #6d28d9;
+  --ai-color-2: #0ea5e9;
   --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-serif: 'Noto Serif SC', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; }
 body {
   font-family: var(--font-sans);
-  background: var(--paper);
+  background: var(--paper2);
   color: var(--ink);
-  overflow-x: hidden;
+  /* overflow-x: hidden is intentionally omitted — it breaks iOS Safari touch events
+     and prevents IntersectionObserver from firing, making all .fade-in content invisible */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Landscape safe area: ensure fixed bars respect notch/home-indicator on iPhones */
+@supports (padding: env(safe-area-inset-left)) {
+  nav { padding-left: max(24px, env(safe-area-inset-left)) !important; padding-right: max(24px, env(safe-area-inset-right)) !important; }
 }
 
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
@@ -41,93 +49,145 @@ body {
 .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.65s ease, transform 0.65s ease; }
 .fade-in.visible { opacity: 1; transform: translateY(0); }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--paper3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
-
-/* ============================================================
-   Responsive — landing page
-   ============================================================ */
-@media (max-width: 900px) {
-  .hero-section {
-    grid-template-columns: 1fr !important;
-    padding: 90px 24px 60px !important;
-    gap: 48px !important;
-  }
-  .hero-right { display: none !important; }
-
-  .ai-grid { grid-template-columns: 1fr !important; }
-  .pricing-grid { grid-template-columns: 1fr !important; max-width: 420px !important; }
-
-  .templates-header { flex-direction: column !important; align-items: flex-start !important; }
+/* Page-level scrollbar: true overlay — no layout width, fades in on scroll, fades out when idle */
+html {
+  overflow-y: overlay;           /* Chrome/Edge: scrollbar floats over content, takes no layout width */
+  scrollbar-width: thin;         /* Firefox fallback */
+  scrollbar-color: transparent transparent;
 }
+html.page-scrolling {
+  scrollbar-color: rgba(148,163,184,0.5) transparent; /* Firefox: show on scroll */
+}
+html::-webkit-scrollbar { width: 5px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,0);
+  border-radius: 5px;
+  transition: background 0.25s ease;
+}
+html.page-scrolling::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.55); }
+html.page-scrolling::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.7); }
 
-@media (max-width: 640px) {
-  .nav-links { display: none !important; }
-  .nav-cta { display: none !important; }
+/* Overlay-style scrollbar — thin, disappears when container is not hovered */
+.overlay-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.overlay-scroll:hover { scrollbar-color: rgba(148,163,184,0.5) transparent; }
+.overlay-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.overlay-scroll::-webkit-scrollbar-track { background: transparent; }
+.overlay-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; transition: background 0.2s; }
+.overlay-scroll:hover::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.5); }
+.overlay-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.65); }
+
+/* =========================================================
+   MOBILE RESPONSIVE  (≤ 768px)
+   These !important rules override inline React styles.
+   They must live in CSS (not JS) so they apply before
+   JavaScript hydration — preventing the layout flash that
+   would otherwise trigger the iOS overflow/touch bug.
+   ========================================================= */
+@media (max-width: 768px) {
+
+  /* ── Navbar ── */
+  .nav-links      { display: none !important; }
   .nav-mobile-cta { display: inline-block !important; }
 
-  .hero-section { padding: 80px 16px 48px !important; gap: 32px !important; }
-  .hero-stats { gap: 20px !important; flex-wrap: wrap !important; }
+  /* ── Landing Hero ── */
+  .hero-section {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    padding: 16px 20px 40px !important;
+  }
+  /* Hide the decorative resume preview card — it has absolutely-positioned
+     children that bleed off-screen and can trigger horizontal overflow */
+  .hero-right { display: none !important; }
+  .hero-stats { gap: 24px !important; }
 
-  .pricing-grid { grid-template-columns: 1fr !important; max-width: 100% !important; }
+  /* ── Templates section ── */
+  .templates-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .templates-section {
+    padding: 48px 16px 40px !important;
+  }
+  .templates-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* ── Pricing section ── */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Remove the scale(1.04) lift on the featured card so it doesn't overflow */
   .pricing-featured { transform: scale(1) !important; }
 
-  .footer-inner { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+  /* ── AI section ── */
+  .ai-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+
+  /* ── Footer ── */
+  .footer-inner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 0 !important;
+  }
 }
 
-/* ============================================================
-   Print
-   ============================================================ */
+/* @page must live at the top level — nesting it inside @media print is non-standard
+   and mobile browsers may ignore it, leaving margin space for browser URL/page footers. */
+@page { size: A4; margin: 0; }
+
+/* Hidden print layer — only rendered during window.print() (mobile path) */
+.resume-print-layer { display: none; }
+
 @media print {
-  @page { size: A4; margin: 0; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
 
-  /* Force background colors so colored templates print correctly */
-  *, *::before, *::after {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  /* Hide the entire editor shell — only the print layer renders on paper */
+  .editor-outer { display: none !important; }
 
-  /* Hide all UI panels */
-  .no-print, .no-print * { display: none !important; }
-
-  /* Reset editor layout wrappers to block flow */
-  html, body { background: white !important; overflow: visible !important; height: auto !important; }
-  .editor-outer { display: block !important; height: auto !important; overflow: visible !important; }
-  .editor-content { display: block !important; height: auto !important; overflow: visible !important; }
-  .editor-canvas-container { display: block !important; height: auto !important; overflow: visible !important; background: white !important; }
-
-  /* Canvas area */
-  .print-canvas {
+  /* Print layer: contains paginated resume frames */
+  .resume-print-layer {
     display: block !important;
-    background: white !important;
-    overflow: visible !important;
+    width: 210mm !important;
+    margin: 0 !important;
     padding: 0 !important;
-    height: auto !important;
   }
 
-  /* Reset zoom transform */
-  .print-scale-wrapper { transform: none !important; }
-
-  /* Pages wrapper: remove gap and center alignment */
-  .resume-pages-wrapper {
-    display: block !important;
-    gap: 0 !important;
-  }
-
-  /* Each page frame */
-  .resume-page {
+  /* Each page frame prints on its own page */
+  .resume-print-layer .resume-page {
     page-break-after: always;
     break-after: page;
-    box-shadow: none !important;
-    margin: 0 !important;
     width: 210mm !important;
     height: 297mm !important;
     overflow: hidden !important;
+    clip-path: inset(0) !important;
+    box-shadow: none !important;
+    position: relative;
   }
-  .resume-page:last-child {
+
+  .resume-print-layer .resume-page:last-child {
     page-break-after: auto;
     break-after: auto;
   }
+
+  .resume-print-layer .resume-page-num {
+    display: none !important;
+  }
+}
+
+/* Photo hover overlay — only visible on hover, hidden in print */
+.resume-photo-adjust {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.resume-photo-circle:hover .resume-photo-adjust {
+  opacity: 1;
+}
+@media print {
+  .resume-photo-adjust { display: none !important; }
 }

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
+import LandingAnalysisSection from './components/LandingAnalysisSection'
 import Templates from './components/Templates'
 import AISection from './components/AISection'
 import Pricing from './components/Pricing'
@@ -18,6 +19,7 @@ export default function Home() {
       <Navbar onUploadClick={() => setUploadOpen(true)} />
       <main>
         <Hero onUploadClick={() => setUploadOpen(true)} />
+        <LandingAnalysisSection />
         <Templates />
         <AISection />
         <Pricing />
