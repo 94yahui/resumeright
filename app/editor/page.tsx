@@ -1232,6 +1232,7 @@ ${autoprint ? `<script>
             </div>
             <div className="no-print" style={{
               position: 'fixed', right: 0, top: 52, bottom: 0, zIndex: 65,
+              width: '288px',
               transform: `translateX(${aiPanelOpen ? '0' : '100%'})`,
               transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
               boxShadow: aiPanelOpen ? '-4px 0 24px rgba(0,0,0,0.18)' : 'none',

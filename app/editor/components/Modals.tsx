@@ -485,7 +485,13 @@ export function AIPanel({
                         <div style={{ fontSize: '11px', fontWeight: 600, color: applied ? '#334155' : 'rgba(255,255,255,0.92)', marginBottom: '2px' }}>{s.label}</div>
                         <div style={{ fontSize: '10.5px', color: applied ? 'var(--theme-blue)' : 'rgba(255,255,255,0.7)', fontWeight: 500, marginBottom: '8px' }}>{s.tip}</div>
                         {/* Full optimized content */}
-                        {Array.isArray(s.optimizedContent) ? (
+                        {s.section === 'summary' ? (
+                          <p style={{ margin: 0, fontSize: '11px', color: applied ? '#475569' : 'white', lineHeight: 1.65 }}>
+                            {Array.isArray(s.optimizedContent)
+                              ? (s.optimizedContent as string[]).filter(Boolean).join(' ')
+                              : (s.optimizedContent as string).replace(/\n+/g, ' ')}
+                          </p>
+                        ) : Array.isArray(s.optimizedContent) ? (
                           <ul style={{ margin: 0, paddingLeft: '16px' }}>
                             {(s.optimizedContent as string[]).map((b, bi) => (
                               <li key={bi} style={{ fontSize: '11px', color: applied ? '#475569' : 'white', lineHeight: 1.6, marginBottom: '2px' }}>{b}</li>

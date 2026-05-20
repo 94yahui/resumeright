@@ -330,7 +330,7 @@ export default function RightPanel({
             {aiSummaryResult && (
               <div style={{
                 marginTop: "10px", padding: "12px",
-                background: "linear-gradient(135deg, var(--ai-color-2), var(--theme-blue))", border: "1px solid rgba(7, 137, 236, 0.25)",
+                background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))", border: "1px solid rgba(7, 137, 236, 0.25)",
                 borderRadius: "8px",
               }}>
                 <div style={{
