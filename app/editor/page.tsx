@@ -581,10 +581,7 @@ ${autoprint ? `<script>
         a.click()
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
       } catch {
-        // Server-side PDF failed (e.g. Vercel Hobby timeout) — fall back to browser print.
-        // The user selects "Save as PDF" in the print dialog.
-        showToast('服务器生成失败，已切换为浏览器打印模式')
-        setTimeout(() => openResumeWindow(true), 300)
+        showToast('PDF 生成失败，请重试')
       } finally {
         setPdfGenerating(false)
       }
