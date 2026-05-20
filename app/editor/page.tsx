@@ -557,30 +557,39 @@ ${autoprint ? `<script>
     // 80 ms: let React flush the selection-clear re-render so highlighted cells
     // don't appear in the captured HTML.
     setTimeout(async () => {
-      const printArea = document.querySelector('.resume-print-area')
-      if (!printArea) { setPdfGenerating(false); return }
-
-      // Capture only the visible .resume-page elements — the off-screen
-      // measurer clone (no class) is excluded automatically.
-      const pageEls = printArea.querySelectorAll('.resume-page')
-      const htmlContent = Array.from(pageEls).map(el => el.outerHTML).join('')
-
       try {
-        const res = await fetch('/api/pdf/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ htmlContent, docTitle }),
-        })
-        if (!res.ok) throw new Error('server error')
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${docTitle || '我的简历'}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
-      } catch {
+        const printArea = document.querySelector('.resume-print-area')
+        if (!printArea) return
+
+        // Each .resume-page is a 794×1123 px A4 frame with overflow:hidden
+        // that clips the correct portion of the resume. Capture them directly
+        // at 2× scale for crisp rendering.
+        const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
+        if (!pageEls.length) return
+
+        const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+          import('jspdf'),
+          import('html2canvas'),
+        ])
+
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+        for (let i = 0; i < pageEls.length; i++) {
+          const canvas = await html2canvas(pageEls[i], {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+          })
+          if (i > 0) pdf.addPage()
+          // A4: 210 × 297 mm
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297)
+        }
+
+        const safe = (docTitle || '我的简历').replace(/[/\\:*?"<>|]/g, '').trim() || '我的简历'
+        pdf.save(`${safe}.pdf`)
+      } catch (e) {
+        console.error('PDF error:', e)
         showToast('PDF 生成失败，请重试')
       } finally {
         setPdfGenerating(false)
