@@ -684,7 +684,7 @@ ${autoprint ? `<script>
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: data, jobDesc }),
+        body: JSON.stringify({ resumeData: data, jobDesc, deviceId }),
       })
       if (res.ok) {
         const result = await res.json()
@@ -723,6 +723,7 @@ ${autoprint ? `<script>
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('deviceId', deviceId)
       const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
       if (res.status === 422) {
         // Not a resume — show error state
@@ -743,7 +744,7 @@ ${autoprint ? `<script>
       const analyzeRes = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: parsed, jobDesc: jobDescRef.current }),
+        body: JSON.stringify({ resumeData: parsed, jobDesc: jobDescRef.current, deviceId }),
       })
       if (analyzeRes.ok) setAiAnalysis(await analyzeRes.json())
       else showToast('AI 分析遇到问题，请稍后重试')
@@ -969,6 +970,7 @@ ${autoprint ? `<script>
       try {
         const formData = new FormData()
         formData.append('file', fileObj)
+        formData.append('deviceId', deviceId)
         const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
         if (res.ok) {
           const json = await res.json()
@@ -1099,6 +1101,8 @@ ${autoprint ? `<script>
             onClose={() => setLeftOpen(false)}
             forceTab={leftPanelTab ?? undefined}
             disabled={noResumeOpen}
+            canUseProTemplate={proStatus.kind !== 'free'}
+            onProTemplateLocked={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
           />
         </div>
 
@@ -1290,6 +1294,7 @@ ${autoprint ? `<script>
                   onAIApplied={() => showToast('✓ AI 建议已应用')}
                   canAIOptimize={proStatus.kind !== 'free'}
                   onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
+                  deviceId={deviceId}
                 />
               </div>
             </div>
@@ -1317,6 +1322,7 @@ ${autoprint ? `<script>
                 onMoveEntry={moveEntry}
                 canAIOptimize={proStatus.kind !== 'free'}
                 onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
+                deviceId={deviceId}
               />
             </div>
             <div className="no-print" style={{

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
+import { guardAI } from '../_guard'
 
 const inflateRawAsync = promisify(inflateRaw)
 
@@ -109,6 +110,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
+
+    const deviceId = formData.get('deviceId')
+    const guard = guardAI(req, deviceId)
+    if (guard) return guard
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const mime   = file.type || ''

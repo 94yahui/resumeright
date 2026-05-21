@@ -850,6 +850,7 @@ export type PaywallTrigger =
   | 'ai_optimize'     // AI bullet rewrite locked
   | 'ai_analyze'      // job match analysis locked
   | 'import_limit'    // daily import quota hit
+  | 'upgrade'         // direct upgrade from pricing page
 
 export interface PaywallModalProps {
   trigger: PaywallTrigger
@@ -869,6 +870,7 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
   ai_optimize:    { title: '解锁 AI 内容优化',           sub: '让 AI 帮你重写经历描述，提升竞争力' },
   ai_analyze:     { title: '解锁岗位匹配分析',            sub: '分析简历与 JD 的匹配度，获得针对性建议' },
   import_limit:   { title: '今日导入次数已用完',           sub: '免费用户每天可导入 2 份，升级 Pro 每天 10 份' },
+  upgrade:        { title: '升级 Pro 会员',               sub: '解锁全部功能 · 无水印下载 · AI 优化无限次' },
 }
 
 const PLAN_META = {

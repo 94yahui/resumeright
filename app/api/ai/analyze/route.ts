@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { guardAI } from '../_guard'
 
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen3.6-plus'
@@ -8,7 +9,19 @@ export async function POST(req: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })
 
   try {
-    const { resumeData, jobDesc } = await req.json()
+    const { resumeData, jobDesc, deviceId } = await req.json()
+
+    const guard = guardAI(req, deviceId)
+    if (guard) return guard
+
+    // Input length limits
+    if (JSON.stringify(resumeData).length > 10000) {
+      return NextResponse.json({ error: 'Resume content too large' }, { status: 413 })
+    }
+    if (typeof jobDesc === 'string' && jobDesc.length > 3000) {
+      return NextResponse.json({ error: 'Job description too large' }, { status: 413 })
+    }
+
     const hasJD = typeof jobDesc === 'string' && jobDesc.trim().length > 0
 
     const expContext = (resumeData.exp || []).map((e: Record<string, unknown>, i: number) =>

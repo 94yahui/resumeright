@@ -1,140 +1,313 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { CheckCircle2 } from 'lucide-react'
+import { getDeviceId, isFirstPurchase, isStudent as isStudentUser, getProStatus } from '../lib/payment'
+import { PaywallModal, StudentModal } from '../editor/components/Modals'
+import type { PaywallTrigger } from '../editor/components/Modals'
 
-const plans = [
-  {
-    name: '免费版',
-    price: '0',
-    period: '永久免费',
-    features: ['5 套精选模板', '基础在线编辑', 'PDF 下载（带水印）', '模块拖拽排序'],
-    cta: '立即开始',
-    ctaHref: '/editor?template=classic-pro',
-    featured: false,
-  },
-  {
-    name: 'Pro 会员',
-    price: '19',
-    period: '/ 月 · 按月订阅',
-    features: ['全部模板', '无水印下载', 'AI 内容优化（无限次）', '简历智能解析', '岗位匹配分析', '多份简历保存', 'Word / PDF 格式'],
-    cta: '订阅 Pro',
-    ctaHref: '#',
-    featured: true,
-  },
-  {
-    name: '单次购买',
-    price: '9',
-    period: '/ 套模板 · 永久使用',
-    features: ['解锁指定 1 套模板', '无水印下载', '终身使用权', 'AI 优化（5 次）'],
-    cta: '浏览模板',
-    ctaHref: '#templates',
-    featured: false,
-  },
+const FREE_FEATURES = [
+  '基础模板（5 套）',
+  '基础在线编辑',
+  'PDF 下载（带水印）',
+  '模块拖拽排序',
+  '保存无限份简历',
 ]
 
+const PRO_FEATURES = [
+  '全部 50+ 套精美模板',
+  '无水印 PDF 下载',
+  'AI 优化 100次/天',
+  '简历智能解析',
+  '岗位匹配分析',
+  'Word / PNG 导出',
+]
+
+const SINGLE_FEATURES = [
+  '解锁指定 1 套模板',
+  '无水印下载',
+  '永久重新下载',
+  'AI 优化 5 次',
+]
+
+const SUB_PLANS = [
+  { key: 'monthly',   label: '月卡', price: 29,  studentPrice: 14.9, saving: '' },
+  { key: 'quarterly', label: '季卡', price: 69,  studentPrice: 34.9, saving: '省21%' },
+  { key: 'yearly',    label: '年卡', price: 168, studentPrice: 84,   saving: '省52%' },
+] as const
+
+type SubPlanKey = typeof SUB_PLANS[number]['key']
+
 export default function Pricing() {
+  const router = useRouter()
+  const [selPlan, setSelPlan] = useState<SubPlanKey>('yearly')
+  const [paywallOpen, setPaywallOpen] = useState(false)
+  const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('upgrade')
+  const [studentOpen, setStudentOpen] = useState(false)
+  const [deviceId, setDeviceId] = useState('')
+  const [isStudent, setIsStudent] = useState(false)
+  const [isFirst, setIsFirst] = useState(true)
+
+  useEffect(() => {
+    const did = getDeviceId()
+    setDeviceId(did)
+    setIsStudent(isStudentUser(did))
+    setIsFirst(isFirstPurchase(did))
+  }, [])
+
+  const activePlan = SUB_PLANS.find(p => p.key === selPlan)!
+  const displayPrice = isStudent ? activePlan.studentPrice : activePlan.price
+  const singlePrice = isFirst ? 0.99 : isStudent ? 4.9 : 9.9
+
+  function openPaywall(trigger: PaywallTrigger) {
+    setPaywallTrigger(trigger)
+    setPaywallOpen(true)
+  }
+
+  function onPaySuccess() {
+    setPaywallOpen(false)
+    // Re-derive student status (student may have verified during payment flow)
+    if (deviceId) {
+      setIsStudent(isStudentUser(deviceId))
+      setIsFirst(isFirstPurchase(deviceId))
+    }
+    router.push('/editor')
+  }
+
   return (
     <section id="pricing" style={{
-      background: 'var(--theme-blue)',
-      padding: '80px 32px',
-      borderTop: '1px solid var(--paper3)',
+      background: '#060d1a',
+      padding: '88px 32px 72px',
     }}>
-      <div style={{ textAlign: 'center' }} className="fade-in">
-        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--paper)', fontWeight: 500, marginBottom: '12px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '56px' }} className="fade-in">
+        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', fontWeight: 500, marginBottom: '12px' }}>
           定价方案
         </div>
-        <h2 style={{ fontFamily: "'Inter', 'Noto Sans SC', sans-serif", fontSize: 'clamp(26px, 4vw, 36px)', letterSpacing: '-1px', color: 'var(--paper)' }}>
-          选择适合你的<em style={{ fontStyle: 'italic', color: 'var(--paper)' }}>方案</em>
+        <h2 style={{ fontSize: 'clamp(26px, 4vw, 36px)', letterSpacing: '-1px', color: 'white', margin: 0 }}>
+          选择适合你的<em style={{ fontStyle: 'italic', color: 'var(--theme-blue)' }}>方案</em>
         </h2>
-        <p style={{ color: 'var(--paper)', marginTop: '10px', fontWeight: 300 }}>灵活选择，按需付费</p>
+        <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: '10px', fontWeight: 300, fontSize: '15px' }}>
+          灵活选择，按需付费
+        </p>
       </div>
 
-      <div className="pricing-grid" style={{
-        maxWidth: '900px', margin: '56px auto 0',
+      <div style={{
+        maxWidth: '960px', margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '20px',
-        alignItems: 'start',
-      }}>
-        {plans.map((plan, i) => (
-          <PricingCard key={plan.name} plan={plan} delay={i * 0.1} />
-        ))}
-      </div>
-    </section>
-  )
-}
+        alignItems: 'stretch',
+      }} className="pricing-grid">
 
-function PricingCard({ plan, delay }: { plan: typeof plans[0]; delay: number }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <div className="fade-in" style={{ transitionDelay: `${delay}s` }}>
-      <div
-        className={plan.featured ? 'pricing-featured' : ''}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          background: plan.featured ? 'var(--ink)' : 'white',
-          borderRadius: '16px',
-          padding: '32px 28px',
-          position: 'relative',
-          transform: plan.featured ? 'scale(1.04)' : 'scale(1)',
-          // boxShadow: plan.featured ? '0 12px 40px rgba(26,24,20,0.14)' : hovered ? '0 4px 16px rgba(26,24,20,0.10)' : 'none',
-          transition: 'box-shadow 0.25s',
-          color: plan.featured ? 'var(--paper)' : 'var(--ink)',
-        }}
-      >
-        {plan.featured && (
+        {/* ── Free ── */}
+        <div className="fade-in" style={{ transitionDelay: '0s' }}>
           <div style={{
-            position: 'absolute', top: '-12px', left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#f5d209', color: 'var(--ink)',
-            padding: '4px 14px', borderRadius: '20px',
-            fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
-          }}>✦ 最受欢迎</div>
-        )}
-
-        <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '16px', opacity: plan.featured ? 0.5 : 1, color: plan.featured ? 'var(--paper)' : 'var(--ink3)' }}>
-          {plan.name}
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px', padding: '32px 28px',
+            display: 'flex', flexDirection: 'column', height: '100%',
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '20px' }}>
+              免费版
+            </div>
+            <div style={{ marginBottom: '6px' }}>
+              <span style={{ fontSize: '44px', fontWeight: 800, color: 'white', letterSpacing: '-2px', lineHeight: 1 }}>¥0</span>
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', marginBottom: '28px' }}>永久免费</div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {FREE_FEATURES.map(f => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', color: 'rgba(255,255,255,0.7)' }}>
+                  <CheckCircle2 size={14} color="rgba(255,255,255,0.35)" style={{ flexShrink: 0 }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/editor" style={{
+              display: 'block', marginTop: '28px', padding: '13px',
+              borderRadius: '10px', textAlign: 'center',
+              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+              background: 'transparent', color: 'rgba(255,255,255,0.7)',
+              border: '1.5px solid rgba(255,255,255,0.18)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.color = 'white' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+            >立即开始</Link>
+          </div>
         </div>
 
-        <div style={{ fontFamily: "'Inter', 'Noto Sans SC', sans-serif", fontSize: '42px', letterSpacing: '-1.5px', lineHeight: 1, marginBottom: '4px' }}>
-          <sup style={{ fontSize: '20px', verticalAlign: 'super' }}>¥</sup>{plan.price}
-        </div>
-        <div style={{ fontSize: '13px', marginBottom: '28px', opacity: plan.featured ? 0.5 : 1, color: plan.featured ? 'var(--paper)' : 'var(--ink3)' }}>
-          {plan.period}
+        {/* ── Pro (featured) ── */}
+        <div className="fade-in" style={{ transitionDelay: '0.1s' }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px', padding: '32px 28px',
+            display: 'flex', flexDirection: 'column', height: '100%',
+            position: 'relative',
+            boxShadow: '0 0 0 2px var(--theme-blue), 0 20px 60px rgba(7,137,236,0.25)',
+            transform: 'scale(1.04)',
+          }}>
+            {/* Badge */}
+            <div style={{
+              position: 'absolute', top: '-13px', left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'var(--theme-blue)', color: 'white',
+              padding: '4px 16px', borderRadius: '20px',
+              fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',
+            }}>⭐ 最受欢迎</div>
+
+            <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '20px' }}>
+              Pro 会员
+            </div>
+
+            {/* Plan selector */}
+            <div style={{ display: 'flex', gap: '5px', background: '#f1f5f9', borderRadius: '8px', padding: '3px', marginBottom: '16px' }}>
+              {SUB_PLANS.map(p => (
+                <button key={p.key} onClick={() => setSelPlan(p.key)} style={{
+                  flex: 1, padding: '6px 4px', borderRadius: '6px',
+                  border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  fontSize: '11px', fontWeight: 600, transition: 'all 0.15s',
+                  background: selPlan === p.key ? 'white' : 'transparent',
+                  color: selPlan === p.key ? '#0f172a' : '#94a3b8',
+                  boxShadow: selPlan === p.key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                }}>{p.label}</button>
+              ))}
+            </div>
+
+            {/* Price */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '44px', fontWeight: 800, color: '#0f172a', letterSpacing: '-2px', lineHeight: 1 }}>
+                ¥{displayPrice}
+              </span>
+              {isStudent && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'white', background: '#0d9488', borderRadius: '5px', padding: '2px 7px', marginBottom: '6px' }}>学生价</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#94a3b8', marginBottom: '24px' }}>
+              <span>/{activePlan.label.replace('卡', '')}</span>
+              {activePlan.saving && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', background: '#f0fdf4', borderRadius: '4px', padding: '1px 6px' }}>{activePlan.saving}</span>
+              )}
+            </div>
+
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {PRO_FEATURES.map(f => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', color: '#334155' }}>
+                  <CheckCircle2 size={14} color="var(--theme-blue)" style={{ flexShrink: 0 }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => openPaywall('upgrade')}
+              style={{
+                display: 'block', marginTop: '28px', padding: '14px',
+                borderRadius: '10px', textAlign: 'center',
+                fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                background: 'var(--theme-blue)', color: 'white',
+                border: 'none', fontFamily: 'var(--font-sans)',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#0567c4' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-blue)' }}
+            >订阅 Pro</button>
+          </div>
         </div>
 
-        <ul style={{ listStyle: 'none', marginBottom: '28px' }}>
-          {plan.features.map(f => (
-            <li key={f} style={{
-              fontSize: '13px',
-              color: plan.featured ? 'rgba(250,248,244,0.8)' : 'var(--ink2)',
-              padding: '6px 0',
-              display: 'flex', alignItems: 'center', gap: '8px',
-              borderBottom: `1px solid ${plan.featured ? 'rgba(255,255,255,0.1)' : 'var(--paper3)'}`,
-            }}>
-              <span style={{ color: plan.featured ? 'var(--gold2)' : 'var(--theme-blue)', fontWeight: 700, fontSize: '12px' }}>✓</span>
-              {f}
-            </li>
-          ))}
-        </ul>
+        {/* ── Single ── */}
+        <div className="fade-in" style={{ transitionDelay: '0.2s' }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '16px', padding: '32px 28px',
+            display: 'flex', flexDirection: 'column', height: '100%',
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '20px' }}>
+              单次购买
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '44px', fontWeight: 800, color: 'white', letterSpacing: '-2px', lineHeight: 1 }}>
+                ¥{singlePrice}
+              </span>
+              {isFirst && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'white', background: '#ef4444', borderRadius: '5px', padding: '2px 8px', alignSelf: 'flex-end', marginBottom: '6px' }}>首单特惠</span>
+              )}
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', marginBottom: '28px' }}>/套模板 · 永久使用</div>
 
-        <Link href={plan.ctaHref} style={{
-          display: 'block', width: '100%', padding: '12px',
-          borderRadius: '10px', textAlign: 'center',
-          fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
-          fontSize: '14px', fontWeight: 500,
-          textDecoration: 'none',
-          cursor: 'pointer', transition: 'background 0.2s',
-          background: plan.featured ? 'var(--theme-blue)' : 'transparent',
-          color: plan.featured ? '#fff' : 'var(--ink)',
-          border: `1.5px solid ${plan.featured ? 'var(--theme-blue)' : 'var(--paper3)'}`,
-        }}
-        onMouseEnter={e => { if (plan.featured) e.currentTarget.style.background = 'black' }}
-        onMouseLeave={e => { if (plan.featured) e.currentTarget.style.background = 'var(--theme-blue)' }}
-        >{plan.cta}</Link>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {SINGLE_FEATURES.map(f => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', color: 'rgba(255,255,255,0.7)' }}>
+                  <CheckCircle2 size={14} color="rgba(255,255,255,0.35)" style={{ flexShrink: 0 }} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <Link href="/#templates" style={{
+              display: 'block', marginTop: '28px', padding: '13px',
+              borderRadius: '10px', textAlign: 'center',
+              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
+              background: 'transparent', color: 'rgba(255,255,255,0.7)',
+              border: '1.5px solid rgba(255,255,255,0.18)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.color = 'white' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+            >浏览模板</Link>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Student link */}
+      <div style={{ textAlign: 'center', marginTop: '32px' }}>
+        <button
+          onClick={() => setStudentOpen(true)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '13px', color: 'rgba(255,255,255,0.45)',
+            fontFamily: 'var(--font-sans)',
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+        >
+          🎓 学生认证可享全场 5 折 →
+        </button>
+      </div>
+
+      {/* Modals */}
+      {paywallOpen && deviceId && (
+        <PaywallModal
+          trigger={paywallTrigger}
+          deviceId={deviceId}
+          isStudent={isStudent}
+          isFirstOrder={isFirst}
+          onClose={() => setPaywallOpen(false)}
+          onSuccess={onPaySuccess}
+          onOpenStudent={() => { setPaywallOpen(false); setStudentOpen(true) }}
+        />
+      )}
+
+      {studentOpen && deviceId && (
+        <StudentModal
+          deviceId={deviceId}
+          onClose={() => setStudentOpen(false)}
+          onSuccess={() => {
+            setIsStudent(true)
+            if (deviceId) setIsFirst(isFirstPurchase(deviceId))
+          }}
+        />
+      )}
+
+      <style>{`
+        @media (max-width: 720px) {
+          .pricing-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </section>
   )
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { guardAI } from '../_guard'
 
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen3.6-plus'
@@ -8,7 +9,14 @@ export async function POST(req: NextRequest) {
   if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })
 
   try {
-    const { type, text, context } = await req.json()
+    const { type, text, context, deviceId } = await req.json()
+
+    const guard = guardAI(req, deviceId)
+    if (guard) return guard
+
+    if (typeof text === 'string' && text.length > 5000) {
+      return NextResponse.json({ error: 'Input text too large' }, { status: 413 })
+    }
 
     let prompt: string
     if (type === 'bullets') {

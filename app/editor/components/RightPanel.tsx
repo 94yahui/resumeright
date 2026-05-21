@@ -34,6 +34,7 @@ interface Props {
   onAIApplied?: () => void;
   canAIOptimize?: boolean;
   onAIBlocked?: () => void;
+  deviceId?: string;
 }
 
 export default function RightPanel({
@@ -48,6 +49,7 @@ export default function RightPanel({
   onAIApplied,
   canAIOptimize = false,
   onAIBlocked,
+  deviceId = '',
 }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string[] | null>(null);
@@ -87,6 +89,7 @@ export default function RightPanel({
           type: 'bullets',
           text: currentBullets.join('\n'),
           context: entryContext ?? '',
+          deviceId,
         }),
         signal: controller.signal,
       });
@@ -117,7 +120,7 @@ export default function RightPanel({
       const res = await fetch('/api/ai/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'summary', text: currentSummary, context: '' }),
+        body: JSON.stringify({ type: 'summary', text: currentSummary, context: '', deviceId }),
         signal: controller.signal,
       });
       if (!res.ok) {
