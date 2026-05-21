@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import type { AISuggestion } from '../../lib/types'
+import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord } from '../../lib/payment'
+import type { PlanType, PayMethod } from '../../lib/payment'
 
 export function ContinueModal({
   docTitle, savedAt, onContinue, onNew,
@@ -833,6 +835,520 @@ export function PhotoCropModal({
           style={{ ...btnBase, flex: 1, border: 'none', background: natSize ? '#0f172a' : '#94a3b8', color: 'white', fontWeight: 600 }}>
           确认
         </button>
+      </div>
+    </ModalWrap>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Paywall modal
+// ─────────────────────────────────────────────────────────────
+
+export type PaywallTrigger =
+  | 'download_free'   // free template, offer watermark-free upgrade + free download option
+  | 'download_pro'    // pro template, must pay (no free option)
+  | 'ai_optimize'     // AI bullet rewrite locked
+  | 'ai_analyze'      // job match analysis locked
+  | 'import_limit'    // daily import quota hit
+
+export interface PaywallModalProps {
+  trigger: PaywallTrigger
+  resumeId?: string           // current resume ID (for single purchase binding)
+  deviceId: string
+  isStudent: boolean
+  isFirstOrder: boolean       // true → show ¥0.99 first-order price
+  onClose: () => void
+  onSuccess: (planType: PlanType, orderId: string) => void
+  onFreeDownload?: () => void // only for 'download_free'
+  onOpenStudent: () => void
+}
+
+const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
+  download_free:  { title: '升级 Pro 享无水印下载',    sub: '去掉简历底部水印，更专业地投递' },
+  download_pro:   { title: '解锁 Pro 模板',             sub: '付费解锁这套模板，即刻无水印下载' },
+  ai_optimize:    { title: '解锁 AI 内容优化',           sub: '让 AI 帮你重写经历描述，提升竞争力' },
+  ai_analyze:     { title: '解锁岗位匹配分析',            sub: '分析简历与 JD 的匹配度，获得针对性建议' },
+  import_limit:   { title: '今日导入次数已用完',           sub: '免费用户每天可导入 2 份，升级 Pro 每天 10 份' },
+}
+
+const PLAN_META = {
+  monthly:   { label: '月卡', period: '月', badge: '',         saving: '' },
+  quarterly: { label: '季卡', period: '季', badge: '',         saving: '省21%' },
+  yearly:    { label: '年卡', period: '年', badge: '⭐ 最受欢迎', saving: '省52%' },
+}
+
+const SUB_BENEFITS = [
+  '全部 50+ 套精美模板',
+  '无水印 PDF 下载',
+  'AI 优化 100次/天',
+  '简历智能解析',
+  '岗位匹配分析',
+  'Word / PNG 导出',
+]
+
+const SINGLE_BENEFITS = [
+  '本份简历无水印下载',
+  'AI 优化 5次',
+  '永久重新下载',
+]
+
+function fmtFen(fen: number): string {
+  const y = fen / 100
+  return `¥${y % 1 === 0 ? y : y.toFixed(2)}`
+}
+
+type PaywallPhase = 'plans' | 'paying' | 'success'
+type ActiveTab = 'single' | 'sub'
+
+export function PaywallModal({
+  trigger, resumeId, deviceId,
+  isStudent, isFirstOrder,
+  onClose, onSuccess, onFreeDownload, onOpenStudent,
+}: PaywallModalProps) {
+  const [tab, setTab]             = useState<ActiveTab>('sub')
+  const [phase, setPhase]         = useState<PaywallPhase>('plans')
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly')
+  const [payMethod, setPayMethod] = useState<PayMethod>('wechat')
+  const [pendingType, setPendingType] = useState<PlanType | null>(null)
+  const [pendingOrder, setPendingOrder] = useState('')
+
+  const copy           = TRIGGER_COPY[trigger]
+  const showFreeOption = trigger === 'download_free' && !!onFreeDownload
+
+  const singlePrice = isFirstOrder
+    ? PRICES.singleFirst.normal
+    : isStudent ? PRICES.single.student : PRICES.single.normal
+
+  const subPrice = (p: 'monthly' | 'quarterly' | 'yearly') =>
+    isStudent ? PRICES[p].student : PRICES[p].normal
+
+  function startPay(planType: PlanType, method: PayMethod) {
+    const orderId = generateOrderId()
+    setPendingType(planType)
+    setPendingOrder(orderId)
+    setPayMethod(method)
+    setPhase('paying')
+  }
+
+  function devPaid() {
+    if (!pendingType) return
+    const now      = Date.now()
+    const amount   = pendingType === 'single'    ? singlePrice
+                   : pendingType === 'monthly'   ? subPrice('monthly')
+                   : pendingType === 'quarterly' ? subPrice('quarterly')
+                   :                               subPrice('yearly')
+    const expiresAt = pendingType !== 'single'
+      ? now + PLAN_DURATION_MS[pendingType]
+      : undefined
+
+    addPayment({
+      orderId: pendingOrder, deviceId,
+      planType: pendingType, amount, isStudent,
+      resumeId: pendingType === 'single' ? resumeId : undefined,
+      paidAt: now, expiresAt, payMethod,
+      aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
+    })
+    setPhase('success')
+    setTimeout(() => { onSuccess(pendingType!, pendingOrder); onClose() }, 1200)
+  }
+
+  const payingAmount = !pendingType ? 0
+    : pendingType === 'single'    ? singlePrice
+    : pendingType === 'monthly'   ? subPrice('monthly')
+    : pendingType === 'quarterly' ? subPrice('quarterly')
+    :                               subPrice('yearly')
+
+  // ── Success overlay ──────────────────────────────────────────
+  if (phase === 'success') {
+    return (
+      <ModalWrap onClose={() => {}}>
+        <style>{`@keyframes pwSuccess{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}`}</style>
+        <div style={{ textAlign: 'center', padding: '28px 16px' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '50%',
+            background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px', animation: 'pwSuccess 0.4s ease',
+          }}>
+            <CheckCircle2 size={34} color="#16a34a" />
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>支付成功！</div>
+          <div style={{ fontSize: '13px', color: '#64748b' }}>正在为你解锁权益…</div>
+        </div>
+      </ModalWrap>
+    )
+  }
+
+  // ── QR / paying phase ────────────────────────────────────────
+  if (phase === 'paying') {
+    return (
+      <ModalWrap onClose={onClose}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+          <button onClick={() => setPhase('plans')} style={{
+            width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+            border: '1.5px solid #e2e8f0', background: 'transparent',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#64748b', fontSize: '16px', fontFamily: 'var(--font-sans)',
+          }}>←</button>
+          <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>扫码支付</div>
+        </div>
+
+        {/* Payment method toggle */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+          {(['wechat', 'alipay'] as PayMethod[]).map(m => (
+            <button key={m} onClick={() => setPayMethod(m)} style={{
+              flex: 1, padding: '9px', borderRadius: '8px', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
+              border: `2px solid ${payMethod === m ? (m === 'wechat' ? '#07c160' : '#1677ff') : '#e2e8f0'}`,
+              background: payMethod === m ? (m === 'wechat' ? '#f0fff6' : '#f0f6ff') : 'white',
+              color: payMethod === m ? (m === 'wechat' ? '#07c160' : '#1677ff') : '#94a3b8',
+              transition: 'all 0.15s',
+            }}>
+              {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+            </button>
+          ))}
+        </div>
+
+        {/* Fake QR */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{
+            display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+            padding: '22px', background: '#f8fafc',
+            borderRadius: '12px', border: '1px solid #e2e8f0',
+          }}>
+            <QrCode size={128} color="#0f172a" />
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '14px' }}>
+              {fmtFen(payingAmount)}
+            </div>
+            <div style={{ fontSize: '10.5px', color: '#94a3b8', marginTop: '4px' }}>
+              订单号 {pendingOrder}
+            </div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+            {payMethod === 'wechat' ? '请使用微信' : '请使用支付宝'}扫描上方二维码完成支付
+          </div>
+        </div>
+
+        <button onClick={devPaid} style={{
+          width: '100%', padding: '13px', borderRadius: '10px', marginBottom: '10px',
+          background: 'linear-gradient(135deg, #16a34a, #15803d)',
+          color: 'white', border: 'none', fontFamily: 'var(--font-sans)',
+          fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+        }}>
+          ✅ [DEV] 模拟支付成功
+        </button>
+        <button onClick={() => setPhase('plans')} style={{
+          width: '100%', padding: '10px', borderRadius: '8px',
+          border: '1.5px solid #e2e8f0', background: 'white',
+          fontFamily: 'var(--font-sans)', fontSize: '13px', cursor: 'pointer', color: '#64748b',
+        }}>取消</button>
+      </ModalWrap>
+    )
+  }
+
+  // ── Plans phase ──────────────────────────────────────────────
+  return (
+    <ModalWrap onClose={onClose} wide>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+        <div>
+          <div style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{copy.title}</div>
+          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>{copy.sub}</div>
+        </div>
+        <button onClick={onClose} style={{
+          width: '28px', height: '28px', flexShrink: 0, marginLeft: '12px',
+          borderRadius: '8px', border: '1.5px solid #e2e8f0', background: 'transparent',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#94a3b8', fontSize: '16px', fontFamily: 'var(--font-sans)',
+        }}>×</button>
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
+        {(['single', 'sub'] as ActiveTab[]).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            flex: 1, padding: '9px', borderRadius: '8px', cursor: 'pointer',
+            fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
+            border: 'none', transition: 'all 0.15s',
+            background: tab === t ? 'white' : 'transparent',
+            color: tab === t ? '#0f172a' : '#64748b',
+            boxShadow: tab === t ? '0 1px 6px rgba(0,0,0,0.1)' : 'none',
+          }}>
+            {t === 'single' ? '单次解锁' : '订阅 Pro'}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Single tab ────────────────────────────────────── */}
+      {tab === 'single' && (
+        <>
+          <div style={{
+            background: '#f8fafc', borderRadius: '12px',
+            border: '1.5px solid #e2e8f0', padding: '18px', marginBottom: '14px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a' }}>{fmtFen(singlePrice)}</div>
+              {isFirstOrder && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'white', background: '#ef4444', borderRadius: '6px', padding: '2px 8px' }}>首单特惠</span>
+              )}
+              {isStudent && !isFirstOrder && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'white', background: 'var(--teal)', borderRadius: '6px', padding: '2px 8px' }}>学生价</span>
+              )}
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '14px' }}>本份简历 · 永久使用 · 不过期</div>
+            {SINGLE_BENEFITS.map(b => (
+              <div key={b} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <CheckCircle2 size={13} color="#16a34a" />
+                <span style={{ fontSize: '13px', color: '#334155' }}>{b}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', marginBottom: showFreeOption ? '10px' : 0 }}>
+            {(['wechat', 'alipay'] as PayMethod[]).map(m => (
+              <button key={m} onClick={() => startPay('single', m)} style={{
+                flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
+                background: m === 'wechat' ? '#07c160' : '#1677ff',
+                color: 'white', fontFamily: 'var(--font-sans)',
+                fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+              }}>
+                {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+              </button>
+            ))}
+          </div>
+
+          {showFreeOption && (
+            <button onClick={onFreeDownload} style={{
+              width: '100%', padding: '10px', border: 'none', background: 'transparent',
+              fontFamily: 'var(--font-sans)', fontSize: '12px',
+              color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline',
+            }}>
+              免费下载（带水印）
+            </button>
+          )}
+        </>
+      )}
+
+      {/* ── Sub tab ───────────────────────────────────────── */}
+      {tab === 'sub' && (
+        <>
+          {/* Plan cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+            {(['monthly', 'quarterly', 'yearly'] as const).map(plan => {
+              const meta    = PLAN_META[plan]
+              const price   = subPrice(plan)
+              const active  = selectedPlan === plan
+              const isYearly = plan === 'yearly'
+              return (
+                <div key={plan} onClick={() => setSelectedPlan(plan)} style={{
+                  padding: '13px 16px', borderRadius: '12px', cursor: 'pointer',
+                  border: `2px solid ${active ? (isYearly ? 'var(--theme-blue)' : '#334155') : '#e2e8f0'}`,
+                  background: active ? (isYearly ? '#e0f0fd' : '#f8fafc') : 'white',
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  transition: 'all 0.15s',
+                }}>
+                  {/* Radio */}
+                  <div style={{
+                    width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
+                    border: `2px solid ${active ? (isYearly ? 'var(--theme-blue)' : '#334155') : '#cbd5e1'}`,
+                    background: active ? (isYearly ? 'var(--theme-blue)' : '#334155') : 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {active && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />}
+                  </div>
+                  {/* Labels */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{meta.label}</span>
+                      {meta.badge && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', background: 'var(--theme-blue)', borderRadius: '5px', padding: '1px 7px' }}>
+                          {meta.badge}
+                        </span>
+                      )}
+                      {isStudent && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', background: 'var(--teal)', borderRadius: '5px', padding: '1px 7px' }}>学生价</span>
+                      )}
+                    </div>
+                    {meta.saving && (
+                      <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600 }}>{meta.saving}</span>
+                    )}
+                  </div>
+                  {/* Price */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '21px', fontWeight: 800, color: active && isYearly ? 'var(--theme-blue)' : '#0f172a' }}>
+                      {fmtFen(price)}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>/{meta.period}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Pro benefits */}
+          <div style={{
+            background: '#f8fafc', borderRadius: '10px',
+            border: '1px solid #e2e8f0', padding: '14px', marginBottom: '14px',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '0.5px', marginBottom: '10px' }}>Pro 会员权益</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px 0' }}>
+              {SUB_BENEFITS.map((b, i) => (
+                <div key={b} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '50%', paddingRight: i % 2 === 0 ? '8px' : 0 }}>
+                  <CheckCircle2 size={12} color="#16a34a" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', color: '#334155' }}>{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pay buttons */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            {(['wechat', 'alipay'] as PayMethod[]).map(m => (
+              <button key={m} onClick={() => startPay(selectedPlan, m)} style={{
+                flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
+                background: m === 'wechat' ? '#07c160' : '#1677ff',
+                color: 'white', fontFamily: 'var(--font-sans)',
+                fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+              }}>
+                {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+              </button>
+            ))}
+          </div>
+
+          {/* Student link */}
+          <button onClick={onOpenStudent} style={{
+            width: '100%', padding: '9px', border: 'none', background: 'transparent',
+            fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#64748b', cursor: 'pointer',
+          }}>
+            🎓 学生认证享全场5折 →
+          </button>
+        </>
+      )}
+    </ModalWrap>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Student verification modal
+// ─────────────────────────────────────────────────────────────
+
+export function StudentModal({
+  deviceId, onClose, onSuccess,
+}: {
+  deviceId: string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [email, setEmail]       = useState('')
+  const [code, setCode]         = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [error, setError]       = useState('')
+  const [done, setDone]         = useState(false)
+  const [sending, setSending]   = useState(false)
+
+  const isEduEmail = (e: string) => /\.edu(\.cn)?$|@edu\./i.test(e.toLowerCase())
+
+  function sendCode() {
+    if (!isEduEmail(email)) { setError('请输入 .edu.cn 或 .edu 结尾的校园邮箱'); return }
+    setError('')
+    setSending(true)
+    setTimeout(() => { setSending(false); setCodeSent(true) }, 800)
+  }
+
+  function verify() {
+    if (code.trim() !== '123456') { setError('验证码错误，模拟环境验证码为 123456'); return }
+    const now = Date.now()
+    setStudentRecord({ deviceId, email, certifiedAt: now, expiresAt: now + 365 * 86_400_000 })
+    setDone(true)
+    setTimeout(() => { onSuccess(); onClose() }, 1200)
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', boxSizing: 'border-box',
+    borderRadius: '8px', border: '1.5px solid #e2e8f0',
+    fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#0f172a',
+    outline: 'none', background: '#f8fafc',
+  }
+
+  if (done) {
+    return (
+      <ModalWrap onClose={() => {}}>
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>认证成功！</div>
+          <div style={{ fontSize: '13px', color: '#16a34a' }}>已开启全场 5 折学生优惠</div>
+        </div>
+      </ModalWrap>
+    )
+  }
+
+  return (
+    <ModalWrap onClose={onClose}>
+      <div style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>🎓 学生认证</div>
+      <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '22px', lineHeight: 1.5 }}>
+        认证成功后享全场 5 折，有效期 1 年
+      </div>
+
+      {/* Email */}
+      <div style={{ marginBottom: '12px' }}>
+        <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>校园邮箱</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            value={email}
+            onChange={e => { setEmail(e.target.value); setError('') }}
+            placeholder="example@university.edu.cn"
+            style={{ ...inputStyle, flex: 1 }}
+            onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+            onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+          />
+          <button onClick={sendCode} disabled={sending || codeSent} style={{
+            padding: '10px 13px', borderRadius: '8px', border: 'none', flexShrink: 0,
+            background: codeSent ? '#f0fdf4' : 'var(--theme-blue)',
+            color: codeSent ? '#16a34a' : 'white',
+            fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 600,
+            cursor: sending || codeSent ? 'default' : 'pointer',
+          }}>
+            {codeSent ? '✓ 已发送' : sending ? '发送中…' : '发送验证码'}
+          </button>
+        </div>
+      </div>
+
+      {/* Code */}
+      {codeSent && (
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>验证码</label>
+          <input
+            value={code}
+            onChange={e => { setCode(e.target.value); setError('') }}
+            placeholder="6位验证码"
+            maxLength={6}
+            style={inputStyle}
+            onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+            onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+          />
+          <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '6px' }}>
+            💡 模拟环境验证码为 <strong style={{ color: '#334155' }}>123456</strong>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '12px', padding: '8px 12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
+          {error}
+        </div>
+      )}
+
+      <button onClick={codeSent ? verify : sendCode} disabled={!email} style={{
+        width: '100%', padding: '13px', borderRadius: '10px', border: 'none', marginBottom: '14px',
+        background: email ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
+        color: email ? 'white' : '#94a3b8',
+        fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
+        cursor: email ? 'pointer' : 'not-allowed',
+      }}>
+        {codeSent ? '确认认证' : '发送验证码'}
+      </button>
+
+      <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', fontSize: '12px', color: '#15803d', lineHeight: 1.8 }}>
+        ✓ 全场 5 折&nbsp;·&nbsp;✓ 月卡 ¥14.9&nbsp;·&nbsp;年卡 ¥84&nbsp;·&nbsp;✓ 一次认证有效期 1 年
       </div>
     </ModalWrap>
   )

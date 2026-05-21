@@ -32,6 +32,8 @@ interface Props {
   onClose: () => void;
   onMoveEntry?: (sec: SectionKey, idx: number, dir: 'up' | 'down') => void;
   onAIApplied?: () => void;
+  canAIOptimize?: boolean;
+  onAIBlocked?: () => void;
 }
 
 export default function RightPanel({
@@ -44,6 +46,8 @@ export default function RightPanel({
   onClose,
   onMoveEntry,
   onAIApplied,
+  canAIOptimize = false,
+  onAIBlocked,
 }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<string[] | null>(null);
@@ -317,12 +321,12 @@ export default function RightPanel({
               hint="一段简短的自我介绍"
             />
             <button
-              onClick={() => runSummaryAI(data.summary)}
+              onClick={() => canAIOptimize ? runSummaryAI(data.summary) : onAIBlocked?.()}
               disabled={aiSummaryLoading}
               style={btnAI(aiSummaryLoading)}
             >
               <div className="animate-pulse-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }} />
-              {aiSummaryLoading ? "AI 优化中..." : "AI 优化描述"}
+              {aiSummaryLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : "🔒 AI 优化描述"}
             </button>
             {aiError && !aiSummaryResult && (
               <div style={{ fontSize: "12px", color: "#dc2626", marginTop: "6px", textAlign: "center" }}>{aiError}</div>
@@ -508,15 +512,17 @@ export default function RightPanel({
                 {(["exp", "project", "edu", "volunteer", "award", "cert"].includes(sec)) && (
                   <>
                     <button
-                      onClick={() => runAI(aiKeyId, entry.bullets, `${entry.title} - ${entry.sub}`)}
-                      disabled={aiLoading || !entry.bullets.some(b => b.trim())}
-                      style={btnAI(aiLoading || !entry.bullets.some(b => b.trim()))}
+                      onClick={() => canAIOptimize
+                        ? runAI(aiKeyId, entry.bullets, `${entry.title} - ${entry.sub}`)
+                        : onAIBlocked?.()}
+                      disabled={aiLoading || (!canAIOptimize ? false : !entry.bullets.some(b => b.trim()))}
+                      style={btnAI(aiLoading || (canAIOptimize && !entry.bullets.some(b => b.trim())))}
                     >
                       <div
                         className="animate-pulse-dot"
                         style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }}
                       />
-                      {aiLoading ? "AI 优化中..." : "AI 优化描述"}
+                      {aiLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : "🔒 AI 优化描述"}
                     </button>
 
                     {aiError && aiKey === aiKeyId && !aiResult && (

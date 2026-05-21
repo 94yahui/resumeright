@@ -5,7 +5,8 @@ import { Menu } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
-import { DownloadModal, AIPanel, ImportModal, PaymentModal, ContinueModal, PhotoCropModal } from './components/Modals'
+import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal } from './components/Modals'
+import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
 import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData } from '../lib/types'
@@ -16,6 +17,12 @@ import {
   loadPaidTemplates, addPaidTemplate, uniqueHistoryName,
   type HistoryEntry, type DraftState,
 } from '../lib/storage'
+import {
+  getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
+  hasNoWatermark, checkUsage, recordUsage, cleanOldUsage,
+  type ProStatus,
+} from '../lib/payment'
+import type { PlanType } from '../lib/payment'
 
 const HISTORY_LIMIT = 30
 
@@ -66,7 +73,7 @@ function EditorInner() {
   const [selection, setSelection] = useState<SelectionType>({ kind: 'none' })
   const [zoom, setZoom] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900 ? 55 : 70)
   const [docTitle, setDocTitle] = useState('我的简历')
-  const [modal, setModal] = useState<'none' | 'download' | 'payment'>('none')
+  const [modal, setModal] = useState<'none' | 'download'>('none')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [aiPanelFlow, setAiPanelFlow] = useState<'current' | 'upload'>('current')
   const [aiPanelPhase, setAiPanelPhase] = useState<'entry' | 'analyzing' | 'result' | 'applying'>('entry')
@@ -86,6 +93,13 @@ function EditorInner() {
   const [pageCount, setPageCount] = useState(1)
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
   const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [deviceId, setDeviceId] = useState('')
+  const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
+  const [isStudentVerified, setIsStudentVerified] = useState(false)
+  const [paywallOpen, setPaywallOpen] = useState(false)
+  const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
+  const [studentModalOpen, setStudentModalOpen] = useState(false)
+  const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -133,8 +147,7 @@ function EditorInner() {
   const template = getTemplate(templateId)
   const effectiveColor = color || template.accentColor
   const isProTemplate = !template.free
-  const isPaidForTemplate = paidTemplates.includes(templateId)
-  const showWatermark = isProTemplate && !isPaidForTemplate
+  const showWatermark = !hasNoWatermark(proStatus)
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -144,6 +157,20 @@ function EditorInner() {
     if (toastRef.current) clearTimeout(toastRef.current)
     toastRef.current = setTimeout(() => setToast(''), 2200)
   }
+
+  // Initialize device ID once on mount
+  useEffect(() => {
+    const did = getDeviceId()
+    setDeviceId(did)
+    cleanOldUsage()
+  }, [])
+
+  // Recompute pro status when device or active resume changes
+  useEffect(() => {
+    if (!deviceId) return
+    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+    setIsStudentVerified(isStudentUser(deviceId))
+  }, [deviceId, currentHistoryId])
 
   // ============ Load draft from localStorage on mount ============
   useEffect(() => {
@@ -588,16 +615,31 @@ ${autoprint ? `<script>
     }, 80)
   }, [docTitle])
 
-  // ============ Payment / unlock ============
-  const handleUnlockPro = useCallback(() => {
-    setModal('payment')
-  }, [])
+  // ============ Payment / paywall ============
+  const handlePaywallSuccess = useCallback((_planType: PlanType, _orderId: string) => {
+    const status = getProStatus(deviceId, currentHistoryId || undefined)
+    setProStatus(status)
+    setIsStudentVerified(isStudentUser(deviceId))
+    const action = pendingPaywallActionRef.current
+    pendingPaywallActionRef.current = null
+    if (action?.type === 'download') setTimeout(() => setModal('download'), 80)
+  }, [deviceId, currentHistoryId])
 
-  const handlePaymentSuccess = useCallback(() => {
-    addPaidTemplate(templateId)
-    setPaidTemplates(loadPaidTemplates())
-    showToast('✓ 已解锁，无水印下载')
-  }, [templateId])
+  const handleDownloadAttempt = useCallback(() => {
+    if (isProTemplate && proStatus.kind === 'free') {
+      pendingPaywallActionRef.current = { type: 'download' }
+      setPaywallTrigger('download_pro')
+      setPaywallOpen(true)
+      return
+    }
+    if (!hasNoWatermark(proStatus)) {
+      pendingPaywallActionRef.current = { type: 'download' }
+      setPaywallTrigger('download_free')
+      setPaywallOpen(true)
+      return
+    }
+    setModal('download')
+  }, [isProTemplate, proStatus])
 
   // ============ AI Panel ============
   const handleAIAnalyze = useCallback(() => {
@@ -620,6 +662,19 @@ ${autoprint ? `<script>
   }, [data, aiAnalysis])
 
   const handleAIAnalyzeCurrent = useCallback(async (jobDesc: string) => {
+    const check = checkUsage(deviceId, 'ai_analyze', proStatus)
+    if (!check.allowed) {
+      if (check.reason === 'not_paid') {
+        setPaywallTrigger('ai_analyze')
+        setPaywallOpen(true)
+      } else {
+        showToast(`今日岗位分析次数已用完（${check.used}/${check.limit} 次）`)
+      }
+      return
+    }
+    recordUsage(deviceId, 'ai_analyze', proStatus)
+    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+
     const dataSnapshot = JSON.stringify(data)  // snapshot before async gap
     setAiPanelFlow('current')
     setAiPanelPhase('analyzing')
@@ -643,7 +698,7 @@ ${autoprint ? `<script>
       showToast('AI 开小差了，请稍后重试')
     }
     setAiPanelPhase('result')
-  }, [data])
+  }, [data, deviceId, proStatus, currentHistoryId])
 
   const jobDescRef = useRef(jobDescPersist)
   useEffect(() => { jobDescRef.current = jobDescPersist }, [jobDescPersist])
@@ -875,6 +930,16 @@ ${autoprint ? `<script>
     showToast('✓ 新简历已创建')
   }, [data, templateId, color, docTitle, noResumeOpen])
 
+  const handleImportAttempt = useCallback(() => {
+    const check = checkUsage(deviceId, 'import', proStatus)
+    if (!check.allowed) {
+      setPaywallTrigger('import_limit')
+      setPaywallOpen(true)
+      return
+    }
+    importFileRef.current?.click()
+  }, [deviceId, proStatus])
+
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -924,6 +989,8 @@ ${autoprint ? `<script>
     setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(uniqueName)
+    recordUsage(deviceId, 'import', proStatus)
+    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
     importingFileObjRef.current = null
     setImportModalState('none')
     setSelection({ kind: 'none' })
@@ -961,17 +1028,35 @@ ${autoprint ? `<script>
           docTitle={docTitle} setDocTitle={setDocTitle}
           onPreview={() => openResumeWindow(false)}
           onAIAnalyze={handleAIAnalyze}
-          onDownload={() => setModal('download')}
+          onDownload={handleDownloadAttempt}
           onUndo={undo} onRedo={redo}
           canUndo={historyIdx > 0}
           canRedo={historyIdx < history.length - 1}
           onSave={handleSaveHistory}
           isMobile={isMobile}
           onNewResume={handleCreateNewResume}
-          onImportFile={() => importFileRef.current?.click()}
+          onImportFile={handleImportAttempt}
           disabled={noResumeOpen}
         />
       </div>
+
+      {/* Pro-template upgrade banner — only for free users */}
+      {isProTemplate && proStatus.kind === 'free' && !noResumeOpen && (
+        <div className="no-print" style={{
+          background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
+          padding: '7px 16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: '10px', flexShrink: 0,
+        }}>
+          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap' }}>
+            ⚡ 升级 Pro 解锁全部 50+ 套模板 · 去除下载水印
+          </span>
+          <button onClick={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }} style={{
+            padding: '5px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+            background: 'var(--theme-blue)', color: 'white', border: 'none',
+            cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
+          }}>升级 ¥29 →</button>
+        </div>
+      )}
 
       <div className="editor-content" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Mobile backdrop */}
@@ -1094,7 +1179,7 @@ ${autoprint ? `<script>
                   border: 'none', background: '#0f172a', color: 'white',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>创建新简历</button>
-                <button onClick={() => importFileRef.current?.click()} style={{
+                <button onClick={handleImportAttempt} style={{
                   padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
                   border: '1.5px solid #e2e8f0', background: 'white', color: '#334155',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
@@ -1203,6 +1288,8 @@ ${autoprint ? `<script>
                   onClose={() => setSelection({ kind: 'none' })}
                   onMoveEntry={moveEntry}
                   onAIApplied={() => showToast('✓ AI 建议已应用')}
+                  canAIOptimize={proStatus.kind !== 'free'}
+                  onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
                 />
               </div>
             </div>
@@ -1228,6 +1315,8 @@ ${autoprint ? `<script>
                 onAddEntry={addEntry}
                 onClose={() => setSelection({ kind: 'none' })}
                 onMoveEntry={moveEntry}
+                canAIOptimize={proStatus.kind !== 'free'}
+                onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
               />
             </div>
             <div className="no-print" style={{
@@ -1275,8 +1364,8 @@ ${autoprint ? `<script>
           onClose={() => setModal('none')}
           onPrintPDF={handlePrintPDF}
           isPro={isProTemplate}
-          isPaid={isPaidForTemplate}
-          onUnlockPro={handleUnlockPro}
+          isPaid={proStatus.kind !== 'free'}
+          onUnlockPro={() => { setModal('none'); setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
           docTitle={docTitle}
         />
       )}
@@ -1288,11 +1377,28 @@ ${autoprint ? `<script>
           onClose={() => setImportModalState('none')}
         />
       )}
-      {modal === 'payment' && (
-        <PaymentModal
-          templateName={template.name}
-          onClose={() => setModal('none')}
-          onSuccess={handlePaymentSuccess}
+      {paywallOpen && (
+        <PaywallModal
+          trigger={paywallTrigger}
+          resumeId={currentHistoryId || undefined}
+          deviceId={deviceId}
+          isStudent={isStudentVerified}
+          isFirstOrder={isFirstPurchase(deviceId)}
+          onClose={() => setPaywallOpen(false)}
+          onSuccess={handlePaywallSuccess}
+          onFreeDownload={paywallTrigger === 'download_free' ? () => { setPaywallOpen(false); setModal('download') } : undefined}
+          onOpenStudent={() => { setPaywallOpen(false); setStudentModalOpen(true) }}
+        />
+      )}
+
+      {studentModalOpen && (
+        <StudentModal
+          deviceId={deviceId}
+          onClose={() => setStudentModalOpen(false)}
+          onSuccess={() => {
+            setIsStudentVerified(true)
+            setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+          }}
         />
       )}
 
