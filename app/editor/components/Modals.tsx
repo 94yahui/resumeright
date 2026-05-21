@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
+import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb, GraduationCap, Star } from 'lucide-react'
 import type { AISuggestion } from '../../lib/types'
 import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord } from '../../lib/payment'
 import type { PlanType, PayMethod } from '../../lib/payment'
@@ -876,7 +876,7 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
 const PLAN_META = {
   monthly:   { label: '月卡', period: '月', badge: '',         saving: '' },
   quarterly: { label: '季卡', period: '季', badge: '',         saving: '省21%' },
-  yearly:    { label: '年卡', period: '年', badge: '⭐ 最受欢迎', saving: '省52%' },
+  yearly:    { label: '年卡', period: '年', badge: '最受欢迎', saving: '省52%' },
 }
 
 const SUB_BENEFITS = [
@@ -1005,7 +1005,7 @@ export function PaywallModal({
               color: payMethod === m ? (m === 'wechat' ? '#07c160' : '#1677ff') : '#94a3b8',
               transition: 'all 0.15s',
             }}>
-              {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+              {m === 'wechat' ? '微信支付' : '支付宝'}
             </button>
           ))}
         </div>
@@ -1113,7 +1113,7 @@ export function PaywallModal({
                 color: 'white', fontFamily: 'var(--font-sans)',
                 fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
               }}>
-                {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+                {m === 'wechat' ? '微信支付' : '支付宝'}
               </button>
             ))}
           </div>
@@ -1162,7 +1162,8 @@ export function PaywallModal({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{meta.label}</span>
                       {meta.badge && (
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', background: 'var(--theme-blue)', borderRadius: '5px', padding: '1px 7px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'white', background: 'var(--theme-blue)', borderRadius: '5px', padding: '1px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Star size={8} fill="white" strokeWidth={0} />
                           {meta.badge}
                         </span>
                       )}
@@ -1211,7 +1212,7 @@ export function PaywallModal({
                 color: 'white', fontFamily: 'var(--font-sans)',
                 fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
               }}>
-                {m === 'wechat' ? '💚 微信支付' : '💙 支付宝'}
+                {m === 'wechat' ? '微信支付' : '支付宝'}
               </button>
             ))}
           </div>
@@ -1221,7 +1222,10 @@ export function PaywallModal({
             width: '100%', padding: '9px', border: 'none', background: 'transparent',
             fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#64748b', cursor: 'pointer',
           }}>
-            🎓 学生认证享全场5折 →
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <GraduationCap size={13} />
+              学生认证享全场5折 →
+            </span>
           </button>
         </>
       )}
@@ -1275,7 +1279,9 @@ export function StudentModal({
     return (
       <ModalWrap onClose={() => {}}>
         <div style={{ textAlign: 'center', padding: '24px 0' }}>
-          <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+            <GraduationCap size={44} color="var(--theme-blue)" />
+          </div>
           <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>认证成功！</div>
           <div style={{ fontSize: '13px', color: '#16a34a' }}>已开启全场 5 折学生优惠</div>
         </div>
@@ -1285,7 +1291,9 @@ export function StudentModal({
 
   return (
     <ModalWrap onClose={onClose}>
-      <div style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>🎓 学生认证</div>
+      <div style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <GraduationCap size={20} color="var(--theme-blue)" /> 学生认证
+      </div>
       <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '22px', lineHeight: 1.5 }}>
         认证成功后享全场 5 折，有效期 1 年
       </div>
@@ -1339,15 +1347,17 @@ export function StudentModal({
         </div>
       )}
 
-      <button onClick={codeSent ? verify : sendCode} disabled={!email} style={{
-        width: '100%', padding: '13px', borderRadius: '10px', border: 'none', marginBottom: '14px',
-        background: email ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
-        color: email ? 'white' : '#94a3b8',
-        fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
-        cursor: email ? 'pointer' : 'not-allowed',
-      }}>
-        {codeSent ? '确认认证' : '发送验证码'}
-      </button>
+      {codeSent && (
+        <button onClick={verify} disabled={!code} style={{
+          width: '100%', padding: '13px', borderRadius: '10px', border: 'none', marginBottom: '14px',
+          background: code ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
+          color: code ? 'white' : '#94a3b8',
+          fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
+          cursor: code ? 'pointer' : 'not-allowed',
+        }}>
+          确认认证
+        </button>
+      )}
 
       <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', fontSize: '12px', color: '#15803d', lineHeight: 1.8 }}>
         ✓ 全场 5 折&nbsp;·&nbsp;✓ 月卡 ¥14.9&nbsp;·&nbsp;年卡 ¥84&nbsp;·&nbsp;✓ 一次认证有效期 1 年

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Star, GraduationCap } from 'lucide-react'
 import { getDeviceId, isFirstPurchase, isStudent as isStudentUser, getProStatus } from '../lib/payment'
 import { PaywallModal, StudentModal } from '../editor/components/Modals'
 import type { PaywallTrigger } from '../editor/components/Modals'
@@ -154,7 +154,11 @@ export default function Pricing() {
               background: 'var(--theme-blue)', color: 'white',
               padding: '4px 16px', borderRadius: '20px',
               fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap',
-            }}>⭐ 最受欢迎</div>
+              display: 'flex', alignItems: 'center', gap: '4px',
+            }}>
+              <Star size={10} fill="white" strokeWidth={0} />
+              最受欢迎
+            </div>
 
             <div style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '20px' }}>
               Pro 会员
@@ -273,7 +277,10 @@ export default function Pricing() {
           onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)' }}
           onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
         >
-          🎓 学生认证可享全场 5 折 →
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <GraduationCap size={13} />
+            学生认证可享全场 5 折 →
+          </span>
         </button>
       </div>
 

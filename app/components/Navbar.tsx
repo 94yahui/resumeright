@@ -5,7 +5,7 @@ import blackLogo from "../../public/logo-black.png";
 import whiteLogo from "../../public/logo-white.png";
 import Image from 'next/image'
 
-export default function Navbar({ onUploadClick }: { onUploadClick: () => void }) {
+export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

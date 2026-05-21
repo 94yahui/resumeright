@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Menu } from 'lucide-react'
+import { Menu, Undo2, Redo2 } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
@@ -531,7 +531,8 @@ function EditorInner() {
     setTimeout(() => {
       const printArea = document.querySelector('.resume-print-area')
       if (!printArea) return
-      const html = printArea.innerHTML
+      const pageEls = printArea.querySelectorAll('.resume-page')
+      const html = Array.from(pageEls).map(el => (el as HTMLElement).outerHTML).join('')
       const w = window.open('', '_blank', 'width=900,height=1100')
       if (!w) return
       const title = docTitle || '我的简历'
@@ -1127,22 +1128,22 @@ ${autoprint ? `<script>
               <Menu size={15} />
             </button>
 
-            {/* Mobile: tab shortcuts */}
+            {/* Mobile: undo/redo */}
             {isMobile && (
               <>
-                {(['tpl', 'mod', 'color', 'hist'] as const).map((key, i) => {
-                  const labels = ['模板', '模块', '颜色', '我的']
-                  return (
-                    <button key={key}
-                      onClick={() => { setLeftPanelTab(key); setLeftOpen(true) }}
-                      style={{
-                        padding: '3px 7px', borderRadius: '5px', fontSize: '11px', fontWeight: 500,
-                        border: '1px solid #e2e8f0', background: 'white', color: '#334155',
-                        cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-                      }}
-                    >{labels[i]}</button>
-                  )
-                })}
+                {([
+                  { icon: <Undo2 size={14} />, onClick: undo, disabled: historyIdx <= 0, title: '撤销' },
+                  { icon: <Redo2 size={14} />, onClick: redo, disabled: historyIdx >= history.length - 1, title: '重做' },
+                ] as const).map((btn, i) => (
+                  <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
+                    width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #e2e8f0',
+                    background: 'white', cursor: btn.disabled ? 'default' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: btn.disabled ? '#cbd5e1' : '#64748b', flexShrink: 0,
+                  }}>
+                    {btn.icon}
+                  </button>
+                ))}
               </>
             )}
 

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Lightbulb, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X } from "lucide-react";
+import { Trash2, Lightbulb, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X, Lock } from "lucide-react";
 import {
   ResumeData,
   SelectionType,
@@ -329,7 +329,7 @@ export default function RightPanel({
               style={btnAI(aiSummaryLoading)}
             >
               <div className="animate-pulse-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }} />
-              {aiSummaryLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : "🔒 AI 优化描述"}
+              {aiSummaryLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : <><Lock size={11} style={{ flexShrink: 0 }} /> AI 优化描述</>}
             </button>
             {aiError && !aiSummaryResult && (
               <div style={{ fontSize: "12px", color: "#dc2626", marginTop: "6px", textAlign: "center" }}>{aiError}</div>

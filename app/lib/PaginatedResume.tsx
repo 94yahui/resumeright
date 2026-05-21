@@ -11,9 +11,9 @@ const PAGE_GAP = 24
 // without aggressively swallowing pages that have meaningful content.
 const MIN_LAST_PAGE_CONTENT = 20
 // Pixels pulled UP from the detected entry boundary to create visual breathing room
-// on the next page. Must be less than the inter-entry gap (6px) so we only borrow
-// whitespace and never clip into real content above.
-const TOP_PAD = 4
+// on the next page. Larger value gives more buffer against font-metric differences
+// between the browser (where break points are measured) and headless Chromium (PDF).
+const TOP_PAD = 14
 // White space reserved at the top and bottom of continuation pages (page 2+).
 // This ensures content has equal breathing room at the top and bottom of every page.
 const CONTINUATION_PAD = 36
