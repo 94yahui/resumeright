@@ -5,11 +5,10 @@ import { TEMPLATES, CATEGORIES, CATEGORY_MAP, TemplateConfig } from '../lib/temp
 import TemplateThumbnail from '../lib/TemplateThumbnail'
 
 const FREE_COUNT = TEMPLATES.filter(t => t.free).length
-const PRO_COUNT = TEMPLATES.filter(t => !t.free).length
 
 export default function Templates() {
   const [activeFilter, setActiveFilter] = useState('全部')
-  const [showAll, setShowAll] = useState(false)
+  const [extraLoads, setExtraLoads] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -19,12 +18,23 @@ export default function Templates() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const defaultCount = isMobile ? 5 : 12
+  useEffect(() => { setExtraLoads(0) }, [isMobile])
+
+  const step = isMobile ? 5 : 10
+  const defaultCount = isMobile ? 5 : 10
+  const showCount = defaultCount + extraLoads * step
+
   const catKey = CATEGORY_MAP[activeFilter]
   const filtered = TEMPLATES.filter(t =>
     catKey === 'all' || t.categories.includes(catKey)
   )
-  const visible = showAll ? filtered : filtered.slice(0, defaultCount)
+  const visible = filtered.slice(0, showCount)
+  const hasMore = filtered.length > showCount
+
+  function handleFilterChange(f: string) {
+    setActiveFilter(f)
+    setExtraLoads(0)
+  }
 
   return (
     <section id="templates" className="templates-section" style={{
@@ -49,30 +59,42 @@ export default function Templates() {
             找到<span style={{ color: 'var(--theme-blue)' }}>属于你</span>的风格
           </h2>
           <p style={{ fontSize: '15px', color: '#64748b', marginTop: '10px', fontWeight: 400 }}>
-            {TEMPLATES.length} 套专业设计，{FREE_COUNT} 套免费 · {PRO_COUNT} 套 Pro
+            多套专业设计，{FREE_COUNT} 套免费 · 更多 Pro 解锁
           </p>
         </div>
 
-        {/* Category filter */}
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {/* Category filter — parallelogram tabs */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           {CATEGORIES.map(f => {
-            const cat = CATEGORY_MAP[f]
-            const count = cat === 'all' ? TEMPLATES.length
-                        : TEMPLATES.filter(t => t.categories.includes(cat)).length
             const active = activeFilter === f
             return (
-              <button key={f} onClick={() => { setActiveFilter(f); setShowAll(false) }}
+              <button
+                key={f}
+                onClick={() => handleFilterChange(f)}
                 style={{
-                  padding: '8px 18px', borderRadius: '20px',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  padding: '8px 20px',
+                  transform: 'skewX(-12deg)',
+                  background: active
+                    ? 'linear-gradient(120deg, var(--theme-blue), #0567c4)'
+                    : 'white',
+                  border: active ? 'none' : '1.5px solid #e2e8f0',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
                   fontFamily: 'var(--font-sans)',
-                  border: '1.5px solid',
-                  borderColor: active ? '#0f172a' : '#cbd5e1',
-                  background: active ? '#0f172a' : 'white',
-                  color: active ? '#fff' : '#334155',
-                  transition: 'all 0.2s',
+                  transition: 'background 0.18s, color 0.18s',
+                  boxShadow: active ? '0 4px 14px rgba(7,137,236,0.35)' : 'none',
+                }}
+              >
+                <span style={{
+                  display: 'inline-block',
+                  transform: 'skewX(12deg)',
+                  fontSize: '13px',
+                  fontWeight: active ? 700 : 500,
+                  color: active ? 'white' : '#475569',
+                  whiteSpace: 'nowrap',
                 }}>
-                {f} <span style={{ opacity: 0.55, fontSize: '11px', marginLeft: '4px' }}>({count})</span>
+                  {f}
+                </span>
               </button>
             )
           })}
@@ -86,25 +108,27 @@ export default function Templates() {
         gap: '28px',
       }}>
         {visible.map((tpl, i) => (
-          <TemplateCard key={tpl.id} tpl={tpl} delay={Math.min(i, 11) * 0.04} />
+          <TemplateCard key={tpl.id} tpl={tpl} delay={Math.min(i, 9) * 0.04} />
         ))}
       </div>
 
-      {filtered.length > 12 && (
+      {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <button onClick={() => setShowAll(v => !v)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            padding: '13px 28px', borderRadius: '10px',
-            fontSize: '14px', fontWeight: 500,
-            color: '#0f172a', cursor: 'pointer',
-            border: '1.5px solid #cbd5e1',
-            background: 'white',
-            fontFamily: 'var(--font-sans)', transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink3)'; e.currentTarget.style.background = '#f8fafc' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white' }}
+          <button
+            onClick={() => setExtraLoads(c => c + 1)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '13px 28px', borderRadius: '10px',
+              fontSize: '14px', fontWeight: 500,
+              color: '#0f172a', cursor: 'pointer',
+              border: '1.5px solid #cbd5e1',
+              background: 'white',
+              fontFamily: 'var(--font-sans)', transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink3)'; e.currentTarget.style.background = '#f8fafc' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white' }}
           >
-            {showAll ? '收起' : `查看全部 ${filtered.length} 套`} {showAll ? '↑' : '↓'}
+            查看更多 ↓
           </button>
         </div>
       )}
@@ -122,10 +146,7 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
   const [hovered, setHovered] = useState(false)
 
   return (
-    // Outer: scroll-fade stagger only
-    // minWidth:0 prevents CSS Grid from expanding the track to the child's max-content width
     <div className="fade-in" style={{ transitionDelay: `${delay}s`, minWidth: 0 }}>
-    {/* Inner: hover — zero delay, always instant */}
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -135,7 +156,6 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
         transform: hovered ? 'translateY(-5px)' : 'translateY(0)',
       }}
     >
-      {/* Thumbnail — A4 paper fills full cell width, shadow sits on paper edges */}
       <div style={{
         position: 'relative',
         overflow: 'hidden',
@@ -154,7 +174,6 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
         }}>{tpl.free ? '免费' : 'Pro'}</div>
       </div>
 
-      {/* Info below thumbnail — no card wrapper */}
       <div style={{
         padding: '10px 4px 0',
         display: 'flex',
@@ -177,7 +196,7 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
           display: 'inline-block',
           whiteSpace: 'nowrap',
           flexShrink: 0,
-        }}>{tpl.free ? '使用' : '使用'}</Link>
+        }}>使用</Link>
       </div>
     </div>
     </div>

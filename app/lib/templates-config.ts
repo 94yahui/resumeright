@@ -867,7 +867,7 @@ export const TEMPLATES: TemplateConfig[] = [
 export const FREE_TEMPLATES = TEMPLATES.filter(t => t.free)
 export const PRO_TEMPLATES = TEMPLATES.filter(t => !t.free)
 
-export const CATEGORIES = ['全部', '科技', '设计', '金融', '通用']
+export const CATEGORIES = ['通用', '科技', '设计', '金融', '全部']
 export const CATEGORY_MAP: Record<string, string> = {
   '全部': 'all', '科技': 'tech', '设计': 'design', '金融': 'finance', '通用': 'general',
 }

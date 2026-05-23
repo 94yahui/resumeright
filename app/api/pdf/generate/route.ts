@@ -50,7 +50,7 @@ function buildHtml(bodyHtml: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { htmlContent, docTitle } = await req.json()
+  const { htmlContent, docTitle, format = 'pdf' } = await req.json()
   if (!htmlContent) {
     return NextResponse.json({ error: 'missing htmlContent' }, { status: 400 })
   }
@@ -234,13 +234,46 @@ export async function POST(req: NextRequest) {
       })
     })
 
+    const safe = (docTitle ?? '简历').replace(/[/\\:*?"<>|]/g, '').trim() || '简历'
+
+    if (format === 'word') {
+      const pageCount: number = await page.evaluate(() =>
+        document.querySelectorAll('.resume-page').length
+      )
+      const totalH = Math.max(1123, pageCount * 1123)
+
+      if (process.env.VERCEL) {
+        await page.setViewport({ width: 794, height: totalH })
+      } else {
+        await page.setViewportSize({ width: 794, height: totalH })
+      }
+      await new Promise(r => setTimeout(r, 150))
+
+      const pngPages: string[] = []
+      for (let i = 0; i < pageCount; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const buf = await (page as any).screenshot({
+          clip: { x: 0, y: i * 1123, width: 794, height: 1123 },
+          type: 'png',
+        })
+        pngPages.push(Buffer.from(buf).toString('base64'))
+      }
+
+      const wordHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><style>@page{size:210mm 297mm;margin:0;}body{margin:0;padding:0;}div.pg{width:210mm;height:297mm;page-break-after:always;overflow:hidden;}div.pg:last-child{page-break-after:auto;}img{width:210mm;height:297mm;display:block;}</style></head><body>${pngPages.map(b64 => `<div class="pg"><img src="data:image/png;base64,${b64}"/></div>`).join('')}</body></html>`
+
+      return new NextResponse(Buffer.from(wordHtml), {
+        headers: {
+          'Content-Type': 'application/msword',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(safe)}.doc`,
+        },
+      })
+    }
+
     const pdf = await page.pdf({
       preferCSSPageSize: true,
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     })
-
-    const safe = (docTitle ?? '简历').replace(/[/\\:*?"<>|]/g, '').trim() || '简历'
 
     return new NextResponse(Buffer.from(pdf), {
       headers: {

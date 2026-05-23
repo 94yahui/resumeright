@@ -917,7 +917,7 @@ const PLAN_META = {
 }
 
 const SUB_BENEFITS = [
-  '全部 50+ 套精美模板',
+  '所有精美模板随心用',
   '无水印 PDF 下载',
   'AI 优化 100次/天',
   '简历智能解析',

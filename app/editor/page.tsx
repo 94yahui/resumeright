@@ -23,7 +23,6 @@ import {
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
-import { generateWordBlob } from '../lib/exportWord'
 
 const HISTORY_LIMIT = 30
 
@@ -95,6 +94,7 @@ function EditorInner() {
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
   const [pdfGenerating, setPdfGenerating] = useState(false)
   const [pngGenerating, setPngGenerating] = useState(false)
+  const [wordGenerating, setWordGenerating] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
   const [isStudentVerified, setIsStudentVerified] = useState(false)
@@ -110,6 +110,7 @@ function EditorInner() {
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
   const [pendingDraft, setPendingDraft] = useState<DraftState | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aiAnalyzeAbortRef = useRef<AbortController | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const importFileRef = useRef<HTMLInputElement>(null)
   const [photoCropOpen, setPhotoCropOpen] = useState(false)
@@ -625,16 +626,39 @@ ${autoprint ? `<script>
 
   const handleDownloadWord = useCallback(() => {
     setModal('none')
-    const blob = generateWordBlob(data)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${docTitle || '我的简历'}.doc`
-    document.body.appendChild(a)
-    a.click()
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
-    showToast('✓ Word 文件已下载')
-  }, [data, docTitle])
+    setSelection({ kind: 'none' })
+    setWordGenerating(true)
+
+    setTimeout(async () => {
+      const printArea = document.querySelector('.resume-print-area')
+      if (!printArea) { setWordGenerating(false); return }
+
+      const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
+      const htmlContent = pageEls.map(el => el.outerHTML).join('')
+
+      try {
+        const res = await fetch('/api/pdf/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ htmlContent, docTitle, format: 'word' }),
+        })
+        if (!res.ok) throw new Error('server error')
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${docTitle || '我的简历'}.doc`
+        document.body.appendChild(a)
+        a.click()
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
+        showToast('✓ Word 文件已下载')
+      } catch {
+        showToast('Word 生成失败，请重试')
+      } finally {
+        setWordGenerating(false)
+      }
+    }, 80)
+  }, [docTitle])
 
   const handleDownloadPNG = useCallback(async () => {
     setModal('none')
@@ -698,6 +722,9 @@ ${autoprint ? `<script>
 
   // ============ AI Panel ============
   const handleAIAnalyze = useCallback(() => {
+    // Abort any in-flight analysis from a previous panel open
+    aiAnalyzeAbortRef.current?.abort()
+    aiAnalyzeAbortRef.current = null
     setSelection({ kind: 'none' })
     setAiPanelOpen(true)
     setAiPanelFlow('current')
@@ -735,11 +762,18 @@ ${autoprint ? `<script>
     setAiPanelPhase('analyzing')
     setAiAnalysis(null)
     setAppliedSuggestions(new Set())
+
+    // Abort any previous in-flight request before starting a new one
+    aiAnalyzeAbortRef.current?.abort()
+    const controller = new AbortController()
+    aiAnalyzeAbortRef.current = controller
+
     try {
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeData: data, jobDesc, deviceId }),
+        signal: controller.signal,
       })
       if (res.ok) {
         const result = await res.json()
@@ -750,10 +784,13 @@ ${autoprint ? `<script>
         showToast('AI 开小差了，请稍后重试')
         setAiPanelPhase('entry')
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
       console.error('analyze error:', e)
       showToast('AI 开小差了，请稍后重试')
       setAiPanelPhase('entry')
+    } finally {
+      if (aiAnalyzeAbortRef.current === controller) aiAnalyzeAbortRef.current = null
     }
   }, [data, deviceId, proStatus, currentHistoryId])
 
@@ -794,11 +831,16 @@ ${autoprint ? `<script>
     setAppliedSuggestions(new Set())
     aiAnalyzedDataSnapshot.current = null  // clear current-resume cache when switching to upload flow
 
+    // Abort any previous in-flight request before starting new ones
+    aiAnalyzeAbortRef.current?.abort()
+    const controller = new AbortController()
+    aiAnalyzeAbortRef.current = controller
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('deviceId', deviceId)
-      const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
+      const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData, signal: controller.signal })
       if (res.status === 422) {
         // Not a resume — show error state
         const json = await res.json()
@@ -824,14 +866,18 @@ ${autoprint ? `<script>
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeData: parsed, jobDesc: jobDescRef.current, deviceId }),
+        signal: controller.signal,
       })
       if (analyzeRes.ok) setAiAnalysis(await analyzeRes.json())
       else showToast('AI 分析遇到问题，请稍后重试')
-    } catch (e) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
       console.error('parse-resume error:', e)
       showToast('AI 开小差了，请稍后重试')
       setAiPanelPhase('entry')
       return
+    } finally {
+      if (aiAnalyzeAbortRef.current === controller) aiAnalyzeAbortRef.current = null
     }
 
     setAiPanelPhase('result')
@@ -880,6 +926,8 @@ ${autoprint ? `<script>
   }, [setSelection])
 
   const handleAIClose = useCallback(() => {
+    aiAnalyzeAbortRef.current?.abort()
+    aiAnalyzeAbortRef.current = null
     if (prevDocTitleRef.current !== null) {
       setDocTitle(prevDocTitleRef.current)
       prevDocTitleRef.current = null
@@ -1124,7 +1172,7 @@ ${autoprint ? `<script>
       </div>
 
       {/* Pro-template preview banner — free users can see the template but need Pro to download */}
-      {isProTemplate && proStatus.kind === 'free' && !noResumeOpen && (
+      {isProTemplate && showWatermark && !noResumeOpen && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
@@ -1552,6 +1600,25 @@ ${autoprint ? `<script>
           }} />
           <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成图片…</div>
           <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要几秒钟</div>
+        </div>
+      )}
+
+      {/* Word generating overlay */}
+      {wordGenerating && (
+        <div className="no-print" style={{
+          position: 'fixed', inset: 0, zIndex: 400,
+          background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px',
+        }}>
+          <style>{`@keyframes wordSpin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '50%',
+            border: '3px solid rgba(255,255,255,0.2)',
+            borderTopColor: 'white',
+            animation: 'wordSpin 0.8s linear infinite',
+          }} />
+          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成 Word…</div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要 5–10 秒</div>
         </div>
       )}
 

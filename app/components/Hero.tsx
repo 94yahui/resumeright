@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Upload, Pencil, Mail, Phone, Globe } from "lucide-react";
+import { Upload, Pencil, Mail, Phone, Globe, Smartphone } from "lucide-react";
 
 export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
   return (
@@ -47,19 +47,21 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "6px",
-              background: "var(--paper)",
-              color: "black",
-              fontSize: "12px",
-              fontWeight: 500,
-              padding: "4px 12px",
+              gap: "8px",
+              background: "rgba(7,137,236,0.15)",
+              boxShadow: "0 0 5px 1px",
+              color: "white",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "1.5px",
+              textTransform: "uppercase",
+              padding: "5px 14px",
               borderRadius: "20px",
               marginBottom: "30px",
-              boxShadow: " 0 0 2px 2px white",
+              backdropFilter: "blur(1px)",
             }}
           >
-            <span style={{ color: "black", fontSize: "10px" }}>✦</span>
-            AI 驱动 · 50+ 专业模板
+            ✦ AI 驱动 · 多场景专业模板
           </div>
 
           <h1
@@ -71,28 +73,16 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               marginBottom: "30px",
             }}
           >
-            <div style={{marginBottom: '15px'}}>
-              打造
-              <em
-                style={{
-                  fontStyle: "italic",
-                  color: "var(--paper)",
-                  marginRight: "12px",
-                }}
-              >
-                令人印象
+            <div style={{ marginBottom: '15px' }}>
+              <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
+                AI
               </em>
+              驱动，快速打造
             </div>
-            <em
-              style={{
-                fontStyle: "italic",
-                color: "var(--paper)",
-                marginRight: "12px",
-              }}
-            >
-              深刻
+            <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
+              专业
             </em>
-            的简历
+            求职简历
           </h1>
 
           <p
@@ -104,9 +94,9 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               fontWeight: 300,
             }}
           >
-            从选择模板到 AI 优化内容，只需几分钟，
+            模块化编辑 · AI 优化描述 · 专业模板一键套用
             <br />
-            创建一份脱颖而出的专业简历
+            几分钟完成一份让你脱颖而出的简历
           </p>
 
           <div
@@ -179,34 +169,35 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           {/* Stats */}
           <div
             className="hero-stats"
-            style={{ display: "flex", gap: "32px", marginTop: "44px" }}
+            style={{ display: "flex", gap: "32px", marginTop: "44px", alignItems: "center" }}
           >
+            {/* Icon stat */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ height: "34px", display: "flex", alignItems: "center" }}>
+                <Smartphone size={28} color="var(--paper)" strokeWidth={1.5} />
+              </div>
+              <span style={{ fontSize: "12px", color: "var(--paper2)", marginTop: "4px" }}>
+                掌上编辑
+              </span>
+            </div>
+            {/* Number stats */}
             {[
-              { num: "50+", label: "专业模板" },
               { num: "50k+", label: "用户使用" },
               { num: "98%", label: "好评率" },
             ].map((s) => (
-              <div
-                key={s.label}
-                style={{ display: "flex", flexDirection: "column" }}
-              >
-                <span
-                  style={{
+              <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ height: "34px", display: "flex", alignItems: "center" }}>
+                  <span style={{
                     fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
                     fontSize: "28px",
                     color: "var(--paper)",
                     letterSpacing: "-0.5px",
-                  }}
-                >
-                  {s.num}
-                </span>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--paper2)",
-                    marginTop: "2px",
-                  }}
-                >
+                    lineHeight: 1,
+                  }}>
+                    {s.num}
+                  </span>
+                </div>
+                <span style={{ fontSize: "12px", color: "var(--paper2)", marginTop: "4px" }}>
                   {s.label}
                 </span>
               </div>
@@ -376,7 +367,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               zIndex: 5,
               top: "90px",
               right: "-16px",
-              background: "var(--theme-blue)",
+              background: "linear-gradient(90deg, var(--theme-blue), var(--ink))",
               color: "var(--paper)",
               padding: "10px 14px",
               borderRadius: "10px",

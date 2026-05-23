@@ -24,7 +24,7 @@ export default function AboutPage() {
             <ul style={ul}>
               <li style={li}>50+ 套专业简历模板，覆盖互联网、金融、设计、学术等主流行业</li>
               <li style={li}>AI 内容优化：一键重写工作/项目描述，让描述更量化、更有说服力</li>
-              <li style={li}>岗位匹配分析：上传 JD，AI 分析匹配度并给出针对性修改建议</li>
+              <li style={li}>岗位匹配分析：上传目标职位详情，AI 分析匹配度并给出针对性修改建议</li>
               <li style={li}>简历智能解析：上传已有 PDF/Word 简历，自动提取内容进入编辑器</li>
               <li style={li}>无账号体验：基于设备识别，无需注册即可使用，数据本地存储保护隐私</li>
             </ul>
