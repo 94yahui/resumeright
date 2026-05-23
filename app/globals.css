@@ -117,7 +117,7 @@ html.page-scrolling::-webkit-scrollbar-thumb:hover { background: rgba(100,116,13
   /* ── Pricing section ── */
   .pricing-grid {
     grid-template-columns: 1fr !important;
-    gap: 24px !important;
+    gap: 30px !important;
   }
   /* Remove the scale(1.04) lift on the featured card so it doesn't overflow */
   .pricing-featured { transform: scale(1) !important; }
