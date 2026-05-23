@@ -352,7 +352,7 @@ export function AIPanel({
                     animation: 'templatePulse 2.4s ease-in-out infinite',
                   }}
                 >
-                  <CheckCircle2 size={16} /> 使用当前模板（必须先点此步骤）
+                  <CheckCircle2 size={16} /> 使用当前模板
                 </button>
                 <p style={{ margin: '7px 0 0', fontSize: '11px', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
                   导入内容将填入模板，之后即可逐条应用 AI 优化建议
@@ -506,7 +506,7 @@ export function AIPanel({
                     return (
                       <div key={s.id} style={{
                         padding: '10px 12px', borderRadius: '10px',
-                        border: applied ? '1px solid #bbf7d0' : '1px solid rgba(7, 137, 236, 0.25)',
+                        border: applied ? '1px solid #bbf7d0' : 'none',
                         background: applied ? '#f0fdf4' : 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))',
                         transition: 'all 0.2s',
                       }}>

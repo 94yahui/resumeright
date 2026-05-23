@@ -681,7 +681,9 @@ ${autoprint ? `<script>
     setIsStudentVerified(isStudentUser(deviceId))
     const action = pendingPaywallActionRef.current
     pendingPaywallActionRef.current = null
+    // Only re-open download modal when the paywall was triggered from a download attempt
     if (action?.type === 'download') setTimeout(() => setModal('download'), 80)
+    // ai_optimize: no follow-up action — user continues editing
   }, [deviceId, currentHistoryId])
 
   const handleDownloadAttempt = useCallback(() => {
