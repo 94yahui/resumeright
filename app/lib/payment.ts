@@ -11,7 +11,7 @@ const COOKIE_DEVICE = 'rc_did'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type PlanType  = 'single' | 'monthly' | 'quarterly' | 'yearly'
-export type PayMethod = 'wechat' | 'alipay'
+export type PayMethod = 'wechat'
 export type UsageType = 'import' | 'ai_optimize' | 'ai_analyze'
 
 export interface PaymentRecord {
@@ -21,6 +21,7 @@ export interface PaymentRecord {
   amount: number          // actual paid, in fen (¥1 = 100 fen)
   isStudent: boolean
   resumeId?: string       // 'single' only — which resume this unlocks
+  templateId?: string     // 'single' only — which template was unlocked at purchase time
   paidAt: number          // unix ms
   expiresAt?: number      // unix ms; undefined for 'single' (no expiry)
   payMethod: PayMethod
@@ -46,7 +47,7 @@ interface DailyUsage {
 // ─── Resolved pro status ──────────────────────────────────────────────────────
 export type ProStatus =
   | { kind: 'free' }
-  | { kind: 'single'; orderId: string; resumeId: string; aiOptimizeLeft: number; aiAnalyzeLeft: number }
+  | { kind: 'single'; orderId: string; resumeId: string; templateId: string; aiOptimizeLeft: number; aiAnalyzeLeft: number }
   | { kind: 'subscription'; plan: 'monthly' | 'quarterly' | 'yearly'; expiresAt: number }
 
 // ─── Plan prices (fen) ────────────────────────────────────────────────────────
@@ -178,6 +179,7 @@ export function getProStatus(deviceId: string, resumeId?: string): ProStatus {
         kind: 'single',
         orderId: single.orderId,
         resumeId,
+        templateId: single.templateId ?? '',  // empty = old purchase without template binding
         aiOptimizeLeft: Math.max(0, 5 - (single.aiOptimizeUsed ?? 0)),
         aiAnalyzeLeft:  Math.max(0, 2 - (single.aiAnalyzeUsed ?? 0)),
       }
@@ -239,6 +241,18 @@ export function cleanOldUsage(): void {
   saveUsageList(getUsageList().filter(u => u.date >= threshold))
 }
 
+// ─── Free AI-analyze lifetime counter ────────────────────────────────────────
+const LS_FREE_ANALYZE = 'rc_fa'
+export const FREE_ANALYZE_LIMIT = 2
+
+export function getFreeAnalyzeUsed(): number {
+  return ls<number>(LS_FREE_ANALYZE, 0)
+}
+
+function incrementFreeAnalyze(): void {
+  lsSet(LS_FREE_ANALYZE, getFreeAnalyzeUsed() + 1)
+}
+
 // ─── Usage check + record ─────────────────────────────────────────────────────
 export type UsageCheckResult =
   | { allowed: true }
@@ -269,7 +283,11 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
   }
 
   if (type === 'ai_analyze') {
-    if (status.kind === 'free') return { allowed: false, reason: 'not_paid', used: 0, limit: 0 }
+    if (status.kind === 'free') {
+      const used = getFreeAnalyzeUsed()
+      if (used >= FREE_ANALYZE_LIMIT) return { allowed: false, reason: 'total_limit', used, limit: FREE_ANALYZE_LIMIT }
+      return { allowed: true }
+    }
     if (status.kind === 'single') {
       const left = status.aiAnalyzeLeft
       if (left <= 0) return { allowed: false, reason: 'total_limit', used: 2, limit: 2 }
@@ -296,6 +314,10 @@ export function recordUsage(deviceId: string, type: UsageType, status: ProStatus
       list[idx] = { ...list[idx], aiOptimizeUsed: (list[idx].aiOptimizeUsed ?? 0) + 1 }
       lsSet(LS_PAYMENTS, list)
     }
+    return
+  }
+  if (type === 'ai_analyze' && status.kind === 'free') {
+    incrementFreeAnalyze()
     return
   }
   if (type === 'ai_analyze' && status.kind === 'single') {

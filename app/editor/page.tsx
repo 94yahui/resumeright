@@ -23,6 +23,7 @@ import {
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
+import { generateWordBlob } from '../lib/exportWord'
 
 const HISTORY_LIMIT = 30
 
@@ -93,6 +94,7 @@ function EditorInner() {
   const [pageCount, setPageCount] = useState(1)
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
   const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [pngGenerating, setPngGenerating] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
   const [isStudentVerified, setIsStudentVerified] = useState(false)
@@ -147,7 +149,10 @@ function EditorInner() {
   const template = getTemplate(templateId)
   const effectiveColor = color || template.accentColor
   const isProTemplate = !template.free
-  const showWatermark = !hasNoWatermark(proStatus)
+  // Watermark: subscription = always off; single = only off for the paid template;
+  // old single purchases (no templateId stored) keep the original no-watermark behaviour.
+  const showWatermark = proStatus.kind === 'free' ||
+    (proStatus.kind === 'single' && !!proStatus.templateId && proStatus.templateId !== templateId)
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -588,10 +593,12 @@ ${autoprint ? `<script>
       const printArea = document.querySelector('.resume-print-area')
       if (!printArea) { setPdfGenerating(false); return }
 
-      // Capture only the visible .resume-page elements — the off-screen
-      // measurer clone (no class) is excluded automatically.
-      const pageEls = printArea.querySelectorAll('.resume-page')
-      const htmlContent = Array.from(pageEls).map(el => el.outerHTML).join('')
+      // Capture the visible .resume-page elements — their break-point clip heights
+      // and translateY values are already baked in as inline styles, so the PDF
+      // Puppeteer render matches the canvas exactly. The off-screen measurer div
+      // (no .resume-page class) is excluded automatically.
+      const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
+      const htmlContent = pageEls.map(el => el.outerHTML).join('')
 
       try {
         const res = await fetch('/api/pdf/generate', {
@@ -616,6 +623,57 @@ ${autoprint ? `<script>
     }, 80)
   }, [docTitle])
 
+  const handleDownloadWord = useCallback(() => {
+    setModal('none')
+    const blob = generateWordBlob(data)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${docTitle || '我的简历'}.doc`
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
+    showToast('✓ Word 文件已下载')
+  }, [data, docTitle])
+
+  const handleDownloadPNG = useCallback(async () => {
+    setModal('none')
+    setSelection({ kind: 'none' })
+    await new Promise(r => setTimeout(r, 60))
+
+    const printArea = document.querySelector('.resume-print-area')
+    if (!printArea) return
+    const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
+    if (!pageEls.length) return
+
+    setPngGenerating(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      for (let i = 0; i < pageEls.length; i++) {
+        const canvas = await html2canvas(pageEls[i], {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        })
+        const link = document.createElement('a')
+        link.download = pageEls.length === 1
+          ? `${docTitle || '我的简历'}.png`
+          : `${docTitle || '我的简历'}_第${i + 1}页.png`
+        link.href = canvas.toDataURL('image/png')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+      showToast(`✓ 已导出 ${pageEls.length} 张图片`)
+    } catch {
+      showToast('图片生成失败，请重试')
+    } finally {
+      setPngGenerating(false)
+    }
+  }, [docTitle])
+
   // ============ Payment / paywall ============
   const handlePaywallSuccess = useCallback((_planType: PlanType, _orderId: string) => {
     const status = getProStatus(deviceId, currentHistoryId || undefined)
@@ -627,20 +685,14 @@ ${autoprint ? `<script>
   }, [deviceId, currentHistoryId])
 
   const handleDownloadAttempt = useCallback(() => {
-    if (isProTemplate && proStatus.kind === 'free') {
+    if (showWatermark) {
       pendingPaywallActionRef.current = { type: 'download' }
-      setPaywallTrigger('download_pro')
-      setPaywallOpen(true)
-      return
-    }
-    if (!hasNoWatermark(proStatus)) {
-      pendingPaywallActionRef.current = { type: 'download' }
-      setPaywallTrigger('download_free')
+      setPaywallTrigger(isProTemplate ? 'download_pro' : 'download_free')
       setPaywallOpen(true)
       return
     }
     setModal('download')
-  }, [isProTemplate, proStatus])
+  }, [isProTemplate, showWatermark])
 
   // ============ AI Panel ============
   const handleAIAnalyze = useCallback(() => {
@@ -691,20 +743,39 @@ ${autoprint ? `<script>
         const result = await res.json()
         setAiAnalysis(result)
         aiAnalyzedDataSnapshot.current = dataSnapshot
+        setAiPanelPhase('result')
       } else {
         showToast('AI 开小差了，请稍后重试')
+        setAiPanelPhase('entry')
       }
     } catch (e) {
       console.error('analyze error:', e)
       showToast('AI 开小差了，请稍后重试')
+      setAiPanelPhase('entry')
     }
-    setAiPanelPhase('result')
   }, [data, deviceId, proStatus, currentHistoryId])
 
   const jobDescRef = useRef(jobDescPersist)
   useEffect(() => { jobDescRef.current = jobDescPersist }, [jobDescPersist])
 
   const handleAIFileSelect = useCallback(async (file: File) => {
+    // Check shared AI-analyze quota (free: 2 lifetime, shared with landing page and analyze-current)
+    const analyzeCheck = checkUsage(deviceId, 'ai_analyze', proStatus)
+    if (!analyzeCheck.allowed) {
+      setPaywallTrigger('ai_analyze')
+      setPaywallOpen(true)
+      return
+    }
+    // Check import quota for paid tiers (rate limiting for parse API)
+    if (proStatus.kind !== 'free') {
+      const importCheck = checkUsage(deviceId, 'import', proStatus)
+      if (!importCheck.allowed) {
+        setPaywallTrigger('import_limit')
+        setPaywallOpen(true)
+        return
+      }
+    }
+
     const filename = file.name.replace(/\.[^.]+$/, '')
     prevDocTitleRef.current = latestForAutoSave.current.docTitle
     setAiUploadFilename(filename)
@@ -735,11 +806,16 @@ ${autoprint ? `<script>
       }
       if (!res.ok) {
         showToast('AI 开小差了，请稍后重试')
-        setAiPanelPhase('result')
+        setAiPanelPhase('entry')
         return
       }
       const json = await res.json()
       const parsed = parsedToResumeData(json.data ?? {})
+      // Deduct from ai_analyze quota (shared free counter) after successful parse
+      recordUsage(deviceId, 'ai_analyze', proStatus)
+      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+      // Also deduct import quota for paid tiers
+      if (proStatus.kind !== 'free') recordUsage(deviceId, 'import', proStatus)
       setAiParsedData(parsed)
       // Also run analyze on the parsed data, pass current JD if present
       const analyzeRes = await fetch('/api/ai/analyze', {
@@ -752,10 +828,12 @@ ${autoprint ? `<script>
     } catch (e) {
       console.error('parse-resume error:', e)
       showToast('AI 开小差了，请稍后重试')
+      setAiPanelPhase('entry')
+      return
     }
 
     setAiPanelPhase('result')
-  }, [])
+  }, [deviceId, proStatus])
 
   const handleAIApplyTemplate = useCallback(() => {
     prevDocTitleRef.current = null  // title is being replaced by upload name; don't restore on close
@@ -1043,21 +1121,26 @@ ${autoprint ? `<script>
         />
       </div>
 
-      {/* Pro-template upgrade banner — only for free users */}
+      {/* Pro-template preview banner — free users can see the template but need Pro to download */}
       {isProTemplate && proStatus.kind === 'free' && !noResumeOpen && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: '10px', flexShrink: 0,
         }}>
-          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap' }}>
-            ⚡ 升级 Pro 解锁全部 50+ 套模板 · 去除下载水印
+          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)' }}>
+            <span style={{
+              display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
+              background: '#f59e0b', color: 'white', fontSize: '10px', fontWeight: 700,
+              marginRight: '8px', verticalAlign: 'middle',
+            }}>Pro 模板预览</span>
+            当前为预览模式 · 升级后可下载无水印 PDF
           </span>
           <button onClick={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }} style={{
             padding: '5px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
             background: 'var(--theme-blue)', color: 'white', border: 'none',
             cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-          }}>升级 ¥29 →</button>
+          }}>解锁 Pro →</button>
         </div>
       )}
 
@@ -1102,7 +1185,8 @@ ${autoprint ? `<script>
             onClose={() => setLeftOpen(false)}
             forceTab={leftPanelTab ?? undefined}
             disabled={noResumeOpen}
-            canUseProTemplate={proStatus.kind !== 'free'}
+            canUseProTemplate={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && !proStatus.templateId)}
+            unlockedProTemplateId={proStatus.kind === 'single' && !!proStatus.templateId ? proStatus.templateId : undefined}
             onProTemplateLocked={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
           />
         </div>
@@ -1370,10 +1454,11 @@ ${autoprint ? `<script>
         <DownloadModal
           onClose={() => setModal('none')}
           onPrintPDF={handlePrintPDF}
+          onDownloadWord={handleDownloadWord}
+          onDownloadPNG={handleDownloadPNG}
           isPro={isProTemplate}
           isPaid={proStatus.kind !== 'free'}
           onUnlockPro={() => { setModal('none'); setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
-          docTitle={docTitle}
         />
       )}
       {importModalState !== 'none' && (
@@ -1388,6 +1473,7 @@ ${autoprint ? `<script>
         <PaywallModal
           trigger={paywallTrigger}
           resumeId={currentHistoryId || undefined}
+          templateId={templateId}
           deviceId={deviceId}
           isStudent={isStudentVerified}
           isFirstOrder={isFirstPurchase(deviceId)}
@@ -1447,6 +1533,25 @@ ${autoprint ? `<script>
         transition: 'transform 0.3s', pointerEvents: 'none',
         boxShadow: '0 4px 20px rgba(15, 23, 42, 0.25)',
       }}>{toast}</div>
+
+      {/* PNG generating overlay */}
+      {pngGenerating && (
+        <div className="no-print" style={{
+          position: 'fixed', inset: 0, zIndex: 400,
+          background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px',
+        }}>
+          <style>{`@keyframes pngSpin{to{transform:rotate(360deg)}}`}</style>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '50%',
+            border: '3px solid rgba(255,255,255,0.2)',
+            borderTopColor: 'white',
+            animation: 'pngSpin 0.8s linear infinite',
+          }} />
+          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成图片…</div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要几秒钟</div>
+        </div>
+      )}
 
       {/* PDF generating overlay (mobile server-side PDF) */}
       {pdfGenerating && (

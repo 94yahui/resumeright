@@ -32,6 +32,9 @@ export interface TemplateConfig {
   accentColor: string
   fontPair: FontPair
   showPhoto: boolean
+  /** For single-centered layouts: where the photo sits relative to the name block.
+   *  Omit for the default (photo centered above name). */
+  photoPlacement?: 'right' | 'left-beside' | 'band-right'
   tag: string
   desc: string
 }
@@ -424,7 +427,7 @@ export const TEMPLATES: TemplateConfig[] = [
   // ── single-centered variants (2) ──
   {
     id: 'pro-centered-serif',
-    name: '居中典雅',
+    name: '横版典雅',
     categories: ['design', 'general'],
     free: false,
     layout: 'single-centered',
@@ -432,8 +435,9 @@ export const TEMPLATES: TemplateConfig[] = [
     accentColor: '#1f2937',
     fontPair: 'serif-heading',
     showPhoto: true,
+    photoPlacement: 'right',
     tag: '设计·学术',
-    desc: '居中衬线配双线节标题，庄重典雅',
+    desc: '衬线字体配双线节标题，名字左对齐照片右侧，庄重典雅',
   },
   {
     id: 'pro-centered-pill',
@@ -521,7 +525,7 @@ export const TEMPLATES: TemplateConfig[] = [
   // ── single-centered (4 more) ──
   {
     id: 'pro-centered-photo',
-    name: '居中照片版',
+    name: '照片名片',
     categories: ['general', 'design'],
     free: false,
     layout: 'single-centered',
@@ -529,8 +533,9 @@ export const TEMPLATES: TemplateConfig[] = [
     accentColor: '#0f172a',
     fontPair: 'modern-sans',
     showPhoto: true,
+    photoPlacement: 'left-beside',
     tag: '设计·媒体·照片',
-    desc: '居中无衬线配头像，下划线节标题，平衡感强',
+    desc: '照片与姓名并排居中，名片式布局，平衡感强',
   },
   {
     id: 'pro-centered-bar',
@@ -547,7 +552,7 @@ export const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'pro-centered-thin-photo',
-    name: '居中轻盈照片',
+    name: '通栏轻盈',
     categories: ['design', 'general'],
     free: false,
     layout: 'single-centered',
@@ -555,8 +560,9 @@ export const TEMPLATES: TemplateConfig[] = [
     accentColor: '#374151',
     fontPair: 'modern-sans',
     showPhoto: true,
+    photoPlacement: 'band-right',
     tag: '艺术·创意',
-    desc: '居中细线分隔配头像，轻盈通透',
+    desc: '淡色底栏居中排列，照片位于右侧，轻盈通透',
   },
   {
     id: 'pro-centered-bold',

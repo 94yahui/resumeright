@@ -1,8 +1,10 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
+import { getDeviceId, getProStatus, checkUsage, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, type ProStatus } from '../lib/payment'
+import LogoSweepLoader from './LogoSweepLoader'
 
 interface AnalysisResult {
   hasOfferRate: boolean
@@ -12,6 +14,8 @@ interface AnalysisResult {
   interviewQuestions?: string[]
   interviewAnswers?: string[]
 }
+
+const FREE_LIMIT = FREE_ANALYZE_LIMIT
 
 export default function LandingAnalysisSection() {
   const router = useRouter()
@@ -24,6 +28,16 @@ export default function LandingAnalysisSection() {
   const [showInterviewQ, setShowInterviewQ] = useState(false)
   const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(new Set())
   const [error, setError] = useState('')
+  const [deviceId, setDeviceId] = useState('')
+  const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
+  const [usedToday, setUsedToday] = useState(0)
+
+  useEffect(() => {
+    const did = getDeviceId()
+    setDeviceId(did)
+    setProStatus(getProStatus(did))
+    setUsedToday(getFreeAnalyzeUsed())
+  }, [])
 
   const toggleAnswer = (i: number) => {
     setExpandedAnswers(prev => {
@@ -53,11 +67,20 @@ export default function LandingAnalysisSection() {
 
   const handleAnalyze = async () => {
     if (!file) { setError('请上传你的简历文件'); return }
+
+    // Check shared AI-analyze quota (free: 2 lifetime, shared with editor analyze)
+    const check = checkUsage(deviceId, 'ai_analyze', proStatus)
+    if (!check.allowed) {
+      setError(`${check.limit} 次免费次数已用完，升级 Pro 即可无限使用 →`)
+      return
+    }
+
     setError('')
     setLoading(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('deviceId', deviceId)
       const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
       if (parseRes.status === 422) {
         setError('未检测到简历内容，请上传简历文件')
@@ -76,13 +99,16 @@ export default function LandingAnalysisSection() {
       const analyzeRes = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData, jobDesc }),
+        body: JSON.stringify({ resumeData, jobDesc, deviceId }),
       })
       if (!analyzeRes.ok) {
         setError('AI 开小差了，请稍后重试')
         setLoading(false)
         return
       }
+      // Record usage only after both calls succeed
+      recordUsage(deviceId, 'ai_analyze', proStatus)
+      setUsedToday(getFreeAnalyzeUsed())
       setResult(await analyzeRes.json())
       setShowInterviewQ(false)
       setShowModal(true)
@@ -210,15 +236,21 @@ export default function LandingAnalysisSection() {
             </div>
           </div>
 
-          {/* Right: form */}
+          {/* Right: form / loading */}
           <div className="fade-in" style={{ transitionDelay: '0.15s' }}>
             <div style={{
-              background: '#ffffff',
+              background: loading ? 'linear-gradient(160deg, #0d0b1e 0%, #07060f 100%)' : '#ffffff',
               border: '1px solid rgba(139,92,246,0.18)',
               borderRadius: '20px',
-              padding: '32px',
+              padding: loading ? '0' : '32px',
               boxShadow: '0 0 0 1px rgba(109,40,217,0.06), 0 24px 64px rgba(0,0,0,0.45), 0 0 100px rgba(109,40,217,0.14)',
+              transition: 'background 0.3s, padding 0.3s',
+              minHeight: '360px',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
             }}>
+              {loading ? (
+                <LogoSweepLoader message="AI 正在分析你的简历" />
+              ) : (<>
               {/* JD on top */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
@@ -307,8 +339,14 @@ export default function LandingAnalysisSection() {
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
-                首次免费 · 无需注册 · 数据不存储
+                {proStatus.kind !== 'free'
+                  ? '已升级 · 无限使用 · 数据不存储'
+                  : usedToday === 0
+                    ? '首次免费 · 无需注册 · 数据不存储'
+                    : `还剩 ${Math.max(0, FREE_LIMIT - usedToday)} 次免费机会 · 数据不存储`
+                }
               </div>
+            </>)}
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
   return (
     <div
       style={{
-        background: "linear-gradient(65deg,var(--ai-color-1), var(--gold2))",
+        background: "linear-gradient(65deg, #6d28d9, var(--gold2))",
         minHeight: "90vh",
         display: "flex",
         flexDirection: "column",
@@ -419,7 +419,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               left: "50%",
               transform: "translateX(-50%)",
               background:
-                "linear-gradient(135deg, #6d28d9, #0ea5e9)",
+                "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
               color: "white",
               padding: "8px 18px",
               borderRadius: "20px",

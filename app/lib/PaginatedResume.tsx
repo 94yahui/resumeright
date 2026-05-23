@@ -13,7 +13,7 @@ const MIN_LAST_PAGE_CONTENT = 20
 // Pixels pulled UP from the detected entry boundary to create visual breathing room
 // on the next page. Larger value gives more buffer against font-metric differences
 // between the browser (where break points are measured) and headless Chromium (PDF).
-const TOP_PAD = 14
+const TOP_PAD = 9
 // White space reserved at the top and bottom of continuation pages (page 2+).
 // This ensures content has equal breathing room at the top and bottom of every page.
 const CONTINUATION_PAD = 36

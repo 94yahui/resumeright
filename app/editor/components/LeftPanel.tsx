@@ -59,13 +59,14 @@ interface Props {
   forceTab?: 'tpl' | 'mod' | 'color' | 'hist'
   disabled?: boolean
   canUseProTemplate?: boolean
+  unlockedProTemplateId?: string  // single-plan: only this one pro template is unlocked
   onProTemplateLocked?: () => void
 }
 
 export default function LeftPanel({
   templateId, onTemplateChange, onColorChange, currentColor, onAddModule, data, onUpdate,
   onSaveHistory, onLoadHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
-  isMobile, onClose, forceTab, disabled, canUseProTemplate = false, onProTemplateLocked,
+  isMobile, onClose, forceTab, disabled, canUseProTemplate = false, unlockedProTemplateId, onProTemplateLocked,
 }: Props) {
   const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
 
@@ -166,11 +167,14 @@ export default function LeftPanel({
 
             {showPro && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
-                {proTpls.map(tpl => (
-                  <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id}
-                    onClick={() => canUseProTemplate ? onTemplateChange(tpl.id) : onProTemplateLocked?.()}
-                    isPro locked={!canUseProTemplate} />
-                ))}
+                {proTpls.map(tpl => {
+                  const unlocked = canUseProTemplate || tpl.id === unlockedProTemplateId
+                  return (
+                    <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id}
+                      onClick={() => onTemplateChange(tpl.id)}
+                      isPro isLocked={!unlocked} />
+                  )
+                })}
               </div>
             )}
           </div>
@@ -457,8 +461,8 @@ export default function LeftPanel({
   )
 }
 
-function TplCard({ tpl, active, onClick, isPro, locked }: {
-  tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; locked?: boolean
+function TplCard({ tpl, active, onClick, isPro, isLocked }: {
+  tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; isLocked?: boolean
 }) {
   return (
     <div onClick={onClick} style={{
@@ -468,9 +472,9 @@ function TplCard({ tpl, active, onClick, isPro, locked }: {
       transition: 'all 0.2s',
       boxShadow: active ? '0 0 0 2px rgba(15, 23, 42, 0.1)' : 'none',
       position: 'relative', background: 'white',
-      opacity: locked ? 0.75 : 1,
+      opacity: isLocked ? 0.75 : 1,
     }}
-    onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = locked ? '#fbbf24' : '#94a3b8' }}
+    onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = '#94a3b8' }}
     onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#e2e8f0' }}
     >
       <div style={{
@@ -482,12 +486,12 @@ function TplCard({ tpl, active, onClick, isPro, locked }: {
       {isPro && (
         <div style={{
           position: 'absolute', top: '4px', right: '4px',
-          background: locked ? '#f59e0b' : '#0f172a', color: 'white',
+          background: isLocked ? '#94a3b8' : '#f59e0b', color: 'white',
           fontSize: '8px', padding: '2px 5px', borderRadius: '3px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
+          fontWeight: 700,
         }}>
-          <Lock size={8} color="white" />
-          {locked && <span style={{ fontSize: '7px', fontWeight: 700 }}>Pro</span>}
+          {isLocked && <Lock size={7} />} Pro
         </div>
       )}
       <div style={{ padding: '6px 8px', borderTop: '1px solid #e2e8f0' }}>

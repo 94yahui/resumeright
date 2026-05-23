@@ -842,6 +842,80 @@ export default function ResumeRenderer({
 
   // ============ LAYOUT: SINGLE CENTERED ============
   if (template.layout === 'single-centered') {
+    // ── photo-right: name left-aligned, photo floated to right ──
+    if (template.photoPlacement === 'right') {
+      return (
+        <div style={rootStyle}>
+          <div style={{ padding: '40px 48px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+              <div style={{ flex: 1 }}>
+                <NameBlock big />
+                <div style={{ height: '10px' }} />
+                <ContactInline />
+              </div>
+              <PhotoBlock size={90} />
+            </div>
+            <div style={{ marginTop: '18px', borderTop: `2.5px solid ${accent}`, paddingTop: '5px', borderBottom: `1px solid ${accent}40` }} />
+          </div>
+          <div style={{ padding: '4px 48px 40px' }}>
+            <MainBody />
+            <SkillsBlock />
+          </div>
+        </div>
+      )
+    }
+
+    // ── left-beside: photo avatar on left, name+contact centered in remaining space ──
+    if (template.photoPlacement === 'left-beside') {
+      return (
+        <div style={rootStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', padding: '36px 48px 20px' }}>
+            <PhotoBlock size={76} />
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <NameBlock big centered />
+              <div style={{ height: '8px' }} />
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <ContactInline />
+              </div>
+            </div>
+          </div>
+          <div style={{ height: '2px', background: accent, margin: '0 48px 0' }} />
+          <div style={{ padding: '4px 48px 40px' }}>
+            <MainBody />
+            <SkillsBlock />
+          </div>
+        </div>
+      )
+    }
+
+    // ── band-right: tinted band, name centered, photo on right ──
+    if (template.photoPlacement === 'band-right') {
+      return (
+        <div style={rootStyle}>
+          <div style={{
+            padding: '28px 48px',
+            background: `${accent}08`,
+            borderBottom: `1.5px solid ${accent}25`,
+            display: 'flex', alignItems: 'center', gap: '24px',
+          }}>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <NameBlock centered big />
+              <div style={{ height: '10px' }} />
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <ContactInline />
+              </div>
+            </div>
+            <PhotoBlock size={88} />
+          </div>
+          <div style={{ padding: '24px 48px 40px' }}>
+            <MainBody />
+            <SkillsBlock />
+          </div>
+        </div>
+      )
+    }
+
+    // ── default: photo centered above name ──
     return (
       <div style={rootStyle}>
         <div style={{ padding: '40px 48px 28px', textAlign: 'center' }}>

@@ -337,7 +337,7 @@ export default function RightPanel({
             {aiSummaryResult && (
               <div style={{
                 marginTop: "10px", padding: "12px",
-                background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))", border: "1px solid rgba(7, 137, 236, 0.25)",
+                background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
                 borderRadius: "8px",
               }}>
                 <div style={{
@@ -525,7 +525,7 @@ export default function RightPanel({
                         className="animate-pulse-dot"
                         style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }}
                       />
-                      {aiLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : "🔒 AI 优化描述"}
+                      {aiLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : <><Lock size={11} style={{ flexShrink: 0 }} /> AI 优化描述</>}
                     </button>
 
                     {aiError && aiKey === aiKeyId && !aiResult && (
@@ -534,7 +534,7 @@ export default function RightPanel({
                     {aiResult && aiKey === aiKeyId && (
                       <div style={{
                         marginTop: "10px", padding: "12px",
-                        background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))", border: "1px solid rgba(7, 137, 236, 0.25)",
+                        background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
                         borderRadius: "8px",
                       }}>
                         <div style={{

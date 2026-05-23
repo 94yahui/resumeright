@@ -61,19 +61,40 @@ export function ContinueModal({
 }
 
 export function DownloadModal({
-  onClose, onPrintPDF, isPro, isPaid, onUnlockPro, docTitle
+  onClose, onPrintPDF, onDownloadWord, onDownloadPNG,
+  isPro, isPaid, onUnlockPro,
 }: {
-  onClose: () => void; onPrintPDF: () => void;
-  isPro?: boolean; isPaid?: boolean; onUnlockPro?: () => void;
-  docTitle?: string
+  onClose: () => void
+  onPrintPDF: () => void
+  onDownloadWord?: () => void
+  onDownloadPNG?: () => void
+  isPro?: boolean
+  isPaid?: boolean
+  onUnlockPro?: () => void
 }) {
+  const proRows = [
+    {
+      icon: <FileType size={22} />,
+      label: 'Word (.doc)',
+      sub: isPaid ? '可编辑格式 · 适合二次修改' : 'Pro 功能',
+      onClick: onDownloadWord,
+    },
+    {
+      icon: <ImageIcon size={22} />,
+      label: 'PNG 图片',
+      sub: isPaid ? '高清图片 · 适合直接分享' : 'Pro 功能',
+      onClick: onDownloadPNG,
+    },
+  ]
+
   return (
     <ModalWrap onClose={onClose}>
       <div style={{ fontSize: '22px', fontWeight: 700, marginBottom: '6px', color: '#0f172a' }}>下载简历</div>
       <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '20px', lineHeight: 1.5 }}>
-        由服务器生成高质量 PDF，直接下载到本地
+        选择下载格式，生成后自动保存到本地
       </p>
 
+      {/* PDF — always available */}
       <div onClick={onPrintPDF} style={{
         display: 'flex', alignItems: 'center', gap: '14px',
         padding: '14px 16px',
@@ -106,24 +127,38 @@ export function DownloadModal({
         </div>
       )}
 
-      {[
-        { icon: <FileType size={22} color="#94a3b8" />, label: 'Word (.docx)', sub: 'Pro 功能 · 即将上线' },
-        { icon: <ImageIcon size={22} color="#94a3b8" />, label: 'PNG 图片', sub: 'Pro 功能 · 即将上线' },
-      ].map(o => (
-        <div key={o.label} style={{
-          display: 'flex', alignItems: 'center', gap: '14px',
-          padding: '14px 16px',
-          border: '1.5px solid #e2e8f0',
-          borderRadius: '10px', marginBottom: '10px',
-          background: 'white', opacity: 0.5,
-        }}>
-          {o.icon}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{o.label}</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{o.sub}</div>
+      {/* Word and PNG — enabled for Pro, locked for free */}
+      {proRows.map(row => {
+        const enabled = isPaid && !!row.onClick
+        return (
+          <div
+            key={row.label}
+            onClick={enabled ? row.onClick : undefined}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '14px',
+              padding: '14px 16px',
+              border: `1.5px solid ${enabled ? '#e2e8f0' : '#f1f5f9'}`,
+              borderRadius: '10px', marginBottom: '10px',
+              background: 'white',
+              cursor: enabled ? 'pointer' : 'default',
+              opacity: enabled ? 1 : 0.55,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { if (enabled) (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1' }}
+            onMouseLeave={e => { if (enabled) (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0' }}
+          >
+            <span style={{ color: enabled ? '#334155' : '#94a3b8' }}>{row.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{row.label}</div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{row.sub}</div>
+            </div>
+            {enabled
+              ? <span style={{ fontSize: '14px', color: '#64748b' }}>→</span>
+              : <span style={{ fontSize: '11px', color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>🔒 Pro</span>
+            }
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <button onClick={onClose} style={{
         width: '100%', marginTop: '4px', padding: '11px',
@@ -855,6 +890,7 @@ export type PaywallTrigger =
 export interface PaywallModalProps {
   trigger: PaywallTrigger
   resumeId?: string           // current resume ID (for single purchase binding)
+  templateId?: string         // current template ID (for single purchase binding)
   deviceId: string
   isStudent: boolean
   isFirstOrder: boolean       // true → show ¥0.99 first-order price
@@ -875,8 +911,8 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
 
 const PLAN_META = {
   monthly:   { label: '月卡', period: '月', badge: '',         saving: '' },
-  quarterly: { label: '季卡', period: '季', badge: '',         saving: '省21%' },
-  yearly:    { label: '年卡', period: '年', badge: '最受欢迎', saving: '省52%' },
+  quarterly: { label: '季卡', period: '季', badge: '最受欢迎', saving: '省21%' },
+  yearly:    { label: '年卡', period: '年', badge: '',         saving: '省52%' },
 }
 
 const SUB_BENEFITS = [
@@ -903,13 +939,13 @@ type PaywallPhase = 'plans' | 'paying' | 'success'
 type ActiveTab = 'single' | 'sub'
 
 export function PaywallModal({
-  trigger, resumeId, deviceId,
+  trigger, resumeId, templateId, deviceId,
   isStudent, isFirstOrder,
   onClose, onSuccess, onFreeDownload, onOpenStudent,
 }: PaywallModalProps) {
   const [tab, setTab]             = useState<ActiveTab>('sub')
   const [phase, setPhase]         = useState<PaywallPhase>('plans')
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly')
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly')
   const [payMethod, setPayMethod] = useState<PayMethod>('wechat')
   const [pendingType, setPendingType] = useState<PlanType | null>(null)
   const [pendingOrder, setPendingOrder] = useState('')
@@ -946,7 +982,8 @@ export function PaywallModal({
     addPayment({
       orderId: pendingOrder, deviceId,
       planType: pendingType, amount, isStudent,
-      resumeId: pendingType === 'single' ? resumeId : undefined,
+      resumeId:   pendingType === 'single' ? resumeId   : undefined,
+      templateId: pendingType === 'single' ? templateId : undefined,
       paidAt: now, expiresAt, payMethod,
       aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
     })
@@ -994,21 +1031,6 @@ export function PaywallModal({
           <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>扫码支付</div>
         </div>
 
-        {/* Payment method toggle */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          {(['wechat', 'alipay'] as PayMethod[]).map(m => (
-            <button key={m} onClick={() => setPayMethod(m)} style={{
-              flex: 1, padding: '9px', borderRadius: '8px', cursor: 'pointer',
-              fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
-              border: `2px solid ${payMethod === m ? (m === 'wechat' ? '#07c160' : '#1677ff') : '#e2e8f0'}`,
-              background: payMethod === m ? (m === 'wechat' ? '#f0fff6' : '#f0f6ff') : 'white',
-              color: payMethod === m ? (m === 'wechat' ? '#07c160' : '#1677ff') : '#94a3b8',
-              transition: 'all 0.15s',
-            }}>
-              {m === 'wechat' ? '微信支付' : '支付宝'}
-            </button>
-          ))}
-        </div>
 
         {/* Fake QR */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -1026,7 +1048,7 @@ export function PaywallModal({
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
-            {payMethod === 'wechat' ? '请使用微信' : '请使用支付宝'}扫描上方二维码完成支付
+            请使用微信扫描上方二维码完成支付
           </div>
         </div>
 
@@ -1105,17 +1127,15 @@ export function PaywallModal({
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: showFreeOption ? '10px' : 0 }}>
-            {(['wechat', 'alipay'] as PayMethod[]).map(m => (
-              <button key={m} onClick={() => startPay('single', m)} style={{
-                flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
-                background: m === 'wechat' ? '#07c160' : '#1677ff',
-                color: 'white', fontFamily: 'var(--font-sans)',
-                fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
-              }}>
-                {m === 'wechat' ? '微信支付' : '支付宝'}
-              </button>
-            ))}
+          <div style={{ marginBottom: showFreeOption ? '10px' : 0 }}>
+            <button onClick={() => startPay('single', 'wechat')} style={{
+              width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
+              background: '#07c160',
+              color: 'white', fontFamily: 'var(--font-sans)',
+              fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+            }}>
+              微信支付
+            </button>
           </div>
 
           {showFreeOption && (
@@ -1136,23 +1156,23 @@ export function PaywallModal({
           {/* Plan cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
             {(['monthly', 'quarterly', 'yearly'] as const).map(plan => {
-              const meta    = PLAN_META[plan]
-              const price   = subPrice(plan)
-              const active  = selectedPlan === plan
-              const isYearly = plan === 'yearly'
+              const meta        = PLAN_META[plan]
+              const price       = subPrice(plan)
+              const active      = selectedPlan === plan
+              const isHighlight = plan === 'quarterly'
               return (
                 <div key={plan} onClick={() => setSelectedPlan(plan)} style={{
                   padding: '13px 16px', borderRadius: '12px', cursor: 'pointer',
-                  border: `2px solid ${active ? (isYearly ? 'var(--theme-blue)' : '#334155') : '#e2e8f0'}`,
-                  background: active ? (isYearly ? '#e0f0fd' : '#f8fafc') : 'white',
+                  border: `2px solid ${active ? (isHighlight ? 'var(--theme-blue)' : '#334155') : '#e2e8f0'}`,
+                  background: active ? (isHighlight ? '#e0f0fd' : '#f8fafc') : 'white',
                   display: 'flex', alignItems: 'center', gap: '12px',
                   transition: 'all 0.15s',
                 }}>
                   {/* Radio */}
                   <div style={{
                     width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
-                    border: `2px solid ${active ? (isYearly ? 'var(--theme-blue)' : '#334155') : '#cbd5e1'}`,
-                    background: active ? (isYearly ? 'var(--theme-blue)' : '#334155') : 'white',
+                    border: `2px solid ${active ? (isHighlight ? 'var(--theme-blue)' : '#334155') : '#cbd5e1'}`,
+                    background: active ? (isHighlight ? 'var(--theme-blue)' : '#334155') : 'white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {active && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white' }} />}
@@ -1177,7 +1197,7 @@ export function PaywallModal({
                   </div>
                   {/* Price */}
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '21px', fontWeight: 800, color: active && isYearly ? 'var(--theme-blue)' : '#0f172a' }}>
+                    <div style={{ fontSize: '21px', fontWeight: 800, color: active && isHighlight ? 'var(--theme-blue)' : '#0f172a' }}>
                       {fmtFen(price)}
                     </div>
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>/{meta.period}</div>
@@ -1203,18 +1223,16 @@ export function PaywallModal({
             </div>
           </div>
 
-          {/* Pay buttons */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-            {(['wechat', 'alipay'] as PayMethod[]).map(m => (
-              <button key={m} onClick={() => startPay(selectedPlan, m)} style={{
-                flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
-                background: m === 'wechat' ? '#07c160' : '#1677ff',
-                color: 'white', fontFamily: 'var(--font-sans)',
-                fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
-              }}>
-                {m === 'wechat' ? '微信支付' : '支付宝'}
-              </button>
-            ))}
+          {/* Pay button */}
+          <div style={{ marginBottom: '10px' }}>
+            <button onClick={() => startPay(selectedPlan, 'wechat')} style={{
+              width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
+              background: '#07c160',
+              color: 'white', fontFamily: 'var(--font-sans)',
+              fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+            }}>
+              微信支付
+            </button>
           </div>
 
           {/* Student link */}
@@ -1223,7 +1241,7 @@ export function PaywallModal({
             fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#64748b', cursor: 'pointer',
           }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-              <GraduationCap size={13} />
+              <GraduationCap size={16} />
               学生认证享全场5折 →
             </span>
           </button>

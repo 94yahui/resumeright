@@ -41,7 +41,7 @@ type SubPlanKey = typeof SUB_PLANS[number]['key']
 
 export default function Pricing() {
   const router = useRouter()
-  const [selPlan, setSelPlan] = useState<SubPlanKey>('yearly')
+  const [selPlan, setSelPlan] = useState<SubPlanKey>('quarterly')
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('upgrade')
   const [studentOpen, setStudentOpen] = useState(false)
@@ -278,7 +278,7 @@ export default function Pricing() {
           onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-            <GraduationCap size={13} />
+            <GraduationCap size={16} />
             学生认证可享全场 5 折 →
           </span>
         </button>
