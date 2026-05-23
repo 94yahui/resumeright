@@ -891,6 +891,7 @@ export interface PaywallModalProps {
   trigger: PaywallTrigger
   resumeId?: string           // current resume ID (for single purchase binding)
   templateId?: string         // current template ID (for single purchase binding)
+  hideSingle?: boolean        // hide the single-unlock tab (e.g. landing page)
   deviceId: string
   isStudent: boolean
   isFirstOrder: boolean       // true → show ¥0.99 first-order price
@@ -939,7 +940,7 @@ type PaywallPhase = 'plans' | 'paying' | 'success'
 type ActiveTab = 'single' | 'sub'
 
 export function PaywallModal({
-  trigger, resumeId, templateId, deviceId,
+  trigger, resumeId, templateId, hideSingle = false, deviceId,
   isStudent, isFirstOrder,
   onClose, onSuccess, onFreeDownload, onOpenStudent,
 }: PaywallModalProps) {
@@ -1086,21 +1087,23 @@ export function PaywallModal({
         }}>×</button>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
-        {(['single', 'sub'] as ActiveTab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: '9px', borderRadius: '8px', cursor: 'pointer',
-            fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
-            border: 'none', transition: 'all 0.15s',
-            background: tab === t ? 'white' : 'transparent',
-            color: tab === t ? '#0f172a' : '#64748b',
-            boxShadow: tab === t ? '0 1px 6px rgba(0,0,0,0.1)' : 'none',
-          }}>
-            {t === 'single' ? '单次解锁' : '订阅 Pro'}
-          </button>
-        ))}
-      </div>
+      {/* Tab bar — hidden on landing page where single-unlock is not applicable */}
+      {!hideSingle && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
+          {(['single', 'sub'] as ActiveTab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              flex: 1, padding: '9px', borderRadius: '8px', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
+              border: 'none', transition: 'all 0.15s',
+              background: tab === t ? 'white' : 'transparent',
+              color: tab === t ? '#0f172a' : '#64748b',
+              boxShadow: tab === t ? '0 1px 6px rgba(0,0,0,0.1)' : 'none',
+            }}>
+              {t === 'single' ? '单次解锁' : '订阅 Pro'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Single tab ────────────────────────────────────── */}
       {tab === 'single' && (

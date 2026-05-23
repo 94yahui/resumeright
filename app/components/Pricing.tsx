@@ -288,6 +288,7 @@ export default function Pricing() {
       {paywallOpen && deviceId && (
         <PaywallModal
           trigger={paywallTrigger}
+          hideSingle
           deviceId={deviceId}
           isStudent={isStudent}
           isFirstOrder={isFirst}
