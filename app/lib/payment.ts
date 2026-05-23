@@ -10,7 +10,7 @@ const LS_USAGE    = 'rc_usage'
 const COOKIE_DEVICE = 'rc_did'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type PlanType  = 'single' | 'monthly' | 'quarterly' | 'yearly'
+export type PlanType  = 'single' | 'monthly' | 'quarterly' | 'yearly' | 'trial7'
 export type PayMethod = 'wechat'
 export type UsageType = 'import' | 'ai_optimize' | 'ai_analyze'
 
@@ -63,6 +63,21 @@ export const PLAN_DURATION_MS: Record<string, number> = {
   monthly:   30 * 86_400_000,
   quarterly: 90 * 86_400_000,
   yearly:    365 * 86_400_000,
+  trial7:    7  * 86_400_000,
+}
+
+// ─── Promo code redemption tracking (per-device, stored in localStorage) ──────
+const LS_REDEEMED = 'rc_redeemed'
+export function hasRedeemedCode(code: string): boolean {
+  const list: string[] = ls(LS_REDEEMED, [])
+  return list.includes(code.toUpperCase())
+}
+export function markCodeRedeemed(code: string): void {
+  const list: string[] = ls(LS_REDEEMED, [])
+  if (!list.includes(code.toUpperCase())) {
+    list.push(code.toUpperCase())
+    lsSet(LS_REDEEMED, list)
+  }
 }
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
@@ -159,14 +174,15 @@ export function getProStatus(deviceId: string, resumeId?: string): ProStatus {
   const now      = Date.now()
   const payments = getPayments().filter(p => p.deviceId === deviceId)
 
-  // Active subscription wins over everything else
+  // Active subscription wins over everything else (trial7 counts as subscription)
   const activeSub = payments
     .filter(p => p.planType !== 'single' && !!p.expiresAt && p.expiresAt > now)
     .sort((a, b) => (b.expiresAt ?? 0) - (a.expiresAt ?? 0))[0]
   if (activeSub) {
+    const planLabel = activeSub.planType === 'trial7' ? 'monthly' : activeSub.planType as 'monthly' | 'quarterly' | 'yearly'
     return {
       kind: 'subscription',
-      plan: activeSub.planType as 'monthly' | 'quarterly' | 'yearly',
+      plan: planLabel,
       expiresAt: activeSub.expiresAt!,
     }
   }

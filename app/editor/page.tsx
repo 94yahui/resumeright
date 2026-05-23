@@ -17,6 +17,7 @@ import {
   loadPaidTemplates, addPaidTemplate, uniqueHistoryName,
   type HistoryEntry, type DraftState,
 } from '../lib/storage'
+import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
   hasNoWatermark, checkUsage, recordUsage, cleanOldUsage,
@@ -94,7 +95,6 @@ function EditorInner() {
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
   const [pdfGenerating, setPdfGenerating] = useState(false)
   const [pngGenerating, setPngGenerating] = useState(false)
-  const [wordGenerating, setWordGenerating] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
   const [isStudentVerified, setIsStudentVerified] = useState(false)
@@ -626,13 +626,25 @@ ${autoprint ? `<script>
 
   const handleDownloadWord = useCallback(() => {
     setModal('none')
+    const blob = generateWordBlob(data)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${docTitle || '我的简历'}.doc`
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
+    showToast('✓ Word 文件已下载')
+  }, [data, docTitle])
+
+  const handleDownloadPNG = useCallback(() => {
+    setModal('none')
     setSelection({ kind: 'none' })
-    setWordGenerating(true)
+    setPngGenerating(true)
 
     setTimeout(async () => {
       const printArea = document.querySelector('.resume-print-area')
-      if (!printArea) { setWordGenerating(false); return }
-
+      if (!printArea) { setPngGenerating(false); return }
       const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
       const htmlContent = pageEls.map(el => el.outerHTML).join('')
 
@@ -640,62 +652,24 @@ ${autoprint ? `<script>
         const res = await fetch('/api/pdf/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ htmlContent, docTitle, format: 'word' }),
+          body: JSON.stringify({ htmlContent, docTitle, format: 'png' }),
         })
         if (!res.ok) throw new Error('server error')
         const blob = await res.blob()
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${docTitle || '我的简历'}.doc`
+        a.download = `${docTitle || '我的简历'}.png`
         document.body.appendChild(a)
         a.click()
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
-        showToast('✓ Word 文件已下载')
+        showToast('✓ 图片已下载')
       } catch {
-        showToast('Word 生成失败，请重试')
+        showToast('图片生成失败，请重试')
       } finally {
-        setWordGenerating(false)
+        setPngGenerating(false)
       }
     }, 80)
-  }, [docTitle])
-
-  const handleDownloadPNG = useCallback(async () => {
-    setModal('none')
-    setSelection({ kind: 'none' })
-    await new Promise(r => setTimeout(r, 60))
-
-    const printArea = document.querySelector('.resume-print-area')
-    if (!printArea) return
-    const pageEls = Array.from(printArea.querySelectorAll('.resume-page')) as HTMLElement[]
-    if (!pageEls.length) return
-
-    setPngGenerating(true)
-    try {
-      const { default: html2canvas } = await import('html2canvas')
-      for (let i = 0; i < pageEls.length; i++) {
-        const canvas = await html2canvas(pageEls[i], {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-        })
-        const link = document.createElement('a')
-        link.download = pageEls.length === 1
-          ? `${docTitle || '我的简历'}.png`
-          : `${docTitle || '我的简历'}_第${i + 1}页.png`
-        link.href = canvas.toDataURL('image/png')
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-      showToast(`✓ 已导出 ${pageEls.length} 张图片`)
-    } catch {
-      showToast('图片生成失败，请重试')
-    } finally {
-      setPngGenerating(false)
-    }
   }, [docTitle])
 
   // ============ Payment / paywall ============
@@ -1504,7 +1478,6 @@ ${autoprint ? `<script>
         <DownloadModal
           onClose={() => setModal('none')}
           onPrintPDF={handlePrintPDF}
-          onDownloadWord={handleDownloadWord}
           onDownloadPNG={handleDownloadPNG}
           isPro={isProTemplate}
           isPaid={proStatus.kind !== 'free'}
@@ -1600,25 +1573,6 @@ ${autoprint ? `<script>
           }} />
           <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成图片…</div>
           <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要几秒钟</div>
-        </div>
-      )}
-
-      {/* Word generating overlay */}
-      {wordGenerating && (
-        <div className="no-print" style={{
-          position: 'fixed', inset: 0, zIndex: 400,
-          background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px',
-        }}>
-          <style>{`@keyframes wordSpin{to{transform:rotate(360deg)}}`}</style>
-          <div style={{
-            width: '44px', height: '44px', borderRadius: '50%',
-            border: '3px solid rgba(255,255,255,0.2)',
-            borderTopColor: 'white',
-            animation: 'wordSpin 0.8s linear infinite',
-          }} />
-          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成 Word…</div>
-          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要 5–10 秒</div>
         </div>
       )}
 

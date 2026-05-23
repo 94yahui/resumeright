@@ -21,7 +21,7 @@ const PRO_FEATURES = [
   'AI 优化 100次/天',
   '简历智能解析',
   '岗位匹配分析',
-  'Word / PNG 导出',
+  'PNG 高清图片导出',
 ]
 
 const SINGLE_FEATURES = [

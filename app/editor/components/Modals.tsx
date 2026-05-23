@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb, GraduationCap, Star } from 'lucide-react'
 import type { AISuggestion } from '../../lib/types'
-import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord } from '../../lib/payment'
+import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord, hasRedeemedCode, markCodeRedeemed } from '../../lib/payment'
 import type { PlanType, PayMethod } from '../../lib/payment'
 
 export function ContinueModal({
@@ -61,24 +61,17 @@ export function ContinueModal({
 }
 
 export function DownloadModal({
-  onClose, onPrintPDF, onDownloadWord, onDownloadPNG,
+  onClose, onPrintPDF, onDownloadPNG,
   isPro, isPaid, onUnlockPro,
 }: {
   onClose: () => void
   onPrintPDF: () => void
-  onDownloadWord?: () => void
   onDownloadPNG?: () => void
   isPro?: boolean
   isPaid?: boolean
   onUnlockPro?: () => void
 }) {
   const proRows = [
-    {
-      icon: <FileType size={22} />,
-      label: 'Word (.doc)',
-      sub: isPaid ? '可编辑格式 · 适合二次修改' : 'Pro 功能',
-      onClick: onDownloadWord,
-    },
     {
       icon: <ImageIcon size={22} />,
       label: 'PNG 图片',
@@ -922,7 +915,7 @@ const SUB_BENEFITS = [
   'AI 优化 100次/天',
   '简历智能解析',
   '岗位匹配分析',
-  'Word / PNG 导出',
+  'PNG 高清图片导出',
 ]
 
 const SINGLE_BENEFITS = [
@@ -947,9 +940,17 @@ export function PaywallModal({
   const [tab, setTab]             = useState<ActiveTab>('sub')
   const [phase, setPhase]         = useState<PaywallPhase>('plans')
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly')
-  const [payMethod, setPayMethod] = useState<PayMethod>('wechat')
   const [pendingType, setPendingType] = useState<PlanType | null>(null)
   const [pendingOrder, setPendingOrder] = useState('')
+  const [qrDataUrl, setQrDataUrl]   = useState<string | null>(null)
+  const [qrLoading, setQrLoading]   = useState(false)
+  const [qrError, setQrError]       = useState('')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [promoExpanded, setPromoExpanded] = useState(false)
+  const [promoCode, setPromoCode]   = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [promoError, setPromoError] = useState('')
+  const [promoOk, setPromoOk]       = useState('')
 
   const copy           = TRIGGER_COPY[trigger]
   const showFreeOption = trigger === 'download_free' && !!onFreeDownload
@@ -961,42 +962,105 @@ export function PaywallModal({
   const subPrice = (p: 'monthly' | 'quarterly' | 'yearly') =>
     isStudent ? PRICES[p].student : PRICES[p].normal
 
-  function startPay(planType: PlanType, method: PayMethod) {
-    const orderId = generateOrderId()
-    setPendingType(planType)
-    setPendingOrder(orderId)
-    setPayMethod(method)
-    setPhase('paying')
-  }
+  const PLAN_TITLE: Record<string, string> = { trial7: '7天体验卡', monthly: '月卡', quarterly: '季卡', yearly: '年卡', single: '单次解锁' }
 
-  function devPaid() {
-    if (!pendingType) return
-    const now      = Date.now()
-    const amount   = pendingType === 'single'    ? singlePrice
-                   : pendingType === 'monthly'   ? subPrice('monthly')
-                   : pendingType === 'quarterly' ? subPrice('quarterly')
-                   :                               subPrice('yearly')
-    const expiresAt = pendingType !== 'single'
-      ? now + PLAN_DURATION_MS[pendingType]
-      : undefined
-
+  function confirmPaid(planType: PlanType, orderId: string, amountFen: number) {
+    const now       = Date.now()
+    const expiresAt = planType !== 'single' ? now + PLAN_DURATION_MS[planType] : undefined
     addPayment({
-      orderId: pendingOrder, deviceId,
-      planType: pendingType, amount, isStudent,
-      resumeId:   pendingType === 'single' ? resumeId   : undefined,
-      templateId: pendingType === 'single' ? templateId : undefined,
-      paidAt: now, expiresAt, payMethod,
+      orderId, deviceId, planType, amount: amountFen, isStudent,
+      resumeId:   planType === 'single' ? resumeId   : undefined,
+      templateId: planType === 'single' ? templateId : undefined,
+      paidAt: now, expiresAt, payMethod: 'wechat',
       aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
     })
     setPhase('success')
-    setTimeout(() => { onSuccess(pendingType!, pendingOrder); onClose() }, 1200)
+    setTimeout(() => { onSuccess(planType, orderId); onClose() }, 1200)
   }
 
-  const payingAmount = !pendingType ? 0
-    : pendingType === 'single'    ? singlePrice
-    : pendingType === 'monthly'   ? subPrice('monthly')
-    : pendingType === 'quarterly' ? subPrice('quarterly')
-    :                               subPrice('yearly')
+  function stopPoll() {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
+  function startPoll(orderId: string, planType: PlanType, amountFen: number) {
+    stopPoll()
+    pollRef.current = setInterval(async () => {
+      try {
+        const res  = await fetch(`/api/payment/query?orderId=${orderId}`)
+        const data = await res.json()
+        if (data.paid) {
+          stopPoll()
+          confirmPaid(planType, orderId, amountFen)
+        }
+      } catch { /* network hiccup, keep polling */ }
+    }, 2500)
+  }
+
+  async function startPay(planType: PlanType) {
+    const orderId   = generateOrderId()
+    const amountFen = planType === 'single'    ? singlePrice
+                    : planType === 'monthly'   ? subPrice('monthly')
+                    : planType === 'quarterly' ? subPrice('quarterly')
+                    :                            subPrice('yearly')
+    setPendingType(planType)
+    setPendingOrder(orderId)
+    setQrError('')
+    setQrDataUrl(null)
+    setQrLoading(true)
+    setPhase('paying')
+
+    try {
+      const res  = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId, planType, amountFen, isStudent, deviceId, resumeId, templateId,
+          title: `ResumeCraft ${PLAN_TITLE[planType]}`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) { setQrError(data.error ?? '创建支付失败'); setQrLoading(false); return }
+      setQrDataUrl(data.qrDataUrl)
+      setQrLoading(false)
+      startPoll(orderId, planType, amountFen)
+    } catch {
+      setQrError('网络错误，请重试')
+      setQrLoading(false)
+    }
+  }
+
+  // Clean up polling when modal unmounts
+  useEffect(() => () => stopPoll(), [])
+
+  async function redeemPromo() {
+    const trimmed = promoCode.trim()
+    if (!trimmed) return
+    if (hasRedeemedCode(trimmed)) { setPromoError('此兑换码已使用过'); return }
+    setPromoLoading(true)
+    setPromoError('')
+    try {
+      const res  = await fetch('/api/redeem-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: trimmed }) })
+      const data = await res.json()
+      if (!data.valid) { setPromoError(data.error ?? '兑换码无效'); return }
+      const planType = data.plan as PlanType
+      const now      = Date.now()
+      const orderId  = generateOrderId()
+      const expiresAt = PLAN_DURATION_MS[planType] ? now + PLAN_DURATION_MS[planType] : undefined
+      addPayment({
+        orderId, deviceId, planType, amount: 0, isStudent,
+        paidAt: now, expiresAt, payMethod: 'wechat',
+        aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
+      })
+      markCodeRedeemed(trimmed)
+      const PLAN_ZH: Record<string, string> = { trial7: '7天体验卡', monthly: '月卡', quarterly: '季卡', yearly: '年卡' }
+      setPromoOk(`🎉 ${data.label ?? PLAN_ZH[planType] ?? planType}已激活！`)
+      setTimeout(() => { onSuccess(planType, orderId); onClose() }, 1200)
+    } catch {
+      setPromoError('网络错误，请重试')
+    } finally {
+      setPromoLoading(false)
+    }
+  }
 
   // ── Success overlay ──────────────────────────────────────────
   if (phase === 'success') {
@@ -1020,48 +1084,63 @@ export function PaywallModal({
 
   // ── QR / paying phase ────────────────────────────────────────
   if (phase === 'paying') {
+    const payingAmount = !pendingType ? 0
+      : pendingType === 'single'    ? singlePrice
+      : pendingType === 'monthly'   ? subPrice('monthly')
+      : pendingType === 'quarterly' ? subPrice('quarterly')
+      :                               subPrice('yearly')
+
     return (
-      <ModalWrap onClose={onClose}>
+      <ModalWrap onClose={() => { stopPoll(); onClose() }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-          <button onClick={() => setPhase('plans')} style={{
+          <button onClick={() => { stopPoll(); setPhase('plans') }} style={{
             width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
             border: '1.5px solid #e2e8f0', background: 'transparent',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#64748b', fontSize: '16px', fontFamily: 'var(--font-sans)',
           }}>←</button>
-          <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>扫码支付</div>
+          <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>微信扫码支付</div>
         </div>
 
-
-        {/* Fake QR */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div style={{
             display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
             padding: '22px', background: '#f8fafc',
             borderRadius: '12px', border: '1px solid #e2e8f0',
+            minWidth: '220px', minHeight: '200px', justifyContent: 'center',
           }}>
-            <QrCode size={128} color="#0f172a" />
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '14px' }}>
-              {fmtFen(payingAmount)}
-            </div>
-            <div style={{ fontSize: '10.5px', color: '#94a3b8', marginTop: '4px' }}>
-              订单号 {pendingOrder}
-            </div>
+            {qrLoading && (
+              <>
+                <style>{`@keyframes pwSpin{to{transform:rotate(360deg)}}`}</style>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: 'var(--theme-blue)', animation: 'pwSpin 0.8s linear infinite', marginBottom: '12px' }} />
+                <div style={{ fontSize: '13px', color: '#64748b' }}>正在生成支付码…</div>
+              </>
+            )}
+            {qrError && (
+              <div style={{ color: '#dc2626', fontSize: '13px', padding: '12px' }}>{qrError}</div>
+            )}
+            {qrDataUrl && !qrLoading && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt="微信支付二维码" style={{ width: '180px', height: '180px' }} />
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginTop: '12px' }}>
+                  {fmtFen(payingAmount)}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                  {PLAN_TITLE[pendingType!] ?? ''} · 订单 {pendingOrder}
+                </div>
+              </>
+            )}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
-            请使用微信扫描上方二维码完成支付
-          </div>
+          {qrDataUrl && !qrLoading && (
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', animation: 'pwSpin 1.5s linear infinite', border: '2px solid #bbf7d0' }} />
+              微信扫码 · 支付后自动解锁
+            </div>
+          )}
         </div>
 
-        <button onClick={devPaid} style={{
-          width: '100%', padding: '13px', borderRadius: '10px', marginBottom: '10px',
-          background: 'linear-gradient(135deg, #16a34a, #15803d)',
-          color: 'white', border: 'none', fontFamily: 'var(--font-sans)',
-          fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-        }}>
-          ✅ [DEV] 模拟支付成功
-        </button>
-        <button onClick={() => setPhase('plans')} style={{
+        <button onClick={() => { stopPoll(); setPhase('plans') }} style={{
           width: '100%', padding: '10px', borderRadius: '8px',
           border: '1.5px solid #e2e8f0', background: 'white',
           fontFamily: 'var(--font-sans)', fontSize: '13px', cursor: 'pointer', color: '#64748b',
@@ -1131,7 +1210,7 @@ export function PaywallModal({
           </div>
 
           <div style={{ marginBottom: showFreeOption ? '10px' : 0 }}>
-            <button onClick={() => startPay('single', 'wechat')} style={{
+            <button onClick={() => startPay('single')} style={{
               width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
               background: '#07c160',
               color: 'white', fontFamily: 'var(--font-sans)',
@@ -1228,7 +1307,7 @@ export function PaywallModal({
 
           {/* Pay button */}
           <div style={{ marginBottom: '10px' }}>
-            <button onClick={() => startPay(selectedPlan, 'wechat')} style={{
+            <button onClick={() => startPay(selectedPlan)} style={{
               width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
               background: '#07c160',
               color: 'white', fontFamily: 'var(--font-sans)',
@@ -1250,6 +1329,69 @@ export function PaywallModal({
           </button>
         </>
       )}
+
+      {/* ── Promo / gift code section (both tabs) ─────────────── */}
+      <div style={{ borderTop: '1px solid #f1f5f9', marginTop: '8px', paddingTop: '10px' }}>
+        <button
+          onClick={() => { setPromoExpanded(v => !v); setPromoError(''); setPromoOk('') }}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '8px 0', border: 'none', background: 'transparent',
+            fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#64748b', cursor: 'pointer',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            🎟️ 使用兑换码？
+          </span>
+          {promoExpanded ? <ChevronUp size={13} color="#94a3b8" /> : <ChevronDown size={13} color="#94a3b8" />}
+        </button>
+
+        {promoExpanded && (
+          <div style={{ marginTop: '6px' }}>
+            {promoOk ? (
+              <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '13px', color: '#15803d', fontWeight: 600, textAlign: 'center' }}>
+                {promoOk}
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    value={promoCode}
+                    onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError('') }}
+                    placeholder="输入兑换码"
+                    style={{
+                      flex: 1, padding: '9px 12px', borderRadius: '8px',
+                      border: `1.5px solid ${promoError ? '#fca5a5' : '#e2e8f0'}`,
+                      fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#0f172a',
+                      background: '#f8fafc', outline: 'none', boxSizing: 'border-box',
+                      letterSpacing: '0.5px',
+                    }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+                    onBlur={e => { e.target.style.borderColor = promoError ? '#fca5a5' : '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                    onKeyDown={e => e.key === 'Enter' && redeemPromo()}
+                  />
+                  <button
+                    onClick={redeemPromo}
+                    disabled={promoLoading || !promoCode.trim()}
+                    style={{
+                      padding: '9px 16px', borderRadius: '8px', border: 'none', flexShrink: 0,
+                      background: promoCode.trim() ? 'var(--theme-blue)' : '#e2e8f0',
+                      color: promoCode.trim() ? 'white' : '#94a3b8',
+                      fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
+                      cursor: promoCode.trim() && !promoLoading ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {promoLoading ? '…' : '兑换'}
+                  </button>
+                </div>
+                {promoError && (
+                  <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px' }}>{promoError}</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </ModalWrap>
   )
 }
@@ -1343,24 +1485,25 @@ export function StudentModal({
         </div>
       </div>
 
-      {/* Code */}
-      {codeSent && (
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>验证码</label>
-          <input
-            value={code}
-            onChange={e => { setCode(e.target.value); setError('') }}
-            placeholder="6位验证码"
-            maxLength={6}
-            style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
-            onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
-          />
+      {/* Code — always visible so user sees the full flow upfront */}
+      <div style={{ marginBottom: '12px' }}>
+        <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>验证码</label>
+        <input
+          value={code}
+          onChange={e => { setCode(e.target.value); setError('') }}
+          placeholder={codeSent ? '输入 6 位验证码' : '发送验证码后在此输入'}
+          maxLength={6}
+          disabled={!codeSent}
+          style={{ ...inputStyle, opacity: codeSent ? 1 : 0.5 }}
+          onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+          onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = codeSent ? '#f8fafc' : '#f1f5f9' }}
+        />
+        {codeSent && (
           <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '6px' }}>
             💡 模拟环境验证码为 <strong style={{ color: '#334155' }}>123456</strong>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {error && (
         <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '12px', padding: '8px 12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
@@ -1371,7 +1514,7 @@ export function StudentModal({
       {codeSent && (
         <button onClick={verify} disabled={!code} style={{
           width: '100%', padding: '13px', borderRadius: '10px', border: 'none', marginBottom: '14px',
-          background: code ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
+          background: code ? 'var(--theme-blue)' : '#e2e8f0',
           color: code ? 'white' : '#94a3b8',
           fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
           cursor: code ? 'pointer' : 'not-allowed',

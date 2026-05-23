@@ -50,7 +50,7 @@ function buildHtml(bodyHtml: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { htmlContent, docTitle, format = 'pdf' } = await req.json()
+  const { htmlContent, docTitle, format = 'pdf' } = await req.json() as { htmlContent: string; docTitle?: string; format?: 'pdf' | 'word' | 'png' }
   if (!htmlContent) {
     return NextResponse.json({ error: 'missing htmlContent' }, { status: 400 })
   }
@@ -58,6 +58,11 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any
   try {
+    // PNG needs high DPR for sharp text; PDF is vector so DPR has no effect on it.
+    const DPR = format === 'png' ? 3 : 1
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let page: any
     if (process.env.VERCEL) {
       const chromium = (await import('@sparticuz/chromium-min')).default
       const puppeteer = await import('puppeteer-core')
@@ -67,15 +72,15 @@ export async function POST(req: NextRequest) {
         executablePath: await chromium.executablePath(CHROMIUM_PACK_URL),
         headless: 'shell',
       })
+      page = await browser.newPage()
+      await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: DPR })
     } else {
       const { chromium } = await import('playwright')
       browser = await chromium.launch({ headless: true })
+      const ctx = await browser.newContext({ deviceScaleFactor: DPR })
+      page = await ctx.newPage()
+      await page.setViewportSize({ width: 794, height: 1123 })
     }
-
-    const page = await browser.newPage()
-    await (process.env.VERCEL
-      ? page.setViewport({ width: 794, height: 1123 })
-      : page.setViewportSize({ width: 794, height: 1123 }))
 
     const fullHtml = buildHtml(htmlContent)
     if (process.env.VERCEL) {
@@ -235,6 +240,27 @@ export async function POST(req: NextRequest) {
     })
 
     const safe = (docTitle ?? '简历').replace(/[/\\:*?"<>|]/g, '').trim() || '简历'
+
+    if (format === 'png') {
+      const pageCount: number = await page.evaluate(() =>
+        document.querySelectorAll('.resume-page').length
+      )
+      const totalH = Math.max(1123, pageCount * 1123)
+      if (process.env.VERCEL) {
+        await page.setViewport({ width: 794, height: totalH, deviceScaleFactor: DPR })
+      } else {
+        await page.setViewportSize({ width: 794, height: totalH })
+      }
+      await new Promise(r => setTimeout(r, 200))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pngBuf = await (page as any).screenshot({ type: 'png', fullPage: false })
+      return new NextResponse(Buffer.from(pngBuf), {
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(safe)}.png`,
+        },
+      })
+    }
 
     if (format === 'word') {
       const pageCount: number = await page.evaluate(() =>
