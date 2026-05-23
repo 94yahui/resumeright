@@ -11,10 +11,10 @@ function getCredentials() {
 
 function sign(params: Record<string, string>, appsecret: string): string {
   const payload = Object.keys(params)
-    .filter(k => params[k] !== '' && params[k] != null)
+    .filter(k => params[k] !== '' && params[k] != null && k !== 'hash')
     .sort()
     .map(k => `${k}=${params[k]}`)
-    .join('&') + `&key=${appsecret}`
+    .join('&') + appsecret   // 官方：直接拼接，无 &key= 前缀
   return crypto.createHash('md5').update(payload).digest('hex')
 }
 
@@ -44,6 +44,7 @@ export async function hpjCreate({
   const { appid, appsecret } = getCredentials()
 
   const params: Record<string, string> = {
+    version:        '1.1',
     ...baseParams(appid),
     trade_order_id: orderId,
     total_fee:      (amountFen / 100).toFixed(2),
@@ -51,6 +52,9 @@ export async function hpjCreate({
     notify_url:     notifyUrl,
     return_url:     returnUrl,
     payment:        'wechat',
+    type:           'WAP',
+    wap_url:        returnUrl,
+    wap_name:       'ResumeCraft',
   }
   params.hash = sign(params, appsecret)
 
