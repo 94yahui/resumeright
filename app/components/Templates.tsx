@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { TEMPLATES, CATEGORIES, CATEGORY_MAP, TemplateConfig } from '../lib/templates-config'
 import TemplateThumbnail from '../lib/TemplateThumbnail'
@@ -10,12 +10,21 @@ const PRO_COUNT = TEMPLATES.filter(t => !t.free).length
 export default function Templates() {
   const [activeFilter, setActiveFilter] = useState('全部')
   const [showAll, setShowAll] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const defaultCount = isMobile ? 5 : 12
   const catKey = CATEGORY_MAP[activeFilter]
   const filtered = TEMPLATES.filter(t =>
     catKey === 'all' || t.categories.includes(catKey)
   )
-  const visible = showAll ? filtered : filtered.slice(0, 12)
+  const visible = showAll ? filtered : filtered.slice(0, defaultCount)
 
   return (
     <section id="templates" className="templates-section" style={{
