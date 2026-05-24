@@ -104,8 +104,8 @@ export default function Templates() {
       <div className="templates-grid" style={{
         maxWidth: '1280px', margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-        gap: '28px',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: isMobile ? '14px' : '28px',
       }}>
         {visible.map((tpl, i) => (
           <TemplateCard key={tpl.id} tpl={tpl} delay={Math.min(i, 9) * 0.04} />
