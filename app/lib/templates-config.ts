@@ -16,6 +16,8 @@ export type AccentStyle =
   | 'thin-line'
   | 'double-line'
   | 'plain-bold'
+  | 'triple-bar'
+  | 'gradient-band'
 
 export type FontPair =
   | 'modern-sans'
@@ -39,7 +41,7 @@ export interface TemplateConfig {
   desc: string
 }
 
-export const TEMPLATES: TemplateConfig[] = [
+const _ALL_TEMPLATES: TemplateConfig[] = [
 
   // ========== 5 FREE TEMPLATES ==========
   {
@@ -106,6 +108,114 @@ export const TEMPLATES: TemplateConfig[] = [
     showPhoto: true,
     tag: '通用·横幅·照片',
     desc: '顶部彩色横幅带头像，胶囊式节标题',
+  },
+
+  // ── triple-bar variants (4) ──
+  {
+    id: 'pro-triple-classic',
+    name: '三竖极简',
+    categories: ['general', 'tech'],
+    free: false,
+    layout: 'single-classic',
+    accentStyle: 'triple-bar',
+    accentColor: '#0f172a',
+    fontPair: 'modern-sans',
+    showPhoto: false,
+    tag: '极简·律动',
+    desc: '三竖线由宽到细点缀标题，极简中带节奏感',
+  },
+  {
+    id: 'pro-triple-narrow-photo',
+    name: '三竖侧栏照片',
+    categories: ['tech', 'design'],
+    free: false,
+    layout: 'sidebar-left-narrow',
+    accentStyle: 'triple-bar',
+    accentColor: '#1d4ed8',
+    fontPair: 'modern-sans',
+    showPhoto: true,
+    tag: '科技·设计·照片',
+    desc: '左窄栏配头像与三竖线标题，现代律动感',
+  },
+  {
+    id: 'pro-triple-card-serif',
+    name: '三竖卡片衬线',
+    categories: ['finance', 'general'],
+    free: false,
+    layout: 'header-card',
+    accentStyle: 'triple-bar',
+    accentColor: '#7f1d1d',
+    fontPair: 'serif-heading',
+    showPhoto: false,
+    tag: '金融·咨询',
+    desc: '头部卡片配衬线三竖线，沉稳而有层次',
+  },
+  {
+    id: 'pro-triple-wide-photo',
+    name: '三竖宽栏照片',
+    categories: ['tech', 'general'],
+    free: false,
+    layout: 'sidebar-left-wide',
+    accentStyle: 'triple-bar',
+    accentColor: '#0d9488',
+    fontPair: 'modern-sans',
+    showPhoto: true,
+    tag: '全栈·管理·照片',
+    desc: '深色宽栏配头像与三竖线标题，视觉层次丰富',
+  },
+
+  // ── gradient-band variants (4) ──
+  {
+    id: 'pro-gradient-classic',
+    name: '渐变带单栏',
+    categories: ['general', 'design'],
+    free: false,
+    layout: 'single-classic',
+    accentStyle: 'gradient-band',
+    accentColor: '#6d28d9',
+    fontPair: 'modern-sans',
+    showPhoto: false,
+    tag: '设计·创意',
+    desc: '全宽渐变色带衬托节标题，由深至浅优雅过渡',
+  },
+  {
+    id: 'pro-gradient-narrow-photo',
+    name: '渐变带侧栏照片',
+    categories: ['design', 'tech'],
+    free: false,
+    layout: 'sidebar-left-narrow',
+    accentStyle: 'gradient-band',
+    accentColor: '#0891b2',
+    fontPair: 'modern-sans',
+    showPhoto: true,
+    tag: '设计·产品·照片',
+    desc: '左窄栏配头像，渐变色带标题，清新现代',
+  },
+  {
+    id: 'pro-gradient-card',
+    name: '渐变带卡片',
+    categories: ['general', 'tech'],
+    free: false,
+    layout: 'header-card',
+    accentStyle: 'gradient-band',
+    accentColor: '#ea580c',
+    fontPair: 'modern-sans',
+    showPhoto: false,
+    tag: '运营·市场',
+    desc: '头部卡片配橙色渐变带，活力十足',
+  },
+  {
+    id: 'pro-gradient-two-col',
+    name: '渐变带双栏',
+    categories: ['finance', 'general'],
+    free: false,
+    layout: 'two-column-balance',
+    accentStyle: 'gradient-band',
+    accentColor: '#1e3a8a',
+    fontPair: 'serif-heading',
+    showPhoto: true,
+    tag: '咨询·金融·照片',
+    desc: '双栏平衡布局配衬线渐变带，精英沉稳气质',
   },
 
   // ========== 25 PRO TEMPLATES ==========
@@ -862,8 +972,136 @@ export const TEMPLATES: TemplateConfig[] = [
     tag: '通用·百搭',
     desc: '头部卡片无衬线下划线，百搭通用，ATS 友好',
   },
+
+  // ══════════════════════════════════════════════════════════════
+  // triple-bar × all layouts × all font pairs × photo variations
+  // ══════════════════════════════════════════════════════════════
+
+  // single-classic
+  { id: 'pro-triple-cls-serif', name: '三竖单栏衬线', categories: ['finance', 'general'], free: false, layout: 'single-classic', accentStyle: 'triple-bar', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '金融·律动', desc: '衬线字体配三竖线节标题，正式中透出律动感' },
+  { id: 'pro-triple-cls-serif-ph', name: '三竖单栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'single-classic', accentStyle: 'triple-bar', accentColor: '#7c3aed', fontPair: 'serif-heading', showPhoto: true, tag: '金融·照片', desc: '衬线三竖线配头像，沉稳而富有个性' },
+  { id: 'pro-triple-cls-mono', name: '三竖单栏等宽', categories: ['tech'], free: false, layout: 'single-classic', accentStyle: 'triple-bar', accentColor: '#065f46', fontPair: 'mono-accent', showPhoto: false, tag: '开发·律动', desc: '等宽字体配三竖节标题，工程师专属律动感' },
+  { id: 'pro-triple-cls-photo', name: '三竖单栏照片', categories: ['general', 'tech'], free: false, layout: 'single-classic', accentStyle: 'triple-bar', accentColor: '#374151', fontPair: 'modern-sans', showPhoto: true, tag: '通用·照片', desc: '单栏三竖配头像，百搭专业' },
+
+  // single-centered
+  { id: 'pro-triple-ctr-sans', name: '三竖居中', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#0891b2', fontPair: 'modern-sans', showPhoto: false, tag: '设计·居中', desc: '居中排版配三竖节标题，现代感十足' },
+  { id: 'pro-triple-ctr-photo', name: '三竖居中照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'right', tag: '设计·照片', desc: '居中配头像与三竖标题，个性鲜明' },
+  { id: 'pro-triple-ctr-serif', name: '三竖居中衬线', categories: ['design', 'finance'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#1e293b', fontPair: 'serif-heading', showPhoto: false, tag: '学术·设计', desc: '衬线居中排版配三竖节标题，典雅大气' },
+  { id: 'pro-triple-ctr-serif-ph', name: '三竖居中衬线照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: true, photoPlacement: 'right', tag: '艺术·照片', desc: '衬线居中三竖配头像，文艺质感' },
+
+  // sidebar-left-narrow
+  { id: 'pro-triple-nrw-sans', name: '三竖窄栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'triple-bar', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false, tag: '通用·清爽', desc: '左窄栏无衬线三竖节标题，清爽专业' },
+  { id: 'pro-triple-nrw-serif', name: '三竖窄栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'triple-bar', accentColor: '#b91c1c', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·正式', desc: '左窄栏衬线三竖，正式感强' },
+  { id: 'pro-triple-nrw-serif-ph', name: '三竖窄栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'triple-bar', accentColor: '#92400e', fontPair: 'serif-heading', showPhoto: true, tag: '法律·照片', desc: '左窄栏衬线三竖配头像，传统气质' },
+  { id: 'pro-triple-nrw-mono', name: '三竖窄栏等宽', categories: ['tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'triple-bar', accentColor: '#4c1d95', fontPair: 'mono-accent', showPhoto: false, tag: '技术·代码', desc: '左窄栏等宽三竖节标题，极客风格' },
+  { id: 'pro-triple-nrw-mono-ph', name: '三竖窄栏等宽照片', categories: ['tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'triple-bar', accentColor: '#14532d', fontPair: 'mono-accent', showPhoto: true, tag: '全栈·照片', desc: '左窄栏等宽三竖配头像，技术与个性兼具' },
+
+  // sidebar-left-wide
+  { id: 'pro-triple-wide-sans', name: '三竖宽栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-left-wide', accentStyle: 'triple-bar', accentColor: '#1a1a2e', fontPair: 'modern-sans', showPhoto: false, tag: '科技·深色', desc: '深色宽栏无衬线三竖，沉稳大气' },
+  { id: 'pro-triple-wide-serif', name: '三竖宽栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-wide', accentStyle: 'triple-bar', accentColor: '#9a1515', fontPair: 'serif-heading', showPhoto: false, tag: '高管·金融', desc: '宽栏衬线三竖，高管专属气质' },
+  { id: 'pro-triple-wide-serif-ph', name: '三竖宽栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-wide', accentStyle: 'triple-bar', accentColor: '#312e81', fontPair: 'serif-heading', showPhoto: true, tag: '金融·照片', desc: '宽栏衬线三竖配头像，精英沉稳' },
+  { id: 'pro-triple-wide-mono', name: '三竖宽栏等宽', categories: ['tech'], free: false, layout: 'sidebar-left-wide', accentStyle: 'triple-bar', accentColor: '#1e3a8a', fontPair: 'mono-accent', showPhoto: false, tag: '架构·工程', desc: '深色宽栏等宽三竖，架构师气质' },
+  { id: 'pro-triple-wide-mono-ph', name: '三竖宽栏等宽照片', categories: ['tech'], free: false, layout: 'sidebar-left-wide', accentStyle: 'triple-bar', accentColor: '#0c4a6e', fontPair: 'mono-accent', showPhoto: true, tag: '后端·照片', desc: '宽栏等宽三竖配头像，工程师专属' },
+
+  // sidebar-right
+  { id: 'pro-triple-right-sans', name: '三竖右栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-right', accentStyle: 'triple-bar', accentColor: '#1d4ed8', fontPair: 'modern-sans', showPhoto: false, tag: '通用·现代', desc: '右侧辅助栏配三竖节标题，布局新颖' },
+  { id: 'pro-triple-right-photo', name: '三竖右栏照片', categories: ['general', 'tech'], free: false, layout: 'sidebar-right', accentStyle: 'triple-bar', accentColor: '#0d9488', fontPair: 'modern-sans', showPhoto: true, tag: '产品·照片', desc: '右栏三竖配头像，清新活力' },
+  { id: 'pro-triple-right-serif', name: '三竖右栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-right', accentStyle: 'triple-bar', accentColor: '#3f3f46', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·典雅', desc: '右栏衬线三竖，低调典雅' },
+  { id: 'pro-triple-right-serif-ph', name: '三竖右栏衬线照片', categories: ['design', 'general'], free: false, layout: 'sidebar-right', accentStyle: 'triple-bar', accentColor: '#6d28d9', fontPair: 'serif-heading', showPhoto: true, tag: '设计·照片', desc: '右栏衬线三竖配头像，个性突出' },
+  { id: 'pro-triple-right-mono', name: '三竖右栏等宽', categories: ['tech'], free: false, layout: 'sidebar-right', accentStyle: 'triple-bar', accentColor: '#374151', fontPair: 'mono-accent', showPhoto: false, tag: '全栈·极客', desc: '右栏等宽三竖，极客风格' },
+
+  // top-banner-photo
+  { id: 'pro-triple-banner-sans', name: '三竖横幅', categories: ['general', 'design'], free: false, layout: 'top-banner-photo', accentStyle: 'triple-bar', accentColor: '#1e293b', fontPair: 'modern-sans', showPhoto: true, tag: '通用·横幅', desc: '顶部横幅配三竖节标题，视觉冲击强' },
+  { id: 'pro-triple-banner-serif', name: '三竖横幅衬线', categories: ['design', 'general'], free: false, layout: 'top-banner-photo', accentStyle: 'triple-bar', accentColor: '#7f1d1d', fontPair: 'serif-heading', showPhoto: true, tag: '人文·媒体', desc: '横幅衬线三竖，人文气息浓厚' },
+  { id: 'pro-triple-banner-mono', name: '三竖横幅等宽', categories: ['tech'], free: false, layout: 'top-banner-photo', accentStyle: 'triple-bar', accentColor: '#0c4a6e', fontPair: 'mono-accent', showPhoto: true, tag: '技术·横幅', desc: '横幅等宽三竖，技术感与视觉冲击并存' },
+
+  // two-column-balance
+  { id: 'pro-triple-two-sans', name: '三竖双栏', categories: ['general', 'finance'], free: false, layout: 'two-column-balance', accentStyle: 'triple-bar', accentColor: '#334155', fontPair: 'modern-sans', showPhoto: false, tag: '信息密集·通用', desc: '双栏平衡配三竖节标题，信息密度高' },
+  { id: 'pro-triple-two-photo', name: '三竖双栏照片', categories: ['general', 'tech'], free: false, layout: 'two-column-balance', accentStyle: 'triple-bar', accentColor: '#ea580c', fontPair: 'modern-sans', showPhoto: true, tag: '产品·运营', desc: '双栏三竖配头像，活力四射' },
+  { id: 'pro-triple-two-serif', name: '三竖双栏衬线', categories: ['finance', 'general'], free: false, layout: 'two-column-balance', accentStyle: 'triple-bar', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·金融', desc: '双栏衬线三竖，精英气质' },
+  { id: 'pro-triple-two-mono', name: '三竖双栏等宽', categories: ['tech'], free: false, layout: 'two-column-balance', accentStyle: 'triple-bar', accentColor: '#16a34a', fontPair: 'mono-accent', showPhoto: false, tag: '工程·数据', desc: '双栏等宽三竖，代码工程师专属' },
+
+  // header-card
+  { id: 'pro-triple-card-sans', name: '三竖卡片', categories: ['general', 'design'], free: false, layout: 'header-card', accentStyle: 'triple-bar', accentColor: '#374151', fontPair: 'modern-sans', showPhoto: false, tag: '极简·通用', desc: '头部卡片三竖节标题，极简现代' },
+  { id: 'pro-triple-card-photo', name: '三竖卡片照片', categories: ['general', 'tech'], free: false, layout: 'header-card', accentStyle: 'triple-bar', accentColor: '#7c3aed', fontPair: 'modern-sans', showPhoto: true, tag: '产品·照片', desc: '卡片三竖配头像，现代个性' },
+  { id: 'pro-triple-card-serif-ph', name: '三竖卡片衬线照片', categories: ['finance', 'general'], free: false, layout: 'header-card', accentStyle: 'triple-bar', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: true, tag: '高管·照片', desc: '卡片衬线三竖配头像，正式中带活力' },
+  { id: 'pro-triple-card-mono', name: '三竖卡片等宽', categories: ['tech'], free: false, layout: 'header-card', accentStyle: 'triple-bar', accentColor: '#0891b2', fontPair: 'mono-accent', showPhoto: false, tag: '开发·DevOps', desc: '卡片等宽三竖，开发者专属风格' },
+
+  // ══════════════════════════════════════════════════════════════
+  // gradient-band × all layouts × all font pairs × photo variations
+  // ══════════════════════════════════════════════════════════════
+
+  // single-classic
+  { id: 'pro-grad-cls-serif', name: '渐变单栏衬线', categories: ['finance', 'general'], free: false, layout: 'single-classic', accentStyle: 'gradient-band', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '金融·典雅', desc: '衬线字体配全宽渐变带，沉稳典雅' },
+  { id: 'pro-grad-cls-serif-ph', name: '渐变单栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'single-classic', accentStyle: 'gradient-band', accentColor: '#7c3aed', fontPair: 'serif-heading', showPhoto: true, tag: '金融·照片', desc: '衬线渐变带配头像，正式与个性兼具' },
+  { id: 'pro-grad-cls-mono', name: '渐变单栏等宽', categories: ['tech'], free: false, layout: 'single-classic', accentStyle: 'gradient-band', accentColor: '#065f46', fontPair: 'mono-accent', showPhoto: false, tag: '开发·渐变', desc: '等宽字体配渐变带节标题，技术美感' },
+  { id: 'pro-grad-cls-photo', name: '渐变单栏照片', categories: ['general', 'tech'], free: false, layout: 'single-classic', accentStyle: 'gradient-band', accentColor: '#374151', fontPair: 'modern-sans', showPhoto: true, tag: '通用·照片', desc: '渐变带配头像，通用百搭' },
+
+  // single-centered
+  { id: 'pro-grad-ctr-sans', name: '渐变居中', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#0891b2', fontPair: 'modern-sans', showPhoto: false, tag: '设计·渐变', desc: '居中排版配渐变带节标题，现代感十足' },
+  { id: 'pro-grad-ctr-photo', name: '渐变居中照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'right', tag: '创意·照片', desc: '居中渐变带配头像，创意设计感' },
+  { id: 'pro-grad-ctr-serif', name: '渐变居中衬线', categories: ['design', 'finance'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#1e293b', fontPair: 'serif-heading', showPhoto: false, tag: '学术·典雅', desc: '衬线居中渐变带，学术典雅风格' },
+  { id: 'pro-grad-ctr-serif-ph', name: '渐变居中衬线照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: true, photoPlacement: 'right', tag: '艺术·照片', desc: '衬线居中渐变带配头像，文艺质感' },
+
+  // sidebar-left-narrow
+  { id: 'pro-grad-nrw-sans', name: '渐变窄栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false, tag: '通用·现代', desc: '左窄栏渐变带节标题，清爽现代' },
+  { id: 'pro-grad-nrw-serif', name: '渐变窄栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#b91c1c', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·正式', desc: '左窄栏衬线渐变带，正式内敛' },
+  { id: 'pro-grad-nrw-serif-ph', name: '渐变窄栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#92400e', fontPair: 'serif-heading', showPhoto: true, tag: '法律·照片', desc: '窄栏衬线渐变带配头像，传统专业' },
+  { id: 'pro-grad-nrw-mono', name: '渐变窄栏等宽', categories: ['tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#4c1d95', fontPair: 'mono-accent', showPhoto: false, tag: '技术·代码', desc: '左窄栏等宽渐变带，极客美学' },
+  { id: 'pro-grad-nrw-mono-ph', name: '渐变窄栏等宽照片', categories: ['tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#134e4a', fontPair: 'mono-accent', showPhoto: true, tag: '全栈·照片', desc: '窄栏等宽渐变带配头像，技术感十足' },
+
+  // sidebar-left-wide
+  { id: 'pro-grad-wide-sans', name: '渐变宽栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-left-wide', accentStyle: 'gradient-band', accentColor: '#1a1a2e', fontPair: 'modern-sans', showPhoto: false, tag: '科技·深色', desc: '深色宽栏渐变带节标题，沉稳大气' },
+  { id: 'pro-grad-wide-photo', name: '渐变宽栏照片', categories: ['tech', 'general'], free: false, layout: 'sidebar-left-wide', accentStyle: 'gradient-band', accentColor: '#312e81', fontPair: 'modern-sans', showPhoto: true, tag: '全栈·照片', desc: '宽栏渐变带配头像，科技气质' },
+  { id: 'pro-grad-wide-serif', name: '渐变宽栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-wide', accentStyle: 'gradient-band', accentColor: '#9a1515', fontPair: 'serif-heading', showPhoto: false, tag: '高管·金融', desc: '宽栏衬线渐变带，高管专属' },
+  { id: 'pro-grad-wide-serif-ph', name: '渐变宽栏衬线照片', categories: ['finance', 'general'], free: false, layout: 'sidebar-left-wide', accentStyle: 'gradient-band', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: true, tag: '精英·照片', desc: '宽栏衬线渐变带配头像，精英形象' },
+  { id: 'pro-grad-wide-mono', name: '渐变宽栏等宽', categories: ['tech'], free: false, layout: 'sidebar-left-wide', accentStyle: 'gradient-band', accentColor: '#0c4a6e', fontPair: 'mono-accent', showPhoto: false, tag: '架构·工程', desc: '宽栏等宽渐变带，架构师专属' },
+
+  // sidebar-right
+  { id: 'pro-grad-right-sans', name: '渐变右栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-right', accentStyle: 'gradient-band', accentColor: '#1d4ed8', fontPair: 'modern-sans', showPhoto: false, tag: '通用·现代', desc: '右侧辅助栏配渐变带节标题，布局新颖' },
+  { id: 'pro-grad-right-photo', name: '渐变右栏照片', categories: ['general', 'tech'], free: false, layout: 'sidebar-right', accentStyle: 'gradient-band', accentColor: '#0d9488', fontPair: 'modern-sans', showPhoto: true, tag: '产品·照片', desc: '右栏渐变带配头像，清新现代' },
+  { id: 'pro-grad-right-serif', name: '渐变右栏衬线', categories: ['finance', 'general'], free: false, layout: 'sidebar-right', accentStyle: 'gradient-band', accentColor: '#3f3f46', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·典雅', desc: '右栏衬线渐变带，低调典雅' },
+  { id: 'pro-grad-right-serif-ph', name: '渐变右栏衬线照片', categories: ['design', 'general'], free: false, layout: 'sidebar-right', accentStyle: 'gradient-band', accentColor: '#6d28d9', fontPair: 'serif-heading', showPhoto: true, tag: '设计·照片', desc: '右栏衬线渐变带配头像，个性突出' },
+  { id: 'pro-grad-right-mono', name: '渐变右栏等宽', categories: ['tech'], free: false, layout: 'sidebar-right', accentStyle: 'gradient-band', accentColor: '#374151', fontPair: 'mono-accent', showPhoto: false, tag: '全栈·极客', desc: '右栏等宽渐变带，极客风格' },
+
+  // top-banner-photo
+  { id: 'pro-grad-banner-sans', name: '渐变横幅', categories: ['general', 'design'], free: false, layout: 'top-banner-photo', accentStyle: 'gradient-band', accentColor: '#1e293b', fontPair: 'modern-sans', showPhoto: true, tag: '通用·横幅', desc: '顶部横幅配渐变带节标题，视觉强劲' },
+  { id: 'pro-grad-banner-serif', name: '渐变横幅衬线', categories: ['design', 'general'], free: false, layout: 'top-banner-photo', accentStyle: 'gradient-band', accentColor: '#7f1d1d', fontPair: 'serif-heading', showPhoto: true, tag: '人文·媒体', desc: '横幅衬线渐变带，人文气息浓厚' },
+  { id: 'pro-grad-banner-mono', name: '渐变横幅等宽', categories: ['tech'], free: false, layout: 'top-banner-photo', accentStyle: 'gradient-band', accentColor: '#0c4a6e', fontPair: 'mono-accent', showPhoto: true, tag: '技术·横幅', desc: '横幅等宽渐变带，技术感强' },
+
+  // two-column-balance
+  { id: 'pro-grad-two-sans', name: '渐变双栏', categories: ['general', 'finance'], free: false, layout: 'two-column-balance', accentStyle: 'gradient-band', accentColor: '#334155', fontPair: 'modern-sans', showPhoto: false, tag: '信息密集·通用', desc: '双栏渐变带节标题，信息清晰有序' },
+  { id: 'pro-grad-two-photo', name: '渐变双栏照片', categories: ['general', 'tech'], free: false, layout: 'two-column-balance', accentStyle: 'gradient-band', accentColor: '#ea580c', fontPair: 'modern-sans', showPhoto: true, tag: '产品·运营', desc: '双栏渐变带配头像，活力饱满' },
+  { id: 'pro-grad-two-mono', name: '渐变双栏等宽', categories: ['tech'], free: false, layout: 'two-column-balance', accentStyle: 'gradient-band', accentColor: '#16a34a', fontPair: 'mono-accent', showPhoto: false, tag: '工程·数据', desc: '双栏等宽渐变带，工程数据专属' },
+
+  // header-card
+  { id: 'pro-grad-card-serif', name: '渐变卡片衬线', categories: ['finance', 'general'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#1e293b', fontPair: 'serif-heading', showPhoto: false, tag: '高管·典雅', desc: '头部卡片衬线渐变带，高管专属' },
+  { id: 'pro-grad-card-serif-ph', name: '渐变卡片衬线照片', categories: ['finance', 'general'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: true, tag: '律师·照片', desc: '卡片衬线渐变带配头像，沉稳专业' },
+  { id: 'pro-grad-card-mono', name: '渐变卡片等宽', categories: ['tech'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#0891b2', fontPair: 'mono-accent', showPhoto: false, tag: '开发·DevOps', desc: '卡片等宽渐变带，开发者专属' },
+  { id: 'pro-grad-card-photo', name: '渐变卡片照片', categories: ['general', 'tech'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#7c3aed', fontPair: 'modern-sans', showPhoto: true, tag: '市场·创意', desc: '卡片渐变带配头像，活力个性' },
 ]
 
+// Round-robin interleave so no two consecutive pro templates share the same accentStyle
+function _interleaveByStyle(arr: TemplateConfig[]): TemplateConfig[] {
+  const free = arr.filter(t => t.free)
+  const pro = arr.filter(t => !t.free)
+  const groups: Record<string, TemplateConfig[]> = {}
+  for (const t of pro) {
+    if (!groups[t.accentStyle]) groups[t.accentStyle] = []
+    groups[t.accentStyle].push(t)
+  }
+  const keys = Object.keys(groups)
+  const result: TemplateConfig[] = []
+  const maxLen = Math.max(...keys.map(k => groups[k].length))
+  for (let i = 0; i < maxLen; i++) {
+    for (const k of keys) {
+      if (i < groups[k].length) result.push(groups[k][i])
+    }
+  }
+  return [...free, ...result]
+}
+
+export const TEMPLATES: TemplateConfig[] = _interleaveByStyle(_ALL_TEMPLATES)
 export const FREE_TEMPLATES = TEMPLATES.filter(t => t.free)
 export const PRO_TEMPLATES = TEMPLATES.filter(t => !t.free)
 

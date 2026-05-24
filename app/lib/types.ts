@@ -94,13 +94,13 @@ export function textToBullets(text: string): string[] {
 // Default demo data
 // ============================================================
 export const DEMO_DATA: ResumeData = {
-  name: '张浩然',
+  name: '简力全开',
   jobtitle: '高级软件工程师',
-  email: 'zhanghaoran@email.com',
+  email: 'resume@jianliall.com',
   phone: '138-0000-0000',
   city: '上海',
-  website: 'github.com/zhr',
-  photo: '',
+  website: 'jianliall.com',
+  photo: '/virtua_photo.png',
   summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。在字节跳动、美团等头部互联网公司积累了丰富的大规模产品研发经验。',
   hasSummary: false,
   hasSkills: true,

@@ -168,6 +168,32 @@ export default function ResumeRenderer({
             <div style={{ height: '1px', background: titleColor }} />
           </div>
         )
+      case 'triple-bar':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+            <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+              <div style={{ width: '6px', height: '13px', background: titleColor, opacity: 1 }} />
+              <div style={{ width: '4px', height: '13px', background: titleColor, opacity: 0.6 }} />
+              <div style={{ width: '2px', height: '13px', background: titleColor, opacity: 0.35 }} />
+            </div>
+          </div>
+        )
+      case 'gradient-band':
+        return (
+          <div style={{
+            marginBottom: '7px',
+            marginLeft: '-8px',
+            marginRight: '-8px',
+            padding: '5px 8px',
+            background: onDark
+              ? 'linear-gradient(to right, rgba(255,255,255,0.22), rgba(255,255,255,0))'
+              : `linear-gradient(to right, ${titleColor}22, transparent)`,
+            borderLeft: `3px solid ${titleColor}`,
+          }}>
+            <div style={{ ...baseProps, marginBottom: 0, color: onDark ? '#fff' : titleColor }}>{children}</div>
+          </div>
+        )
       case 'plain-bold':
       default:
         return <div style={{ ...baseProps, fontSize: '14px' }}>{children}</div>
@@ -573,7 +599,7 @@ export default function ResumeRenderer({
                 left: `${imgLeft}px`, top: `${imgTop}px`,
                 pointerEvents: 'none', userSelect: 'none',
               } : {
-                width: '100%', height: '100%', objectFit: 'cover',
+                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%',
               }}
             />
           </>

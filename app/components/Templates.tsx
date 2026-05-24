@@ -135,7 +135,7 @@ export default function Templates() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink3)'; e.currentTarget.style.background = '#f8fafc' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white' }}
           >
-            查看更多 ↓
+            查看更多
           </button>
         </div>
       )}
@@ -177,21 +177,13 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
         transition: 'box-shadow 0.22s',
       }}>
         <TemplateThumbnail template={tpl} fillWidth />
-        <div style={{
-          position: 'absolute', top: '10px', right: '10px',
-          background: tpl.free ? 'var(--teal)' : '#0f172a',
-          color: 'white',
-          padding: '3px 10px', borderRadius: '5px',
-          fontSize: '10px', fontWeight: 600,
-        }}>{tpl.free ? '免费' : 'Pro'}</div>
-
-        {/* Hover overlay — light tint with theme-blue 预览 button */}
+        {/* Hover preview button — no overlay tint */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(15,23,42,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           opacity: hovered ? 1 : 0,
           transition: 'opacity 0.2s',
+          pointerEvents: hovered ? 'auto' : 'none',
         }}>
           <div style={{
             background: 'var(--theme-blue)',
@@ -200,6 +192,15 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
             fontSize: '13px', fontWeight: 600,
           }}>预览</div>
         </div>
+
+        <div style={{
+          position: 'absolute', top: '10px', right: '10px',
+          background: tpl.free ? 'var(--teal)' : '#0f172a',
+          color: 'white',
+          padding: '3px 10px', borderRadius: '5px',
+          fontSize: '10px', fontWeight: 600,
+        }}>{tpl.free ? '免费' : 'Pro'}</div>
+
       </div>
 
       <div style={{
@@ -280,7 +281,7 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
             onClick={() => { window.location.href = `/editor?template=${tpl.id}` }}
             style={{
               pointerEvents: 'all',
-              background: 'rgba(7,137,236,0.82)',
+              background: 'var(--theme-blue)',
               color: '#fff',
               padding: '13px 32px',
               borderRadius: '10px',
@@ -288,8 +289,6 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
               border: 'none', cursor: 'pointer',
               fontFamily: 'var(--font-sans)',
               whiteSpace: 'nowrap',
-              backdropFilter: 'blur(2px)',
-              boxShadow: '0 4px 24px rgba(7,137,236,0.4)',
             }}
           >
             使用模版

@@ -81,9 +81,11 @@ function TermsContent() {
       </ul>
       <h2 style={h2s}>5. 知识产权</h2>
       <p style={ps}>模板设计、代码、Logo 均为简力全开所有。您使用本产品生成的简历内容归您本人所有。</p>
-      <h2 style={h2s}>6. 免责声明</h2>
+      <h2 style={h2s}>6. 演示内容声明</h2>
+      <p style={ps}>本产品页面（首页、模板预览等）所展示的示例简历中，"陈梦瑶"等人名均为虚构演示人物，不代表任何真实存在的自然人，亦不构成对任何个人姓名权或肖像权的侵犯。示例照片（如 virtua_photo）为 AI 生成的虚拟形象，不对应任何真实人物。如有相关方认为存在侵权，请联系我们，我们将在核实后第一时间处理。</p>
+      <h2 style={h2s}>7. 免责声明</h2>
       <p style={ps}>AI 优化建议仅供参考，不代表专业 HR 意见。我们不对因使用本产品生成的简历导致的求职结果承担责任。</p>
-      <h2 style={h2s}>7. 联系</h2>
+      <h2 style={h2s}>8. 联系</h2>
       <p style={{ ...ps, marginBottom: 0 }}><a href="mailto:hello@jianliquankai.com" style={{ color: '#0789ec', textDecoration: 'none' }}>hello@jianliquankai.com</a></p>
     </div>
   )

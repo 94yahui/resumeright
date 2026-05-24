@@ -113,7 +113,8 @@ html.page-scrolling::-webkit-scrollbar-thumb:hover { background: rgba(100,116,13
   }
   .templates-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 14px !important;
+    column-gap: 14px !important;
+    row-gap: 24px !important;
   }
 
   /* ── Pricing section ── */

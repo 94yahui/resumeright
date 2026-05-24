@@ -256,38 +256,55 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           >
             <div
               style={{
-                background: "var(--ink)",
+                background: "rgba(234, 88, 12, 0.85)",
                 padding: "28px 32px 24px",
                 color: "white",
               }}
             >
-              <div
-                style={{
-                  fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
-                  fontSize: "24px",
-                  marginBottom: "4px",
-                }}
-              >
-                陈梦瑶
-              </div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  opacity: 0.6,
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
-                  fontWeight: 300,
-                }}
-              >
-                资深产品经理
+              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "4px" }}>
+                <img
+                  src="/virtua_photo.png"
+                  alt=""
+                  style={{
+                    width: "48px", height: "60px",
+                    borderRadius: "10%",
+                    objectFit: "cover",
+                    objectPosition: "top",
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    flexShrink: 0,
+                    marginTop: "10px",
+                  }}
+                />
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
+                      fontSize: "24px",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    陈梦瑶
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      letterSpacing: "1px",
+                      textTransform: "uppercase",
+                      fontWeight: 400,
+                    }}
+                  >
+                    资深产品经理
+                  </div>
+                </div>
               </div>
               <div
                 style={{
                   display: "flex",
-                  gap: "14px",
+                  rowGap: "5px",
+                  columnGap: "14px",
                   marginTop: "14px",
                   flexWrap: "wrap",
-                  border: "1px var(--theme-blue) solid",
+                  border: "1px white solid",
                   padding: "2px",
                   borderRadius: "4px",
                 }}
@@ -305,7 +322,6 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                     onClick={(e) => e.preventDefault()}
                     style={{
                       fontSize: "11px",
-                      opacity: 0.7,
                       display: "flex",
                       alignItems: "center",
                       gap: "4px",
@@ -365,11 +381,12 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             style={{
               position: "absolute",
               zIndex: 5,
-              top: "90px",
+              top: "105px",
               right: "-16px",
               background: "linear-gradient(90deg, var(--theme-blue), var(--ink))",
               color: "var(--paper)",
               padding: "10px 14px",
+              border: "1px white solid",
               borderRadius: "10px",
               fontSize: "12px",
               fontWeight: 500,
@@ -381,7 +398,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             }}
           >
             <Pencil
-              size={12}
+              size={15}
               style={{
                 display: "inline",
                 verticalAlign: "middle",
