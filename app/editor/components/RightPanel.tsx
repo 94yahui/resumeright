@@ -34,6 +34,7 @@ interface Props {
   onAIApplied?: () => void;
   canAIOptimize?: boolean;
   onAIBlocked?: () => void;
+  onAIOptimizeSuccess?: () => void;
   deviceId?: string;
 }
 
@@ -49,6 +50,7 @@ export default function RightPanel({
   onAIApplied,
   canAIOptimize = false,
   onAIBlocked,
+  onAIOptimizeSuccess,
   deviceId = '',
 }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
@@ -99,6 +101,7 @@ export default function RightPanel({
         const json = await res.json();
         if (Array.isArray(json.bullets)) {
           setAiResult(json.bullets.map((b: string) => b.replace(/[。.]+$/, '').trim()));
+          onAIOptimizeSuccess?.()
         } else {
           setAiError('AI 返回数据异常，请重试');
         }
@@ -129,6 +132,7 @@ export default function RightPanel({
         const json = await res.json();
         if (typeof json.summary === 'string') {
           setAiSummaryResult(json.summary);
+          onAIOptimizeSuccess?.()
         } else {
           setAiError('AI 返回数据异常，请重试');
         }

@@ -1401,8 +1401,9 @@ ${autoprint ? `<script>
                   onClose={() => setSelection({ kind: 'none' })}
                   onMoveEntry={moveEntry}
                   onAIApplied={() => showToast('✓ AI 建议已应用')}
-                  canAIOptimize={proStatus.kind !== 'free'}
+                  canAIOptimize={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && proStatus.aiOptimizeLeft > 0)}
                   onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
+                  onAIOptimizeSuccess={() => { recordUsage(deviceId, 'ai_optimize', proStatus); setProStatus(getProStatus(deviceId, currentHistoryId || undefined)) }}
                   deviceId={deviceId}
                 />
               </div>
@@ -1429,8 +1430,9 @@ ${autoprint ? `<script>
                 onAddEntry={addEntry}
                 onClose={() => setSelection({ kind: 'none' })}
                 onMoveEntry={moveEntry}
-                canAIOptimize={proStatus.kind !== 'free'}
+                canAIOptimize={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && proStatus.aiOptimizeLeft > 0)}
                 onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
+                onAIOptimizeSuccess={() => { recordUsage(deviceId, 'ai_optimize', proStatus); setProStatus(getProStatus(deviceId, currentHistoryId || undefined)) }}
                 deviceId={deviceId}
               />
             </div>

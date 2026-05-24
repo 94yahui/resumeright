@@ -6,7 +6,7 @@ import { guardAI } from '../_guard'
 const inflateRawAsync = promisify(inflateRaw)
 
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
-const PARSE_MODEL = process.env.QWEN_MODEL || 'qwen3.6-plus'
+const PARSE_MODEL = process.env.QWEN_MODEL || 'qwen-plus'
 
 const PARSE_PROMPT = `You are a resume parser. First determine if this document is a resume/CV.
 
