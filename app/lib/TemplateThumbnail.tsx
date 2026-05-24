@@ -32,6 +32,8 @@ function FillThumbnail({ template }: { template: TemplateConfig }) {
   const ref = useRef<HTMLDivElement>(null)
   const [cw, setCw] = useState(0)
 
+  // useLayoutEffect: fires before paint → no visible flash between SSR and measured size.
+  // cw=0 on server (no content rendered); client measures immediately and fills correctly.
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
@@ -41,17 +43,15 @@ function FillThumbnail({ template }: { template: TemplateConfig }) {
     return () => obs.disconnect()
   }, [])
 
-  // Render the resume at 86% of the card width so it appears as a
-  // "sheet of paper" floating in the card — fonts look proportionally
-  // smaller relative to the card, matching expectations of a miniature document.
-  const PAD_RATIO = 0.07
-  const scale = cw > 0 ? (cw * (1 - PAD_RATIO * 2)) / PAGE_WIDTH : 0
-  const pad = cw * PAD_RATIO
+  const scale = cw > 0 ? cw / PAGE_WIDTH : 0
 
   return (
-    <div ref={ref} style={{ width: '100%', aspectRatio: `${PAGE_WIDTH} / ${PAGE_HEIGHT}`, overflow: 'hidden', position: 'relative', background: '#dde3ea' }}>
+    // aspect-ratio: CSS computes correct A4 height from width — no JS needed for sizing.
+    // Inner div is position:absolute so its 794px layout width doesn't escape overflow:hidden
+    // and doesn't push the CSS grid track wider than 1fr on mobile.
+    <div ref={ref} style={{ width: '100%', aspectRatio: `${PAGE_WIDTH} / ${PAGE_HEIGHT}`, overflow: 'hidden', position: 'relative', background: '#fff' }}>
       {cw > 0 && (
-        <div style={{ position: 'absolute', top: pad, left: pad, transform: `scale(${scale})`, transformOrigin: 'top left', width: `${PAGE_WIDTH}px`, pointerEvents: 'none', boxShadow: '0 1px 6px rgba(0,0,0,0.18)' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: 'top left', width: `${PAGE_WIDTH}px`, pointerEvents: 'none' }}>
           <ResumeRenderer template={template} data={THUMB_DATA} interactive={false} />
         </div>
       )}
