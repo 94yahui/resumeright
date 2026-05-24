@@ -223,8 +223,9 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
 
   useEffect(() => {
     const compute = () => {
-      const maxW = window.innerWidth * 0.88
-      const maxH = window.innerHeight * 0.84
+      const mobile = window.innerWidth < 768
+      const maxW = window.innerWidth * (mobile ? 0.92 : 0.72)
+      const maxH = window.innerHeight * (mobile ? 0.86 : 0.94)
       const wFromH = maxH * PAGE_WIDTH / PAGE_HEIGHT
       const w = Math.round(Math.min(maxW, wFromH))
       const h = Math.round(w * PAGE_HEIGHT / PAGE_WIDTH)
