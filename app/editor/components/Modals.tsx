@@ -1015,7 +1015,7 @@ export function PaywallModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId, planType, amountFen, isStudent, deviceId, resumeId, templateId,
-          title: `ResumeCraft ${PLAN_TITLE[planType]}`,
+          title: `简力全开 ${PLAN_TITLE[planType]}`,
         }),
       })
       const data = await res.json()

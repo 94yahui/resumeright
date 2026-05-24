@@ -54,7 +54,7 @@ export async function hpjCreate({
     payment:        'wechat',
     type:           'WAP',
     wap_url:        returnUrl,
-    wap_name:       'ResumeCraft',
+    wap_name:       '简力全开',
   }
   params.hash = sign(params, appsecret)
 
