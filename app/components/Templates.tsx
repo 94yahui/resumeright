@@ -20,8 +20,8 @@ export default function Templates() {
 
   useEffect(() => { setExtraLoads(0) }, [isMobile])
 
-  const step = isMobile ? 5 : 10
-  const defaultCount = isMobile ? 5 : 10
+  const step = isMobile ? 6 : 10
+  const defaultCount = isMobile ? 6 : 10
   const showCount = defaultCount + extraLoads * step
 
   const catKey = CATEGORY_MAP[activeFilter]
