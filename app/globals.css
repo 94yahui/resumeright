@@ -24,6 +24,8 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+button:focus { outline: none; }
+button:focus-visible { outline: 2px solid var(--theme-blue); outline-offset: 2px; }
 html { scroll-behavior: auto; }
 body {
   font-family: var(--font-sans);
@@ -110,8 +112,8 @@ html.page-scrolling::-webkit-scrollbar-thumb:hover { background: rgba(100,116,13
     padding: 48px 16px 40px !important;
   }
   .templates-grid {
-    grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
   }
 
   /* ── Pricing section ── */
