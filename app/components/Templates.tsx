@@ -66,7 +66,7 @@ export default function Templates() {
           </p>
         </div>
 
-        {/* Category filter — parallelogram tabs */}
+        {/* Category filter */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           {CATEGORIES.map(f => {
             const active = activeFilter === f
@@ -85,7 +85,7 @@ export default function Templates() {
                   cursor: 'pointer',
                   fontFamily: 'var(--font-sans)',
                   transition: 'background 0.18s, color 0.18s',
-                  boxShadow: active ? '0 4px 14px rgba(7,137,236,0.35)' : 'none',
+                  boxShadow: 'none',
                 }}
               >
                 <span style={{
@@ -186,19 +186,20 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
           fontSize: '10px', fontWeight: 600,
         }}>{tpl.free ? '免费' : 'Pro'}</div>
 
-        {/* Hover overlay with 预览 button */}
+        {/* Hover overlay — light tint with theme-blue 预览 button */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(15,23,42,0.38)',
+          background: 'rgba(15,23,42,0.18)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           opacity: hovered ? 1 : 0,
           transition: 'opacity 0.2s',
         }}>
           <div style={{
-            background: 'white', color: '#0f172a',
+            background: 'var(--theme-blue)',
+            color: 'white',
             padding: '7px 20px', borderRadius: '8px',
             fontSize: '13px', fontWeight: 600,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+            boxShadow: '0 2px 12px rgba(7,137,236,0.45)',
           }}>预览</div>
         </div>
       </div>
@@ -221,6 +222,8 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
 
 function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: () => void }) {
   const [size, setSize] = useState({ w: 340, h: 481 })
+  const [hasHistory, setHasHistory] = useState(false)
+  const [showContinue, setShowContinue] = useState(false)
 
   useEffect(() => {
     const compute = () => {
@@ -236,6 +239,13 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
     return () => window.removeEventListener('resize', compute)
   }, [])
 
+  useEffect(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('resumecraft_history') || '[]')
+      setHasHistory(Array.isArray(history) && history.length > 0)
+    } catch {}
+  }, [])
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
   }, [onClose])
@@ -249,6 +259,14 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
     }
   }, [handleKeyDown])
 
+  function handleUseTemplate() {
+    if (hasHistory) {
+      setShowContinue(true)
+    } else {
+      window.location.href = `/editor?template=${tpl.id}`
+    }
+  }
+
   return (
     <div
       style={{
@@ -259,10 +277,7 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
       }}
       onClick={onClose}
     >
-      <div
-        style={{ position: 'relative' }}
-        onClick={e => e.stopPropagation()}
-      >
+      <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
         {/* Resume preview */}
         <div style={{
           width: size.w, height: size.h,
@@ -273,29 +288,30 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
           <TemplateThumbnail template={tpl} width={size.w} />
         </div>
 
-        {/* Centered "使用模版" button overlay */}
+        {/* Centered 使用模版 button */}
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           pointerEvents: 'none',
         }}>
-          <Link
-            href={`/editor?template=${tpl.id}`}
+          <button
+            onClick={handleUseTemplate}
             style={{
               pointerEvents: 'all',
-              background: 'var(--theme-blue)',
+              background: 'rgba(7,137,236,0.82)',
               color: '#fff',
               padding: '13px 32px',
               borderRadius: '10px',
               fontSize: '15px', fontWeight: 700,
-              textDecoration: 'none',
-              boxShadow: '0 4px 24px rgba(7,137,236,0.55)',
+              border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 24px rgba(7,137,236,0.4)',
               fontFamily: 'var(--font-sans)',
               whiteSpace: 'nowrap',
+              backdropFilter: 'blur(2px)',
             }}
           >
             使用模版
-          </Link>
+          </button>
         </div>
 
         {/* Close button — top-right */}
@@ -315,6 +331,59 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
         >
           ×
         </button>
+
+        {/* Continue editing dialog */}
+        {showContinue && (
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              background: 'rgba(10,16,30,0.72)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '2px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              background: 'white', borderRadius: '14px',
+              padding: '28px 24px', width: Math.min(size.w - 40, 300),
+              textAlign: 'center',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+            }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                继续之前的编辑？
+              </div>
+              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px', lineHeight: 1.6 }}>
+                你有未完成的简历，是继续编辑还是用此模版新建？
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => { window.location.href = '/editor' }}
+                  style={{
+                    flex: 1, padding: '10px 0',
+                    borderRadius: '8px', border: '1.5px solid #e2e8f0',
+                    background: 'white', color: '#0f172a',
+                    fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  继续编辑
+                </button>
+                <button
+                  onClick={() => { window.location.href = `/editor?template=${tpl.id}` }}
+                  style={{
+                    flex: 1, padding: '10px 0',
+                    borderRadius: '8px', border: 'none',
+                    background: 'var(--theme-blue)', color: 'white',
+                    fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  使用新模版
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
