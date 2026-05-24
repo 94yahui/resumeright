@@ -256,10 +256,14 @@ function EditorInner() {
     if (!initialized.current) return
     const hid = loadedFromHistoryId.current
     // Persist historyId in the draft so "继续编辑" can restore the correct association
-    saveDraft({ data, templateId, color, docTitle, savedAt: Date.now(), historyId: hid ?? undefined })
-    // Keep the history entry in sync — includes name so renaming the doc updates the list
-    if (hid && hid !== 'draft') {
-      updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
+    try {
+      saveDraft({ data, templateId, color, docTitle, savedAt: Date.now(), historyId: hid ?? undefined })
+      // Keep the history entry in sync — includes name so renaming the doc updates the list
+      if (hid && hid !== 'draft') {
+        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
+      }
+    } catch {
+      showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
     }
   }, [data, templateId, color, docTitle])
 
@@ -511,20 +515,42 @@ function EditorInner() {
 
   // ============ History (saved drafts) ============
   const handleSaveHistory = useCallback(() => {
-    saveToHistory({ name: docTitle, data, templateId, color, savedAt: Date.now() })
-    setHistoryRefreshKey(k => k + 1)
-    if (isMobile) setLeftOpen(true)
-    showToast('✓ 已保存')
+    try {
+      saveToHistory({ name: docTitle, data, templateId, color, savedAt: Date.now() })
+      setHistoryRefreshKey(k => k + 1)
+      if (isMobile) setLeftOpen(true)
+      showToast('✓ 已保存')
+    } catch {
+      showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
+    }
   }, [docTitle, data, templateId, color, isMobile])
 
 
   // ============ Photo upload ============
+  function compressPhoto(dataUrl: string): Promise<string> {
+    return new Promise(resolve => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 400
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      }
+      img.src = dataUrl
+    })
+  }
+
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => {
-      setPhotoCropSrc(ev.target?.result as string)
+    reader.onload = async ev => {
+      const compressed = await compressPhoto(ev.target?.result as string)
+      setPhotoCropSrc(compressed)
       setPhotoCropOpen(true)
     }
     reader.readAsDataURL(file)

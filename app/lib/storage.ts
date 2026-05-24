@@ -30,7 +30,10 @@ export function loadDraft(): DraftState | null {
 
 export function saveDraft(state: DraftState): void {
   if (typeof window === 'undefined') return
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)) } catch {}
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)) } catch (e) {
+    console.error('[storage] saveDraft failed:', e)
+    throw e
+  }
 }
 
 export function clearDraft(): void {
@@ -68,25 +71,31 @@ export function uniqueHistoryName(name: string, list: HistoryEntry[]): string {
 
 export function saveToHistory(entry: Omit<HistoryEntry, 'id'>): string {
   if (typeof window === 'undefined') return ''
+  const list = loadHistory()
+  const id = Date.now().toString()
+  const name = uniqueHistoryName(entry.name, list)
+  const updated = [{ ...entry, id, name }, ...list].slice(0, 20)
   try {
-    const list = loadHistory()
-    const id = Date.now().toString()
-    const name = uniqueHistoryName(entry.name, list)
-    const updated = [{ ...entry, id, name }, ...list].slice(0, 20)
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
-    return id
-  } catch { return '' }
+  } catch (e) {
+    console.error('[storage] saveToHistory failed:', e)
+    throw e
+  }
+  return id
 }
 
 export function updateHistoryEntry(id: string, patch: Partial<Omit<HistoryEntry, 'id'>>): void {
   if (typeof window === 'undefined') return
+  const list = loadHistory()
+  const idx = list.findIndex(h => h.id === id)
+  if (idx === -1) return
+  list[idx] = { ...list[idx], ...patch }
   try {
-    const list = loadHistory()
-    const idx = list.findIndex(h => h.id === id)
-    if (idx === -1) return
-    list[idx] = { ...list[idx], ...patch }
     localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
-  } catch {}
+  } catch (e) {
+    console.error('[storage] updateHistoryEntry failed:', e)
+    throw e
+  }
 }
 
 export function deleteHistory(id: string): void {
