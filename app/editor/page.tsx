@@ -1313,9 +1313,9 @@ ${autoprint ? `<script>
           {/* Empty state — shown when the active resume was deleted */}
           {noResumeOpen && !aiUploadObjectUrl && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '14px', backgroundColor: '#e2e8f0', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
-              <div style={{ fontSize: '40px' }}>📄</div>
+              <img src="/logo-black.png" alt="" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.35 }} />
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧历史记录里加载简历</div>
-              <div style={{ fontSize: '12px', color: '#94a3b8' }}>或者在此新建、导入一份简历</div>
+              <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>或者在此新建、导入一份简历</div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button onClick={handleCreateNewResume} style={{
                   padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
