@@ -1,15 +1,18 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { TEMPLATES, CATEGORIES, CATEGORY_MAP, TemplateConfig } from '../lib/templates-config'
 import TemplateThumbnail from '../lib/TemplateThumbnail'
 
 const FREE_COUNT = TEMPLATES.filter(t => t.free).length
+const PAGE_WIDTH = 794
+const PAGE_HEIGHT = 1123
 
 export default function Templates() {
   const [activeFilter, setActiveFilter] = useState('全部')
   const [extraLoads, setExtraLoads] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [previewTpl, setPreviewTpl] = useState<TemplateConfig | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -108,7 +111,12 @@ export default function Templates() {
         gap: isMobile ? '14px' : '28px',
       }}>
         {visible.map((tpl, i) => (
-          <TemplateCard key={tpl.id} tpl={tpl} delay={Math.min(i, 9) * 0.04} />
+          <TemplateCard
+            key={tpl.id}
+            tpl={tpl}
+            delay={Math.min(i, 9) * 0.04}
+            onPreview={() => setPreviewTpl(tpl)}
+          />
         ))}
       </div>
 
@@ -138,11 +146,15 @@ export default function Templates() {
           该分类暂无模板
         </div>
       )}
+
+      {previewTpl && (
+        <TemplatePreviewModal tpl={previewTpl} onClose={() => setPreviewTpl(null)} />
+      )}
     </section>
   )
 }
 
-function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
+function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: number; onPreview: () => void }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -150,6 +162,7 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onPreview}
       style={{
         cursor: 'pointer',
         transition: 'transform 0.22s',
@@ -172,6 +185,22 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
           padding: '3px 10px', borderRadius: '5px',
           fontSize: '10px', fontWeight: 600,
         }}>{tpl.free ? '免费' : 'Pro'}</div>
+
+        {/* Hover overlay with 预览 button */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(15,23,42,0.38)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 0.2s',
+        }}>
+          <div style={{
+            background: 'white', color: '#0f172a',
+            padding: '7px 20px', borderRadius: '8px',
+            fontSize: '13px', fontWeight: 600,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+          }}>预览</div>
+        </div>
       </div>
 
       <div style={{
@@ -184,21 +213,109 @@ function TemplateCard({ tpl, delay }: { tpl: TemplateConfig; delay: number }) {
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{tpl.name}</div>
           <div style={{ background: 'var(--ink)', borderRadius:'3px', paddingInline: '5px', fontSize: '11px', color: '#fff', marginTop: '2px' }}>{tpl.tag}</div>
         </div>
-        <Link href={`/editor?template=${tpl.id}`} style={{
-          background: 'var(--theme-blue)',
-          color: '#fff',
-          padding: '6px 14px', borderRadius: '7px',
-          fontSize: '12px', fontWeight: 600,
-          textDecoration: 'none',
-          opacity: hovered ? 1 : 0,
-          transform: hovered ? 'scale(1)' : 'scale(0.9)',
-          transition: 'opacity 0.2s, transform 0.2s',
-          display: 'inline-block',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}>使用</Link>
       </div>
     </div>
+    </div>
+  )
+}
+
+function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: () => void }) {
+  const [size, setSize] = useState({ w: 340, h: 481 })
+
+  useEffect(() => {
+    const compute = () => {
+      const maxW = window.innerWidth * 0.88
+      const maxH = window.innerHeight * 0.84
+      const wFromH = maxH * PAGE_WIDTH / PAGE_HEIGHT
+      const w = Math.round(Math.min(maxW, wFromH))
+      const h = Math.round(w * PAGE_HEIGHT / PAGE_WIDTH)
+      setSize({ w, h })
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [handleKeyDown])
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(10,16,30,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{ position: 'relative' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Resume preview */}
+        <div style={{
+          width: size.w, height: size.h,
+          overflow: 'hidden',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
+          borderRadius: '2px',
+        }}>
+          <TemplateThumbnail template={tpl} width={size.w} />
+        </div>
+
+        {/* Centered "使用模版" button overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <Link
+            href={`/editor?template=${tpl.id}`}
+            style={{
+              pointerEvents: 'all',
+              background: 'var(--theme-blue)',
+              color: '#fff',
+              padding: '13px 32px',
+              borderRadius: '10px',
+              fontSize: '15px', fontWeight: 700,
+              textDecoration: 'none',
+              boxShadow: '0 4px 24px rgba(7,137,236,0.55)',
+              fontFamily: 'var(--font-sans)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            使用模版
+          </Link>
+        </div>
+
+        {/* Close button — top-right */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: -14, right: -14,
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'white', border: 'none',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+            fontSize: '18px', color: '#0f172a', lineHeight: 1,
+            fontFamily: 'var(--font-sans)',
+          }}
+          aria-label="关闭"
+        >
+          ×
+        </button>
+      </div>
     </div>
   )
 }
