@@ -72,7 +72,7 @@ function EditorInner() {
   const [templateId, setTemplateId] = useState(initTemplate)
   const [color, setColor] = useState<string | undefined>(undefined)
   const [selection, setSelection] = useState<SelectionType>({ kind: 'none' })
-  const [zoom, setZoom] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900 ? 55 : 70)
+  const [zoom, setZoom] = useState(70)
   const [docTitle, setDocTitle] = useState('我的简历')
   const [modal, setModal] = useState<'none' | 'download'>('none')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
@@ -1142,7 +1142,11 @@ ${autoprint ? `<script>
 
   // ============ Responsive breakpoint ============
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 900)
+    const check = () => {
+      const mobile = window.innerWidth < 900
+      setIsMobile(mobile)
+      setZoom(z => z === 70 && mobile ? 55 : z)
+    }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
