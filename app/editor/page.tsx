@@ -1532,7 +1532,7 @@ ${autoprint ? `<script>
           deviceId={deviceId}
           isStudent={isStudentVerified}
           isFirstOrder={isFirstPurchase(deviceId)}
-          onClose={() => setPaywallOpen(false)}
+          onClose={() => { pendingPaywallActionRef.current = null; setPaywallOpen(false) }}
           onSuccess={handlePaywallSuccess}
           onFreeDownload={paywallTrigger === 'download_free' ? () => { setPaywallOpen(false); setModal('download') } : undefined}
           onOpenStudent={() => { setPaywallOpen(false); setStudentModalOpen(true) }}
