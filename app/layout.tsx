@@ -12,10 +12,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        {/* Explicit viewport tag — the most reliable cross-browser way to enable mobile layout */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
       </head>
       <body>{children}</body>
     </html>

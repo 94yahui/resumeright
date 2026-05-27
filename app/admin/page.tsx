@@ -55,10 +55,31 @@ export default function AdminPage() {
     }
   }
 
+  function copyText(text: string, onDone?: () => void) {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(onDone).catch(() => copyFallback(text, onDone))
+    } else {
+      copyFallback(text, onDone)
+    }
+  }
+
+  function copyFallback(text: string, onDone?: () => void) {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    try { document.execCommand('copy') } catch { /* ignore */ }
+    document.body.removeChild(ta)
+    onDone?.()
+  }
+
   function copyAll() {
-    navigator.clipboard.writeText(codes.join('\n'))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    copyText(codes.join('\n'), () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   const inputStyle: React.CSSProperties = {
@@ -197,7 +218,7 @@ export default function AdminPage() {
               {codes.map(c => (
                 <div
                   key={c}
-                  onClick={() => { navigator.clipboard.writeText(c) }}
+                  onClick={() => copyText(c)}
                   style={{
                     fontFamily: 'monospace', fontSize: '14px', color: '#0f172a',
                     padding: '5px 0', borderBottom: '1px solid #f1f5f9',

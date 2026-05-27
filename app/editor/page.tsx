@@ -6,10 +6,11 @@ import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
 import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal } from './components/Modals'
+import ImportLoadingBar from '../components/ImportLoadingBar'
 import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
-import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData } from '../lib/types'
+import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
 import { getTemplate } from '../lib/templates-config'
 import {
   loadDraft, saveDraft, clearDraft,
@@ -20,12 +21,21 @@ import {
 import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
-  hasNoWatermark, checkUsage, recordUsage, cleanOldUsage,
+  hasNoWatermark, checkUsage, recordUsage, cleanOldUsage, getDailyCount,
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
 
 const HISTORY_LIMIT = 30
+
+const TRANSLATE_STAGES = [
+  { after: 0,     msg: '正在解析简历结构…' },
+  { after: 3000,  msg: '翻译专业术语与描述…' },
+  { after: 7000,  msg: '优化英文表达方式…' },
+  { after: 12000, msg: '生成英文版本…' },
+  { after: 18000, msg: '即将完成，请稍候…' },
+]
+
 
 // Strings that are never real user content — added as defaults when a new entry is created.
 // Filtered from the PDF print layer so users don't accidentally export placeholder text.
@@ -81,8 +91,10 @@ function EditorInner() {
   const [aiUploadFilename, setAiUploadFilename] = useState('')
   const [aiUploadObjectUrl, setAiUploadObjectUrl] = useState<string | null>(null)
   const [aiTemplateApplied, setAiTemplateApplied] = useState(false)
-  const [aiAnalysis, setAiAnalysis] = useState<{ hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; interviewQuestions?: string[]; interviewAnswers?: string[] } | null>(null)
+  const [aiAnalysis, setAiAnalysis] = useState<{ hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; interviewQuestions?: string[]; interviewAnswers?: string[]; missingSkills?: string[]; jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null; matchBreakdown?: { experience: number; skills: number; other: number } | null } | null>(null)
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set())
+  const [bulletDiffs, setBulletDiffs] = useState<Record<string, string[]>>({})
+  const [pendingSkills, setPendingSkills] = useState<string[]>([])
   const [aiParsedData, setAiParsedData] = useState<ResumeData | null>(null)
   const [aiUploadError, setAiUploadError] = useState<string | undefined>(undefined)
   const [jobDescPersist, setJobDescPersist] = useState('')
@@ -101,7 +113,8 @@ function EditorInner() {
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
   const [studentModalOpen, setStudentModalOpen] = useState(false)
-  const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | null>(null)
+  const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
+  const translateAbortRef = useRef<AbortController | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -267,6 +280,21 @@ function EditorInner() {
     }
   }, [data, templateId, color, docTitle])
 
+  // Populate diff preview whenever new AI analysis arrives
+  useEffect(() => {
+    if (!aiAnalysis?.suggestions) { setBulletDiffs({}); return }
+    const diffs: Record<string, string[]> = {}
+    for (const s of aiAnalysis.suggestions) {
+      if ((s.section === 'exp' || s.section === 'project') && s.field === 'bullets' && s.entryIndex !== undefined && Array.isArray(s.optimizedContent)) {
+        const bullets = s.optimizedContent as string[]
+        if (bullets.some(hasDiffMarkup)) {
+          diffs[`${s.section}:${s.entryIndex}`] = bullets
+        }
+      }
+    }
+    setBulletDiffs(diffs)
+  }, [aiAnalysis])
+
   // Keep refs in sync with latest state (for event handlers / cleanup effects that can't depend on state)
   useEffect(() => {
     latestForAutoSave.current = { data, docTitle, templateId, color }
@@ -372,8 +400,18 @@ function EditorInner() {
       // Re-sort history by savedAt so the most recently edited resume appears first next session
       sortAndSaveHistory()
     }
+    const abortOnExit = () => {
+      aiAnalyzeAbortRef.current?.abort()
+      translateAbortRef.current?.abort()
+    }
     window.addEventListener('beforeunload', saveOnExit)
-    return () => window.removeEventListener('beforeunload', saveOnExit)
+    window.addEventListener('beforeunload', abortOnExit)
+    return () => {
+      window.removeEventListener('beforeunload', saveOnExit)
+      window.removeEventListener('beforeunload', abortOnExit)
+      aiAnalyzeAbortRef.current?.abort()  // client-side navigation (component unmount)
+      translateAbortRef.current?.abort()
+    }
   }, [])
 
   // ============ Data updates ============
@@ -467,7 +505,9 @@ function EditorInner() {
     }
 
     if (key === 'summary') {
-      updateData({ hasSummary: true })
+      const summaryPatch: Partial<ResumeData> = { hasSummary: true }
+      if (!data.summary) summaryPatch.summary = '请在此输入你的个人简介，简要介绍你的专业背景、核心技能和职业目标，建议 2-4 句话，突出你最大的竞争优势。'
+      updateData(summaryPatch)
       showToast('✓ 已添加个人简介')
       if (isMobileRef.current) { setLeftOpen(false) } else { setSelection({ kind: 'field', field: 'summary' }) }
     } else if (key === 'skills') {
@@ -531,14 +571,34 @@ function EditorInner() {
     return new Promise(resolve => {
       const img = new Image()
       img.onload = () => {
-        const MAX = 400
+        const MAX = 600
         const scale = Math.min(1, MAX / Math.max(img.width, img.height))
-        const w = Math.round(img.width * scale)
-        const h = Math.round(img.height * scale)
+        const targetW = Math.round(img.width * scale)
+        const targetH = Math.round(img.height * scale)
+
+        // Multi-step downsampling: reduce by at most 50% per pass to avoid
+        // moiré rings that appear when jumping from a large source in one step.
+        let srcW = img.width, srcH = img.height
+        let currentSrc: CanvasImageSource = img
+        while (srcW > targetW * 2 || srcH > targetH * 2) {
+          const stepW = Math.max(targetW, Math.round(srcW / 2))
+          const stepH = Math.max(targetH, Math.round(srcH / 2))
+          const step = document.createElement('canvas')
+          step.width = stepW; step.height = stepH
+          const sCtx = step.getContext('2d')!
+          sCtx.imageSmoothingEnabled = true
+          sCtx.imageSmoothingQuality = 'high'
+          sCtx.drawImage(currentSrc, 0, 0, stepW, stepH)
+          currentSrc = step; srcW = stepW; srcH = stepH
+        }
+
         const canvas = document.createElement('canvas')
-        canvas.width = w; canvas.height = h
-        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
-        resolve(canvas.toDataURL('image/jpeg', 0.82))
+        canvas.width = targetW; canvas.height = targetH
+        const ctx = canvas.getContext('2d')!
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(currentSrc, 0, 0, targetW, targetH)
+        resolve(canvas.toDataURL('image/jpeg', 0.92))
       }
       img.src = dataUrl
     })
@@ -705,9 +765,10 @@ ${autoprint ? `<script>
     setIsStudentVerified(isStudentUser(deviceId))
     const action = pendingPaywallActionRef.current
     pendingPaywallActionRef.current = null
-    // Only re-open download modal when the paywall was triggered from a download attempt
     if (action?.type === 'download') setTimeout(() => setModal('download'), 80)
-    // ai_optimize: no follow-up action — user continues editing
+    if (action?.type === 'ai_translate') setTimeout(() => handleTranslate(), 80)
+    if (action?.type === 'compress') setTimeout(() => handleCompress(), 80)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, currentHistoryId])
 
   const handleDownloadAttempt = useCallback(() => {
@@ -940,13 +1001,14 @@ ${autoprint ? `<script>
     setAiTemplateApplied(false)
     setAiAnalysis(null)
     setAppliedSuggestions(new Set())
+    setPendingSkills([])
     setAiParsedData(null)
     setAiUploadError(undefined)
     aiAnalyzedDataSnapshot.current = null
   }, [])
 
   // ============ AI suggestion apply ============
-  const handleApplySuggestion = useCallback((s: AISuggestion) => {
+  const handleApplySuggestion = useCallback((s: AISuggestion, checkedSkills?: string[]) => {
     const stripDot = (t: string) => t.replace(/[。.！!？?]+$/, '').trim()
     if (s.section === 'summary' && s.field === 'summary') {
       const raw = s.optimizedContent
@@ -955,14 +1017,27 @@ ${autoprint ? `<script>
         : typeof raw === 'string' ? stripDot(raw) : ''
       if (content) updateData({ summary: content, hasSummary: true })
     } else if ((s.section === 'exp' || s.section === 'project') && s.field === 'bullets' && s.entryIndex !== undefined) {
+      // Strip diff markup, then clean trailing punctuation
       const bullets = Array.isArray(s.optimizedContent)
-        ? (s.optimizedContent as string[]).map(stripDot).filter(Boolean)
+        ? (s.optimizedContent as string[]).map(b => stripDot(applyDiffBullet(b))).filter(Boolean)
         : []
       if (bullets.length) updateEntry(s.section as SectionKey, s.entryIndex, { bullets })
+      // Clear diff preview for this entry
+      setBulletDiffs(prev => {
+        const next = { ...prev }
+        delete next[`${s.section}:${s.entryIndex}`]
+        return next
+      })
+    } else if (s.section === 'skills' && s.field === 'skills') {
+      const skills = (checkedSkills ?? []).map(stripDot).filter(Boolean)
+      if (skills.length) {
+        setData(prev => ({ ...prev, skills: [...new Set([...prev.skills, ...skills])], hasSkills: true }))
+      }
+      setPendingSkills([])
     }
     setAppliedSuggestions(prev => new Set([...prev, s.id]))
     showToast('✓ AI 建议已应用')
-  }, [updateData, updateEntry])
+  }, [updateData, updateEntry, setData])
 
   const handleApplyAllSuggestions = useCallback(() => {
     if (!aiAnalysis?.suggestions?.length) return
@@ -980,17 +1055,26 @@ ${autoprint ? `<script>
           if (content) next = { ...next, summary: content, hasSummary: true }
         } else if ((s.section === 'exp' || s.section === 'project') && s.field === 'bullets' && s.entryIndex !== undefined) {
           const bullets = Array.isArray(s.optimizedContent)
-            ? (s.optimizedContent as string[]).map(stripDot).filter(Boolean)
+            ? (s.optimizedContent as string[]).map(b => stripDot(applyDiffBullet(b))).filter(Boolean)
             : []
           if (bullets.length) {
             const arr = [...(next[s.section as SectionKey] as Entry[])]
             if (arr[s.entryIndex]) { arr[s.entryIndex] = { ...arr[s.entryIndex], bullets }; next = { ...next, [s.section]: arr } }
+          }
+        } else if (s.section === 'skills' && s.field === 'skills') {
+          const skills = Array.isArray(s.optimizedContent)
+            ? (s.optimizedContent as string[]).map(stripDot).filter(Boolean)
+            : []
+          if (skills.length) {
+            next = { ...next, skills: [...new Set([...next.skills, ...skills])], hasSkills: true }
           }
         }
       }
       return next
     })
     setAppliedSuggestions(prev => new Set([...prev, ...pending.map(s => s.id)]))
+    setBulletDiffs({})
+    setPendingSkills([])
     showToast(`✓ 已应用 ${pending.length} 条 AI 建议`)
   }, [aiAnalysis, appliedSuggestions, setData])
 
@@ -1069,6 +1153,176 @@ ${autoprint ? `<script>
     }
     importFileRef.current?.click()
   }, [deviceId, proStatus])
+
+  const [translateLoading, setTranslateLoading] = useState(false)
+  const [compressPhase, setCompressPhase] = useState<'idle' | 'loading' | 'ai-review'>('idle')
+  const [compressBulletDiffs, setCompressBulletDiffs] = useState<Record<string, string[]>>({})
+  const [compressSummaryInfo, setCompressSummaryInfo] = useState<{ oldText: string; newText: string } | null>(null)
+  const pendingCompressCleanRef = useRef<ResumeData | null>(null)
+  const [compressWarningDismissed, setCompressWarningDismissed] = useState(false)
+
+  // ============ One-page compress ============
+  const PAGE_H = 1123
+  const overflowPx = pageCount > 1 ? Math.max(0, canvasTotalHeightRef.current - PAGE_H) : 0
+  const overflowLines = Math.ceil(overflowPx / 20)
+
+  // Auto-show banner again when content starts overflowing again after being fixed
+  useEffect(() => { if (pageCount <= 1) setCompressWarningDismissed(false) }, [pageCount])
+
+  const handleCompress = useCallback(async () => {
+    const freshStatus = getProStatus(deviceId, currentHistoryId || undefined)
+    if (freshStatus.kind !== 'subscription') {
+      pendingPaywallActionRef.current = { type: 'compress' }
+      setPaywallTrigger('compress')
+      setPaywallOpen(true)
+      return
+    }
+    if (compressPhase !== 'idle') return
+
+    setCompressPhase('loading')
+    try {
+      const totalH = canvasTotalHeightRef.current
+      const pct = totalH > 0 ? (totalH - PAGE_H) / PAGE_H * 100 : 0
+      const currentScale = data.fontScale ?? 1
+
+      if (pct <= 35) {
+        // Pure font scale — one-shot, no AI needed
+        const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
+        updateData({ fontScale: scale })
+        setCompressPhase('idle')
+        showToast('✓ 已压缩至 1 页（可撤销）')
+        return
+      }
+
+      // AI text trim path (overflow >35%)
+      const res = await fetch('/api/ai/compress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData: data, deviceId }),
+      })
+      if (!res.ok) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
+      const json = await res.json()
+      if (!json.data) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
+
+      // Estimate font scale after AI trim (~18% text reduction)
+      const estimatedBaseH = (totalH / currentScale) * 0.82
+      const rawScale = estimatedBaseH > PAGE_H ? PAGE_H / estimatedBaseH : 1
+      const scale = parseFloat(Math.min(0.97, rawScale).toFixed(4))
+      const newData: ResumeData = { ...json.data, fontScale: scale < 1 ? scale : undefined }
+      const hasDiffs = Object.keys(json.bulletDiffs ?? {}).length > 0 || json.summaryChanged
+
+      if (!hasDiffs) {
+        // No visible text changes — apply silently, then verify fit
+        setData(newData)
+        setCompressPhase('idle')
+        setTimeout(() => {
+          const newTotalH = canvasTotalHeightRef.current
+          if (newTotalH > PAGE_H) {
+            const cs = newData.fontScale ?? 1
+            const adjusted = parseFloat((cs * (PAGE_H - 5) / newTotalH).toFixed(4))
+            if (adjusted < 1) updateData({ fontScale: adjusted })
+          }
+          showToast('✓ AI 已精简并压缩至 1 页（可撤销）')
+        }, 350)
+      } else {
+        // Show diffs for user review before applying
+        pendingCompressCleanRef.current = newData
+        setCompressBulletDiffs(json.bulletDiffs ?? {})
+        setCompressSummaryInfo(json.summaryChanged ? { oldText: json.summaryOld ?? '', newText: json.summaryNew ?? '' } : null)
+        setCompressPhase('ai-review')
+      }
+    } catch {
+      showToast('压缩失败，请稍后重试')
+      setCompressPhase('idle')
+    }
+  }, [data, deviceId, currentHistoryId, updateData, setData, compressPhase])
+
+  const handleConfirmCompressDiffs = useCallback(() => {
+    const pending = pendingCompressCleanRef.current
+    if (!pending) return
+    pendingCompressCleanRef.current = null
+    setData(pending)
+    setCompressBulletDiffs({})
+    setCompressSummaryInfo(null)
+    setCompressPhase('idle')
+    // After re-render, do a final font-scale pass in case it still overflows
+    setTimeout(() => {
+      const newTotalH = canvasTotalHeightRef.current
+      if (newTotalH > PAGE_H) {
+        const cs = pending.fontScale ?? 1
+        const adjusted = parseFloat((cs * (PAGE_H - 5) / newTotalH).toFixed(4))
+        if (adjusted < 1) updateData({ fontScale: adjusted })
+      }
+      showToast('✓ AI 精简已应用并压缩至 1 页（可撤销）')
+    }, 350)
+  }, [setData, updateData])
+
+  const handleRejectCompressDiffs = useCallback(() => {
+    pendingCompressCleanRef.current = null
+    setCompressBulletDiffs({})
+    setCompressSummaryInfo(null)
+    setCompressPhase('idle')
+  }, [])
+
+  const handleTranslate = useCallback(async () => {
+    // Always read fresh status from storage so post-paywall calls see the new plan
+    const freshStatus = getProStatus(deviceId, currentHistoryId || undefined)
+    const check = checkUsage(deviceId, 'ai_translate', freshStatus)
+    if (!check.allowed) {
+      if (check.reason === 'daily_limit') {
+        showToast(`今日生成英文简历次数已用完（${check.used}/${check.limit} 次）`)
+      } else {
+        pendingPaywallActionRef.current = { type: 'ai_translate' }
+        setPaywallTrigger('ai_translate')
+        setPaywallOpen(true)
+      }
+      return
+    }
+    translateAbortRef.current?.abort()
+    const controller = new AbortController()
+    translateAbortRef.current = controller
+    setTranslateLoading(true)
+    try {
+      const res = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData: data, deviceId, docTitle }),
+        signal: controller.signal,
+      })
+      if (!res.ok) { showToast('翻译失败，请稍后重试'); return }
+      const json = await res.json()
+      if (!json.data) { showToast('翻译失败，请稍后重试'); return }
+
+      const hid = loadedFromHistoryId.current
+      if (hid && hid !== 'draft') {
+        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
+      }
+
+      const currentHistory = loadHistory()
+      const rawName = json.translatedTitle || `${docTitle} (English)`
+      const engName = uniqueHistoryName(rawName, currentHistory)
+      const newId = saveToHistory({ name: engName, data: json.data, templateId, color, savedAt: Date.now() })
+      loadedFromHistoryId.current = newId || null
+      setCurrentHistoryId(newId || null)
+      setHistory([json.data])
+      setHistoryIdx(0)
+      setDocTitle(engName)
+      setSelection({ kind: 'none' })
+      setNoResumeOpen(false)
+      setHistoryRefreshKey(k => k + 1)
+      recordUsage(deviceId, 'ai_translate', freshStatus)
+      setProStatus(getProStatus(deviceId, newId || undefined))
+      const usedToday = getDailyCount(deviceId, 'ai_translate')
+      const remaining = Math.max(0, 5 - usedToday)
+      showToast(`✓ 英文版已生成（今日剩余 ${remaining} 次）`)
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
+      showToast('翻译失败，请稍后重试')
+    } finally {
+      if (translateAbortRef.current === controller) translateAbortRef.current = null
+      setTranslateLoading(false)
+    }
+  }, [data, deviceId, currentHistoryId, templateId, color, docTitle])
 
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1171,6 +1425,8 @@ ${autoprint ? `<script>
           isMobile={isMobile}
           onNewResume={handleCreateNewResume}
           onImportFile={handleImportAttempt}
+          onTranslate={handleTranslate}
+          translateLoading={translateLoading}
           disabled={noResumeOpen}
         />
       </div>
@@ -1192,7 +1448,7 @@ ${autoprint ? `<script>
           </span>
           <button onClick={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }} style={{
             padding: '5px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
-            background: 'var(--theme-blue)', color: 'white', border: 'none',
+            background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
             cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
           }}>解锁 Pro →</button>
         </div>
@@ -1223,7 +1479,7 @@ ${autoprint ? `<script>
         }}>
           <LeftPanel
             templateId={templateId}
-            onTemplateChange={(id) => { setTemplateId(id); showToast('✓ 模板已切换'); if (isMobile) setLeftOpen(false) }}
+            onTemplateChange={(id) => { setTemplateId(id); if (data.fontScale) updateData({ fontScale: undefined }); showToast('✓ 模板已切换'); if (isMobile) setLeftOpen(false) }}
             currentColor={effectiveColor}
             onColorChange={(c) => { setColor(c); showToast('✓ 颜色已应用') }}
             onAddModule={handleAddModule}
@@ -1291,7 +1547,24 @@ ${autoprint ? `<script>
               <span style={{
                 fontSize: '11px', color: '#92400e', background: '#fef3c7',
                 padding: '2px 8px', borderRadius: '4px', fontWeight: 500,
-              }}>Pro · 含水印</span>
+              }}>含水印</span>
+            )}
+            {/* Compact compress button — visible when overflow banner was dismissed */}
+            {compressWarningDismissed && pageCount > 1 && compressPhase === 'idle' && !noResumeOpen && !aiUploadObjectUrl && (
+              <button
+                onClick={handleCompress}
+                style={{
+                  padding: '3px 10px', borderRadius: '5px', border: 'none',
+                  background: 'linear-gradient(135deg, #f97316, #ef4444)',
+                  color: 'white', fontSize: '11px', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  boxShadow: '0 0 6px rgba(249,115,22,0.35)',
+                  transition: 'box-shadow 0.15s',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 10px rgba(249,115,22,0.55)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 6px rgba(249,115,22,0.35)' }}
+              >✨ 压缩至1页</button>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
@@ -1310,11 +1583,154 @@ ${autoprint ? `<script>
             </div>
           </div>
 
+          {/* AI compress banner — animates in when loading or reviewing diffs */}
+          {(() => {
+            const shown = (compressPhase === 'loading' || compressPhase === 'ai-review') && !noResumeOpen
+            return (
+              <div style={{
+                overflow: 'hidden',
+                maxHeight: shown ? '140px' : '0',
+                flexShrink: 0,
+                pointerEvents: shown ? 'auto' : 'none',
+                transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
+              }}>
+                <div className="no-print" style={{
+                  background: '#f0f9ff', borderBottom: '2px solid #bae6fd',
+                  padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px',
+                  opacity: shown ? 1 : 0,
+                  transform: shown ? 'translateY(0)' : 'translateY(-8px)',
+                  transition: 'opacity 0.22s ease, transform 0.26s ease',
+                }}>
+                  <style>{`@keyframes cmpSpin{to{transform:rotate(360deg)}}`}</style>
+                  {compressPhase === 'loading' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minHeight: '28px' }}>
+                      <div style={{
+                        width: '14px', height: '14px', borderRadius: '50%',
+                        border: '2px solid rgba(3,105,161,0.22)',
+                        borderTopColor: '#0369a1', flexShrink: 0,
+                        animation: 'cmpSpin 0.75s linear infinite',
+                      }} />
+                      <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                        AI 正在分析并精简内容，请稍候…
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                          ✨ AI 建议精简以下内容（划线 = 删除，橙色 = 修改后）
+                        </span>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            onClick={handleRejectCompressDiffs}
+                            style={{
+                              padding: '5px 12px', borderRadius: '6px',
+                              border: '1px solid #bae6fd', background: 'white',
+                              color: '#0369a1', fontSize: '12px', cursor: 'pointer',
+                              fontFamily: 'var(--font-sans)',
+                            }}
+                          >取消</button>
+                          <button
+                            onClick={handleConfirmCompressDiffs}
+                            style={{
+                              padding: '5px 14px', borderRadius: '6px', border: 'none',
+                              background: '#0284c7', color: 'white',
+                              fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                              fontFamily: 'var(--font-sans)',
+                            }}
+                          >应用精简</button>
+                        </div>
+                      </div>
+                      {compressSummaryInfo && (
+                        <div style={{ fontSize: '11.5px', color: '#0c4a6e', background: '#e0f2fe', borderRadius: '6px', padding: '6px 10px', lineHeight: 1.6 }}>
+                          <span style={{ fontWeight: 600 }}>个人简介：</span>
+                          <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '6px' }}>{compressSummaryInfo.oldText}</span>
+                          <span style={{ color: '#0369a1' }}>{compressSummaryInfo.newText}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Overflow warning banner — animates out when compress starts */}
+          {(() => {
+            const shown = pageCount > 1 && !noResumeOpen && !aiUploadObjectUrl && !compressWarningDismissed && compressPhase === 'idle'
+            return (
+              <div style={{
+                overflow: 'hidden',
+                maxHeight: shown ? '68px' : '0',
+                flexShrink: 0,
+                pointerEvents: shown ? 'auto' : 'none',
+                transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
+              }}>
+                <div className="no-print" style={{
+                  background: '#fff7ed', borderBottom: '1px solid #fed7aa',
+                  padding: '7px 16px', display: 'flex', alignItems: 'center',
+                  gap: '10px', flexWrap: 'wrap',
+                  opacity: shown ? 1 : 0,
+                  transform: shown ? 'translateY(0)' : 'translateY(-8px)',
+                  transition: 'opacity 0.22s ease, transform 0.26s ease',
+                }}>
+                  <span style={{ fontSize: '12.5px', color: '#c2410c', fontWeight: 600, flexShrink: 0 }}>
+                    ⚠ 内容超出第 1 页，约 {overflowLines} 行
+                  </span>
+                  <span style={{ fontSize: '11.5px', color: '#92400e', opacity: 0.75 }}>
+                    一页简历通过率高 40%
+                  </span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {data.fontScale && data.fontScale < 1 && (
+                      <button
+                        onClick={() => updateData({ fontScale: undefined })}
+                        style={{
+                          padding: '4px 10px', borderRadius: '6px', border: '1px solid #fed7aa',
+                          background: 'transparent', color: '#92400e', fontSize: '11.5px',
+                          cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        }}
+                      >重置字号</button>
+                    )}
+                    <button
+                      onClick={handleCompress}
+                      style={{
+                        padding: '5px 14px', borderRadius: '7px', border: 'none',
+                        background: 'linear-gradient(135deg, #f97316, #ef4444)',
+                        color: 'white', fontSize: '12.5px', fontWeight: 700,
+                        cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
+                        boxShadow: '0 0 8px rgba(249,115,22,0.4)',
+                        transition: 'box-shadow 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 14px rgba(249,115,22,0.6)' }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 8px rgba(249,115,22,0.4)' }}
+                    >
+                      ✨ 一键压缩至 1 页
+                    </button>
+                    <button
+                      onClick={() => setCompressWarningDismissed(true)}
+                      title="关闭提示"
+                      style={{
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        border: '1px solid #fed7aa', background: 'transparent',
+                        color: '#92400e', fontSize: '13px', lineHeight: 1,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', flexShrink: 0, opacity: 0.7,
+                        transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.7' }}
+                    >×</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Empty state — shown when the active resume was deleted */}
           {noResumeOpen && !aiUploadObjectUrl && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '14px', backgroundColor: '#e2e8f0', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
               <img src="/logo-black.png" alt="" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.35 }} />
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧历史记录里加载简历</div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧-我的-加载历史简历</div>
               <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>或者在此新建、导入一份简历</div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button onClick={handleCreateNewResume} style={{
@@ -1349,7 +1765,7 @@ ${autoprint ? `<script>
                   data={data}
                   template={template}
                   color={effectiveColor}
-                  interactive
+                  interactive={!aiPanelOpen}
                   selection={selection}
                   onSelect={handleCanvasSelect}
                   onPhotoUpload={() => {
@@ -1361,6 +1777,8 @@ ${autoprint ? `<script>
                   onReorderSection={reorderEntries}
                   showWatermark={showWatermark}
                   aiSuggestionSections={aiSuggestionSections}
+                  bulletDiffs={compressPhase === 'ai-review' ? compressBulletDiffs : bulletDiffs}
+                  pendingSkills={pendingSkills}
                 />
               </div>
             </div>
@@ -1409,9 +1827,11 @@ ${autoprint ? `<script>
                   onAnalyzeCurrent={handleAIAnalyzeCurrent}
                   onSelectFile={handleAIFileSelect}
                   onApplyTemplate={handleAIApplyTemplate}
+                  currentSkills={data.skills}
                   onApplySuggestion={handleApplySuggestion}
                   onApplyAll={handleApplyAllSuggestions}
                   onClose={handleAIClose}
+                  onSkillChecksChange={setPendingSkills}
                 />
               </div>
               {/* Edit Panel — slides in from right */}
@@ -1430,11 +1850,6 @@ ${autoprint ? `<script>
                   onAddEntry={addEntry}
                   onClose={() => setSelection({ kind: 'none' })}
                   onMoveEntry={moveEntry}
-                  onAIApplied={() => showToast('✓ AI 建议已应用')}
-                  canAIOptimize={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && proStatus.aiOptimizeLeft > 0)}
-                  onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
-                  onAIOptimizeSuccess={() => { recordUsage(deviceId, 'ai_optimize', proStatus); setProStatus(getProStatus(deviceId, currentHistoryId || undefined)) }}
-                  deviceId={deviceId}
                 />
               </div>
             </div>
@@ -1460,10 +1875,6 @@ ${autoprint ? `<script>
                 onAddEntry={addEntry}
                 onClose={() => setSelection({ kind: 'none' })}
                 onMoveEntry={moveEntry}
-                canAIOptimize={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && proStatus.aiOptimizeLeft > 0)}
-                onAIBlocked={() => { setPaywallTrigger('ai_optimize'); setPaywallOpen(true) }}
-                onAIOptimizeSuccess={() => { recordUsage(deviceId, 'ai_optimize', proStatus); setProStatus(getProStatus(deviceId, currentHistoryId || undefined)) }}
-                deviceId={deviceId}
               />
             </div>
             <div className="no-print" style={{
@@ -1491,6 +1902,7 @@ ${autoprint ? `<script>
                 onApplySuggestion={handleApplySuggestion}
                 onApplyAll={handleApplyAllSuggestions}
                 onClose={handleAIClose}
+                onSkillChecksChange={setPendingSkills}
               />
             </div>
           </>
@@ -1576,6 +1988,27 @@ ${autoprint ? `<script>
             setPhotoCropSrc(null)
           }}
         />
+      )}
+
+      {/* Translation loading overlay */}
+      {translateLoading && (
+        <div className="no-print" style={{
+          position: 'fixed', inset: 0, zIndex: 400,
+          background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: '36px 40px', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(15,23,42,0.22)',
+            minWidth: '280px',
+          }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '28px' }}>
+              AI 正在生成英文简历
+            </div>
+            <ImportLoadingBar stages={TRANSLATE_STAGES} />
+          </div>
+        </div>
       )}
 
       {/* Toast */}

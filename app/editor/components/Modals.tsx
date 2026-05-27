@@ -1,7 +1,9 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb, GraduationCap, Star } from 'lucide-react'
 import type { AISuggestion } from '../../lib/types'
+import { hasDiffMarkup, parseDiffBullet } from '../../lib/types'
+import ImportLoadingBar from '../../components/ImportLoadingBar'
 import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord, hasRedeemedCode, markCodeRedeemed } from '../../lib/payment'
 import type { PlanType, PayMethod } from '../../lib/payment'
 
@@ -163,6 +165,14 @@ export function DownloadModal({
   )
 }
 
+function formatSkillTag(s: string): string {
+  return s
+    .replace(/^无([^\s])/, '需$1')
+    .replace(/^不会/, '需掌握')
+    .replace(/^[缺欠]乏?/, '需')
+    .replace(/^需需/, '需')
+}
+
 type AIPanelPhase = 'entry' | 'analyzing' | 'result' | 'applying'
 
 interface AIPanelProps {
@@ -172,27 +182,47 @@ interface AIPanelProps {
   templateApplied: boolean
   optimizeEnabled: boolean
   optimizing?: boolean
-  analysis?: { hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; interviewQuestions?: string[]; interviewAnswers?: string[] } | null
+  analysis?: { hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; interviewQuestions?: string[]; interviewAnswers?: string[]; missingSkills?: string[]; jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null; matchBreakdown?: { overall?: number; experience: number; skills: number; other: number } | null } | null
   appliedSuggestionIds?: Set<string>
   uploadError?: string
   jobDesc: string
+  currentSkills?: string[]
   onJobDescChange: (v: string) => void
   onAnalyzeCurrent: (jobDesc: string) => void
   onSelectFile: (file: File) => void
   onApplyTemplate: () => void
-  onApplySuggestion: (s: AISuggestion) => void
+  onApplySuggestion: (s: AISuggestion, checkedSkills?: string[]) => void
   onApplyAll: () => void
   onClose: () => void
+  onSkillChecksChange?: (skills: string[]) => void
 }
 
 export function AIPanel({
   flow, phase, uploadFilename, templateApplied, optimizeEnabled,
-  analysis, appliedSuggestionIds, uploadError, jobDesc, onJobDescChange,
-  onAnalyzeCurrent, onSelectFile, onApplyTemplate, onApplySuggestion, onApplyAll, onClose,
+  analysis, appliedSuggestionIds, uploadError, jobDesc, currentSkills, onJobDescChange,
+  onAnalyzeCurrent, onSelectFile, onApplyTemplate, onApplySuggestion, onApplyAll, onClose, onSkillChecksChange,
 }: AIPanelProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [showInterviewQ, setShowInterviewQ] = useState(false)
   const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(new Set())
+  const [editorAnimRate, setEditorAnimRate] = useState(0)
+  const [skillChecks, setSkillChecks] = useState<Record<string, boolean>>({})
+  const onSkillChecksChangeRef = useRef(onSkillChecksChange)
+  useEffect(() => { onSkillChecksChangeRef.current = onSkillChecksChange })
+  useEffect(() => {
+    const checked = Object.entries(skillChecks).filter(([, v]) => v).map(([k]) => k)
+    onSkillChecksChangeRef.current?.(checked)
+  }, [skillChecks])
+
+  const PROGRESS_MSGS = ['正在读取简历内容…', '识别工作经历与技能…', '评估岗位匹配度…', '生成优化建议…', '生成面试题…']
+  const [progressIdx, setProgressIdx] = useState(0)
+
+  useEffect(() => {
+    if (phase !== 'analyzing') { setProgressIdx(0); return }
+    const delays = [0, 3500, 7000, 10500, 14000]
+    const timers = delays.map((d, i) => setTimeout(() => setProgressIdx(i), d))
+    return () => timers.forEach(clearTimeout)
+  }, [phase])
 
   const toggleAnswer = (i: number) => {
     setExpandedAnswers(prev => {
@@ -209,9 +239,9 @@ export function AIPanel({
     e.target.value = ''
   }
 
-  const showOfferRate = !!(analysis?.hasOfferRate) || analysis?.offerRate !== undefined
+  const showOfferRate = analysis?.hasOfferRate === true
   const offerRate = analysis?.offerRate ?? 0
-  const rawSuggestions = analysis?.suggestions ?? []
+  const rawSuggestions = useMemo(() => analysis?.suggestions ?? [], [analysis])
   // Summary suggestion always first
   const suggestions = [...rawSuggestions].sort((a, b) =>
     a.section === 'summary' ? -1 : b.section === 'summary' ? 1 : 0
@@ -219,6 +249,27 @@ export function AIPanel({
   const interviewQuestions = analysis?.interviewQuestions ?? []
   const interviewAnswers = analysis?.interviewAnswers ?? []
   const unappliedCount = suggestions.filter(s => !appliedSuggestionIds?.has(s.id)).length
+
+  // Initialize skill checkboxes when suggestions arrive — pre-check new skills only
+  useEffect(() => {
+    const normalize = (s: string) => s.toLowerCase().trim()
+    const existingSet = new Set((currentSkills ?? []).map(normalize))
+    const checks: Record<string, boolean> = {}
+    for (const s of rawSuggestions) {
+      if (s.section === 'skills' && Array.isArray(s.optimizedContent)) {
+        for (const skill of s.optimizedContent as string[]) {
+          checks[skill] = !existingSet.has(normalize(skill))
+        }
+      }
+    }
+    setSkillChecks(checks)
+  }, [rawSuggestions, currentSkills])
+
+  useEffect(() => {
+    if (!showOfferRate) { setEditorAnimRate(0); return }
+    const t = setTimeout(() => setEditorAnimRate(offerRate), 80)
+    return () => clearTimeout(t)
+  }, [showOfferRate, offerRate])
 
   return (
     <div style={{ width: '100%', height: '100%', background: 'white', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -275,7 +326,7 @@ export function AIPanel({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button onClick={() => onAnalyzeCurrent(jobDesc)} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', color: 'white', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Sparkles size={14} /> 解析当前简历
+              解析当前简历
               </button>
               <button onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '12px', border: '1.5px solid #e2e8f0', background: 'white', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <FileUp size={14} /> 上传简历解析
@@ -293,7 +344,10 @@ export function AIPanel({
               ))}
             </div>
             <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>AI 分析中...</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>正在生成专属分析报告</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>正在生成专属分析报告</div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', transition: 'opacity 0.4s', minHeight: '16px' }}>
+              {PROGRESS_MSGS[progressIdx]}
+            </div>
           </div>
         )}
 
@@ -359,26 +413,38 @@ export function AIPanel({
               </div>
             )}
 
-            {/* Offer rate */}
-            {showOfferRate && (
-              <div style={{ background: '#f0f9ff', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px', border: '1px solid rgba(14,165,233,0.28)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                  <Target size={12} color="var(--ai-color-2)" />
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase' }}>匹配 Offer 率</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ flex: 1, height: '7px', background: 'rgba(14,165,233,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${offerRate}%`, height: '100%', background: 'linear-gradient(90deg, var(--ai-color-1), var(--ai-color-2))', borderRadius: '4px' }} />
+            {/* Offer rate — current vs post-optimization */}
+            {showOfferRate && (() => {
+              const optimizedRate = Math.min(95, offerRate + 15)
+              const offerColor = offerRate >= 70 ? '#22c55e' : offerRate >= 50 ? '#eab308' : offerRate >= 30 ? '#f97316' : '#ef4444'
+              return (
+                <div style={{ background: '#0a0a0f', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Target size={9} color="rgba(255,255,255,0.35)" /> 拿到 Offer 率预测
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: 700, color: offerRate >= 70 ? '#16a34a' : offerRate >= 40 ? '#d97706' : '#dc2626', minWidth: '44px', textAlign: 'right' }}>{offerRate}%</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>当前预计</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '30px', fontWeight: 800, color: offerColor, lineHeight: 1 }}>{offerRate}%</div>
+                    </div>
+                    <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.2)', fontWeight: 700, textAlign: 'center' }}>→<br/>AI优化</div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>优化后预计</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '30px', fontWeight: 800, color: '#22c55e', lineHeight: 1 }}>{optimizedRate}%</div>
+                      <div style={{ fontSize: '9px', color: '#22c55e', fontWeight: 600, marginTop: '3px' }}>+{optimizedRate - offerRate}%</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '10px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${editorAnimRate}%`, height: '100%', background: 'linear-gradient(90deg, var(--theme-blue), #22c55e)', borderRadius: '2px', transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)' }} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Overview */}
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', letterSpacing: '0.5px', marginBottom: '7px' }}>总体分析</div>
-              <p style={{ fontSize: '12px', color: '#475569', lineHeight: 1.7, margin: 0 }}>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '6px' }}>总体评估</div>
+              <p style={{ fontSize: '12px', color: '#475569', lineHeight: 1.7, margin: 0, padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 {analysis?.overview ?? (flow === 'current'
                   ? '简历结构清晰，工作经历描述详实。核心技能匹配度良好，建议进一步量化成果指标，突出差异化优势。'
                   : uploadFilename
@@ -387,9 +453,21 @@ export function AIPanel({
               </p>
             </div>
 
+            {/* Missing skills tags */}
+            {showOfferRate && analysis?.missingSkills && analysis.missingSkills.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '6px' }}>职位不符部分</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                  {analysis.missingSkills.map((skill, i) => (
+                    <span key={i} style={{ fontSize: '11px', fontWeight: 500, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '3px 9px', borderRadius: '5px', fontFamily: 'var(--font-sans)' }}>{formatSkillTag(skill)}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Interview questions (expandable) */}
             {interviewQuestions.length > 0 && (
-              <div style={{ marginBottom: '14px' }}>
+              <div style={{ marginBottom: '12px' }}>
                 <style>{`
                   @keyframes answerSlide { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }
                 `}</style>
@@ -397,13 +475,10 @@ export function AIPanel({
                   onClick={() => setShowInterviewQ(v => !v)}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    background: showInterviewQ ? '#f0f9ff' : '#f8fafc',
-                    border: `1px solid ${showInterviewQ ? 'rgba(14,165,233,0.28)' : '#e2e8f0'}`,
+                    padding: '10px 12px', background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                     borderRadius: showInterviewQ ? '8px 8px 0 0' : '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontFamily: 'var(--font-sans)',
+                    cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-sans)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -415,64 +490,29 @@ export function AIPanel({
                   </div>
                   {showInterviewQ ? <ChevronUp size={13} color="#64748b" /> : <ChevronDown size={13} color="#64748b" />}
                 </button>
-
                 {showInterviewQ && (
-                  <div style={{
-                    border: '1px solid rgba(14,165,233,0.25)', borderTop: 'none',
-                    borderRadius: '0 0 8px 8px',
-                    background: '#f0f9ff',
-                    maxHeight: '400px', overflowY: 'auto',
-                  }}>
+                  <div style={{ border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 8px 8px', background: '#f8fafc', maxHeight: '320px', overflowY: 'auto' }}>
                     {interviewQuestions.map((q, i) => {
                       const hasAnswer = !!interviewAnswers[i]
                       const answerExpanded = expandedAnswers.has(i)
                       return (
-                        <div key={i} style={{
-                          borderTop: i > 0 ? '1px solid rgba(14,165,233,0.12)' : 'none',
-                        }}>
-                          <div
-                            onClick={() => hasAnswer && toggleAnswer(i)}
-                            style={{
-                              display: 'flex', gap: '8px', alignItems: 'flex-start',
-                              padding: '8px 12px',
-                              cursor: hasAnswer ? 'pointer' : 'default',
-                            }}
-                          >
-                            <span style={{
-                              minWidth: '17px', height: '17px', borderRadius: '50%',
-                              background: 'rgba(13,148,136,0.12)',
-                              color: 'var(--teal)',
-                              fontSize: '9px', fontWeight: 700,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              flexShrink: 0, marginTop: '2px',
-                            }}>{i + 1}</span>
+                        <div key={i} style={{ borderTop: i > 0 ? '1px solid rgba(14,165,233,0.12)' : 'none' }}>
+                          <div onClick={() => hasAnswer && toggleAnswer(i)} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px 12px', cursor: hasAnswer ? 'pointer' : 'default' }}>
+                            <span style={{ minWidth: '17px', height: '17px', borderRadius: '50%', background: 'rgba(13,148,136,0.12)', color: 'var(--teal)', fontSize: '9px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>{i + 1}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <span style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.6 }}>{q}</span>
                               {hasAnswer && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px' }}>
                                   <Lightbulb size={9} color="var(--teal)" />
-                                  <span style={{ fontSize: '9.5px', color: 'var(--teal)', fontWeight: 600 }}>
-                                    {answerExpanded ? '收起回答建议' : '查看回答建议'}
-                                  </span>
-                                  {answerExpanded
-                                    ? <ChevronUp size={9} color="var(--teal)" />
-                                    : <ChevronDown size={9} color="var(--teal)" />}
+                                  <span style={{ fontSize: '9.5px', color: 'var(--teal)', fontWeight: 600 }}>{answerExpanded ? '收起' : '回答建议'}</span>
+                                  {answerExpanded ? <ChevronUp size={9} color="var(--teal)" /> : <ChevronDown size={9} color="var(--teal)" />}
                                 </div>
                               )}
                             </div>
                           </div>
                           {hasAnswer && answerExpanded && (
-                            <div style={{
-                              margin: '0 12px 8px 37px',
-                              padding: '8px 10px',
-                              background: 'rgba(13,148,136,0.07)',
-                              borderRadius: '6px',
-                              borderLeft: '2px solid var(--teal)',
-                              animation: 'answerSlide 0.2s ease',
-                            }}>
-                              <p style={{ margin: 0, fontSize: '10.5px', color: '#334155', lineHeight: 1.65 }}>
-                                {interviewAnswers[i]}
-                              </p>
+                            <div style={{ margin: '0 12px 8px 37px', padding: '8px 10px', background: 'rgba(13,148,136,0.07)', borderRadius: '6px', borderLeft: '2px solid var(--teal)', animation: 'answerSlide 0.2s ease' }}>
+                              <p style={{ margin: 0, fontSize: '10.5px', color: '#334155', lineHeight: 1.65 }}>{interviewAnswers[i]}</p>
                             </div>
                           )}
                         </div>
@@ -486,64 +526,136 @@ export function AIPanel({
             {/* Per-suggestion cards */}
             {suggestions.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                  优化建议
-                  {flow === 'current' && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94a3b8', fontWeight: 400 }}>（对应位置已标注 ✦ AI建议）</span>}
-                  {flow === 'upload' && templateApplied && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94a3b8', fontWeight: 400 }}>（已识别的简历版块）</span>}
-                  {flow === 'upload' && !templateApplied && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94a3b8', fontWeight: 400 }}>（使用当前模板后可逐条应用）</span>}
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  优化方向
+                  {flow === 'current' && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>（✦ 标注处）</span>}
+                  {flow === 'upload' && !templateApplied && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>（使用模板后可应用）</span>}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {suggestions.map((s) => {
                     const applied = appliedSuggestionIds?.has(s.id)
                     const canApply = optimizeEnabled && !applied
+                    const isSkills = s.section === 'skills' && s.field === 'skills' && Array.isArray(s.optimizedContent)
+                    const normalize = (str: string) => str.toLowerCase().trim()
+                    const existingSet = new Set((currentSkills ?? []).map(normalize))
                     return (
                       <div key={s.id} style={{
                         padding: '10px 12px', borderRadius: '10px',
-                        border: applied ? '1px solid #bbf7d0' : 'none',
-                        background: applied ? '#f0fdf4' : 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))',
+                        border: applied ? '1px solid #bbf7d0' : '1px solid rgba(28,53,240,0.12)',
+                        background: applied ? '#f0fdf4' : 'linear-gradient(135deg, rgba(28,53,240,0.06), rgba(7,137,236,0.04))',
                         transition: 'all 0.2s',
                       }}>
                         {/* Header */}
-                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px', color: applied ? '#16a34a' : '#fff' }}>
-                          {applied ? (
-                            <><CheckCircle2 size={12} color="#16a34a" /> 已应用</>
-                          ) : (
-                            <><div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff', flexShrink: 0 }} /> AI 优化结果</>
-                          )}
+                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px', color: applied ? '#16a34a' : 'var(--ai-color-1)' }}>
+                          {applied ? <><CheckCircle2 size={12} color="#16a34a" /> 已应用</> : <>✦ AI 优化建议</>}
                         </div>
-                        {/* Label and tip */}
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: applied ? '#334155' : 'rgba(255,255,255,0.92)', marginBottom: '2px' }}>{s.label}</div>
-                        <div style={{ fontSize: '10.5px', color: applied ? 'var(--theme-blue)' : 'rgba(255,255,255,0.7)', fontWeight: 500, marginBottom: '8px' }}>{s.tip}</div>
-                        {/* Full optimized content */}
-                        {s.section === 'summary' ? (
-                          <p style={{ margin: 0, fontSize: '11px', color: applied ? '#475569' : 'white', lineHeight: 1.65 }}>
+                        <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>{s.label}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, marginBottom: '8px' }}>{s.tip}</div>
+                        {/* Optimized content */}
+                        {isSkills ? (() => {
+                          const allSkills = s.optimizedContent as string[]
+                          const newSkills = allSkills.filter(sk => !existingSet.has(normalize(sk)))
+                          const alreadyCount = allSkills.length - newSkills.length
+                          const anyChecked = newSkills.some(sk => !!skillChecks[sk])
+                          return (
+                            <div>
+                              {newSkills.length > 0 ? (
+                                <div>
+                                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#475569', marginBottom: '6px', letterSpacing: '0.3px' }}>是否添加以下技能</div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    {newSkills.map(skill => (
+                                      <label key={skill} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', borderRadius: '6px', cursor: !applied ? 'pointer' : 'default', background: skillChecks[skill] && !applied ? 'rgba(7,137,236,0.07)' : 'rgba(0,0,0,0.02)', transition: 'background 0.15s', border: '1px solid', borderColor: skillChecks[skill] && !applied ? 'rgba(7,137,236,0.2)' : 'transparent' }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={!!skillChecks[skill]}
+                                          disabled={!!applied}
+                                          onChange={e => setSkillChecks(prev => ({ ...prev, [skill]: e.target.checked }))}
+                                          style={{ accentColor: 'var(--theme-blue)', width: '13px', height: '13px', flexShrink: 0, cursor: !applied ? 'pointer' : 'default' }}
+                                        />
+                                        <span style={{ fontSize: '12px', color: '#0f172a', fontWeight: 600, flex: 1 }}>{skill}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>建议中的技能您已全部添加</p>
+                              )}
+                              {alreadyCount > 0 && (
+                                <p style={{ margin: '8px 0 0', fontSize: '10px', color: '#94a3b8' }}>另有 {alreadyCount} 项技能您的简历中已有，无需重复添加</p>
+                              )}
+                              {/* Apply button inline for skills — disabled when nothing checked */}
+                              {!applied && newSkills.length > 0 && (
+                                <button
+                                  onClick={canApply && anyChecked ? () => {
+                                    const selected = newSkills.filter(sk => skillChecks[sk])
+                                    onApplySuggestion(s, selected)
+                                  } : undefined}
+                                  disabled={!canApply || !anyChecked}
+                                  style={{
+                                    width: '100%', marginTop: '10px', padding: '7px',
+                                    background: canApply && anyChecked ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
+                                    color: canApply && anyChecked ? 'white' : '#94a3b8', border: 'none', borderRadius: '6px',
+                                    fontFamily: 'var(--font-sans)', fontSize: '12px',
+                                    cursor: canApply && anyChecked ? 'pointer' : 'not-allowed', fontWeight: 600,
+                                  }}
+                                >✓ 添加所选技能</button>
+                              )}
+                            </div>
+                          )
+                        })() : s.section === 'summary' ? (
+                          <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: 1.65, padding: '8px 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px' }}>
                             {Array.isArray(s.optimizedContent)
                               ? (s.optimizedContent as string[]).filter(Boolean).join(' ')
                               : (s.optimizedContent as string).replace(/\n+/g, ' ')}
                           </p>
+                        ) : (s.section === 'exp' || s.section === 'project') && Array.isArray(s.optimizedContent) && (s.optimizedContent as string[]).some(hasDiffMarkup) ? (
+                          // Inline diff format: show changeDescription + each bullet with coloured segments
+                          <div>
+                            {s.changeDescription && (
+                              <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#475569', lineHeight: 1.55, padding: '6px 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px' }}>
+                                {s.changeDescription}
+                              </p>
+                            )}
+                            <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px', letterSpacing: '0.3px' }}>改动预览（<span style={{ color: 'var(--highlight)' }}>橙色</span>新增 · <span style={{ color: '#94a3b8', textDecoration: 'line-through' }}>删除</span>）</div>
+                            <ul style={{ margin: 0, paddingLeft: '14px' }}>
+                              {(s.optimizedContent as string[]).map((b, bi) => {
+                                const segs = hasDiffMarkup(b) ? parseDiffBullet(b) : null
+                                return (
+                                  <li key={bi} style={{ fontSize: '11px', lineHeight: 1.6, marginBottom: '3px', color: '#475569' }}>
+                                    {segs ? segs.map((seg, si) => (
+                                      <span key={si} style={{
+                                        color: seg.type === 'add' ? 'var(--highlight)' : seg.type === 'del' ? '#94a3b8' : '#475569',
+                                        textDecoration: seg.type === 'del' ? 'line-through' : 'none',
+                                        fontWeight: seg.type === 'add' ? 600 : 400,
+                                      }}>{seg.text}</span>
+                                    )) : b}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          </div>
                         ) : Array.isArray(s.optimizedContent) ? (
-                          <ul style={{ margin: 0, paddingLeft: '16px' }}>
+                          <ul style={{ margin: 0, paddingLeft: '14px' }}>
                             {(s.optimizedContent as string[]).map((b, bi) => (
-                              <li key={bi} style={{ fontSize: '11px', color: applied ? '#475569' : 'white', lineHeight: 1.6, marginBottom: '2px' }}>{b}</li>
+                              <li key={bi} style={{ fontSize: '11px', color: '#475569', lineHeight: 1.6, marginBottom: '2px' }}>{b}</li>
                             ))}
                           </ul>
                         ) : (
-                          <p style={{ margin: 0, fontSize: '11px', color: applied ? '#475569' : 'white', lineHeight: 1.55 }}>
+                          <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: 1.55 }}>
                             {(s.optimizedContent as string).replace(/\n+/g, ' ')}
                           </p>
                         )}
-                        {/* Apply button */}
-                        {!applied && (
+                        {/* Apply button — skills have their own inline button above */}
+                        {!applied && !isSkills && (
                           <button
                             onClick={canApply ? () => onApplySuggestion(s) : undefined}
                             disabled={!canApply}
                             style={{
                               width: '100%', marginTop: '10px', padding: '7px',
-                              background: 'var(--theme-blue)',
-                              color: 'white', border: '1px solid white', borderRadius: '6px',
+                              background: canApply ? 'linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))' : '#e2e8f0',
+                              color: canApply ? 'white' : '#94a3b8', border: 'none', borderRadius: '6px',
                               fontFamily: 'var(--font-sans)', fontSize: '12px',
-                              cursor: canApply ? 'pointer' : 'not-allowed', fontWeight: 500,
-                              opacity: canApply ? 1 : 0.5,
+                              cursor: canApply ? 'pointer' : 'not-allowed', fontWeight: 600,
                             }}
                           >✓ 应用优化</button>
                         )}
@@ -560,7 +672,7 @@ export function AIPanel({
                 onClick={onApplyAll}
                 style={{ width: '100%', padding: '12px', marginBottom: '10px', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', color: 'white', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
               >
-                <Sparkles size={14} /> 全部应用（{unappliedCount} 条）
+              全部应用（{unappliedCount} 条）
               </button>
             )}
 
@@ -589,17 +701,8 @@ export function ImportModal({ filename, loading, onStart, onClose }: {
     <ModalWrap onClose={loading ? () => {} : onClose}>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <style>{`@keyframes impBounce{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-8px);opacity:1}}`}</style>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '22px' }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{
-                width: '10px', height: '10px', borderRadius: '50%', background: 'var(--theme-blue)',
-                animation: `impBounce 1.2s ${i * 0.18}s infinite`,
-              }} />
-            ))}
-          </div>
-          <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>正在匹配当前模版</div>
-          <div style={{ fontSize: '13px', color: '#64748b' }}>正在导入「{filename}」，请稍候...</div>
+          <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '28px' }}>AI 正在识别简历</div>
+          <ImportLoadingBar />
         </div>
       ) : (
         <>
@@ -724,13 +827,18 @@ export function PhotoCropModal({
   src, initialMeta, onConfirm, onReplace, onRemove, onClose,
 }: {
   src: string
-  initialMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number }
-  onConfirm: (meta: { x: number; y: number; scale: number; natW: number; natH: number }) => void
+  initialMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number; shape?: 'circle' | 'rounded' }
+  onConfirm: (meta: { x: number; y: number; scale: number; natW: number; natH: number; shape: 'circle' | 'rounded' }) => void
   onReplace: () => void
   onRemove: () => void
   onClose: () => void
 }) {
-  const PREVIEW = 240
+  const PORTRAIT_RATIO = 4 / 3
+
+  const [shape, setShape] = useState<'circle' | 'rounded'>(initialMeta?.shape ?? 'circle')
+  // Portrait shape uses a 3:4 ratio preview; circle uses a square.
+  const previewW = shape === 'rounded' ? 180 : 240
+  const previewH = shape === 'rounded' ? Math.round(180 * PORTRAIT_RATIO) : 240
 
   const [scale, setScale] = useState(initialMeta?.scale ?? 1)
   const [pos, setPos]     = useState({ x: initialMeta?.x ?? 0, y: initialMeta?.y ?? 0 })
@@ -740,6 +848,9 @@ export function PhotoCropModal({
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null)
   const [dragging, setDragging] = useState(false)
 
+  // Reset crop position and zoom when the user switches shape (different aspect ratio)
+  useEffect(() => { setPos({ x: 0, y: 0 }); setScale(1) }, [shape])
+
   // Load natural dimensions whenever src changes (e.g. user replaces photo)
   useEffect(() => {
     const img = new Image()
@@ -748,24 +859,22 @@ export function PhotoCropModal({
   }, [src])
 
   // Compute cover-fit base dimensions that preserve the image's natural aspect ratio.
-  // At scale=1 the image exactly covers the circle; at scale>1 it's proportionally larger.
-  const nat = natSize ?? { w: PREVIEW, h: PREVIEW }
-  const coverScale = Math.max(PREVIEW / nat.w, PREVIEW / nat.h)
+  // At scale=1 the image exactly covers the preview; at scale>1 it's proportionally larger.
+  const nat = natSize ?? { w: previewW, h: previewH }
+  const coverScale = Math.max(previewW / nat.w, previewH / nat.h)
   const baseW = nat.w * coverScale
   const baseH = nat.h * coverScale
   const renderedW = baseW * scale
   const renderedH = baseH * scale
 
-  // Per-axis pan limits: image must always fully cover the circle in both dimensions.
-  // A portrait image (baseH > PREVIEW) can be panned vertically even at scale=1.
-  // A landscape image (baseW > PREVIEW) can be panned horizontally even at scale=1.
-  const maxOffX = Math.max(0, (renderedW - PREVIEW) / (2 * PREVIEW))
-  const maxOffY = Math.max(0, (renderedH - PREVIEW) / (2 * PREVIEW))
+  // Per-axis pan limits: image must always fully cover the preview in both dimensions.
+  const maxOffX = Math.max(0, (renderedW - previewW) / (2 * previewW))
+  const maxOffY = Math.max(0, (renderedH - previewH) / (2 * previewH))
   const cx = Math.max(-maxOffX, Math.min(maxOffX, pos.x))
   const cy = Math.max(-maxOffY, Math.min(maxOffY, pos.y))
 
-  const imgLeft = (PREVIEW - renderedW) / 2 + cx * PREVIEW
-  const imgTop  = (PREVIEW - renderedH) / 2 + cy * PREVIEW
+  const imgLeft = (previewW - renderedW) / 2 + cx * previewW
+  const imgTop  = (previewH - renderedH) / 2 + cy * previewH
 
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -774,8 +883,8 @@ export function PhotoCropModal({
   }
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return
-    const dx = (e.clientX - dragRef.current.sx) / PREVIEW
-    const dy = (e.clientY - dragRef.current.sy) / PREVIEW
+    const dx = (e.clientX - dragRef.current.sx) / previewW
+    const dy = (e.clientY - dragRef.current.sy) / previewH
     setPos({ x: dragRef.current.px + dx, y: dragRef.current.py + dy })
   }
   const onUp = () => { dragRef.current = null; setDragging(false) }
@@ -787,9 +896,9 @@ export function PhotoCropModal({
 
   // Hint text that adapts to image orientation
   const hint = !natSize ? '加载中…'
-    : baseH > PREVIEW + 1 && baseW > PREVIEW + 1 ? '拖拽移动 · 滚轮或滑块缩放'
-    : baseH > PREVIEW + 1 ? '上下拖拽调整位置 · 缩放查看更多'
-    : baseW > PREVIEW + 1 ? '左右拖拽调整位置 · 缩放查看更多'
+    : baseH > previewH + 1 && baseW > previewW + 1 ? '拖拽移动 · 滚轮或滑块缩放'
+    : baseH > previewH + 1 ? '上下拖拽调整位置 · 缩放查看更多'
+    : baseW > previewW + 1 ? '左右拖拽调整位置 · 缩放查看更多'
     : '拖拽移动 · 滚轮或滑块缩放'
 
   const btnBase: React.CSSProperties = {
@@ -807,17 +916,46 @@ export function PhotoCropModal({
         {hint}
       </div>
 
-      {/* Circular crop preview */}
+      {/* Shape selector */}
+      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px' }}>
+        {([
+          { key: 'circle' as const, label: '圆形', swatchW: 32, swatchH: 32, radius: '50%' },
+          { key: 'rounded' as const, label: '证件照', swatchW: 24, swatchH: 32, radius: '3px' },
+        ]).map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => setShape(opt.key)}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              padding: '10px 18px', borderRadius: '10px', cursor: 'pointer',
+              border: `2px solid ${shape === opt.key ? '#6366f1' : '#e2e8f0'}`,
+              background: shape === opt.key ? '#f5f3ff' : 'white',
+              transition: 'all 0.15s', fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <div style={{
+              width: `${opt.swatchW}px`, height: `${opt.swatchH}px`, borderRadius: opt.radius,
+              background: shape === opt.key ? '#6366f1' : '#e2e8f0',
+              transition: 'all 0.15s',
+            }} />
+            <span style={{ fontSize: '12px', fontWeight: 500, color: shape === opt.key ? '#6366f1' : '#64748b' }}>{opt.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Crop preview */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
         <div
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
           onWheel={onWheel}
           style={{
-            width: PREVIEW, height: PREVIEW, borderRadius: '50%',
+            width: previewW, height: previewH,
+            borderRadius: shape === 'rounded' ? `${Math.round(previewW * 0.15)}px` : '50%',
             overflow: 'hidden', position: 'relative',
             cursor: dragging ? 'grabbing' : 'grab',
             userSelect: 'none', touchAction: 'none',
             boxShadow: '0 0 0 3px #6366f130, 0 4px 20px rgba(0,0,0,0.12)',
+            transition: 'width 0.2s, height 0.2s, border-radius 0.2s',
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -859,7 +997,7 @@ export function PhotoCropModal({
         </button>
         <button
           disabled={!natSize}
-          onClick={() => natSize && onConfirm({ x: cx, y: cy, scale, natW: natSize.w, natH: natSize.h })}
+          onClick={() => natSize && onConfirm({ x: cx, y: cy, scale, natW: natSize.w, natH: natSize.h, shape })}
           style={{ ...btnBase, flex: 1, border: 'none', background: natSize ? '#0f172a' : '#94a3b8', color: 'white', fontWeight: 600 }}>
           确认
         </button>
@@ -875,9 +1013,10 @@ export function PhotoCropModal({
 export type PaywallTrigger =
   | 'download_free'   // free template, offer watermark-free upgrade + free download option
   | 'download_pro'    // pro template, must pay (no free option)
-  | 'ai_optimize'     // AI bullet rewrite locked
   | 'ai_analyze'      // job match analysis locked
+  | 'ai_translate'    // Chinese→English resume generation locked
   | 'import_limit'    // daily import quota hit
+  | 'compress'        // one-page compress locked
   | 'upgrade'         // direct upgrade from pricing page
 
 export interface PaywallModalProps {
@@ -897,10 +1036,11 @@ export interface PaywallModalProps {
 const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
   download_free:  { title: '升级 Pro 享无水印下载',    sub: '去掉简历底部水印，更专业地投递' },
   download_pro:   { title: '解锁 Pro 模板',             sub: '付费解锁这套模板，即刻无水印下载' },
-  ai_optimize:    { title: '解锁 AI 内容优化',           sub: '让 AI 帮你重写经历描述，提升竞争力' },
-  ai_analyze:     { title: '解锁岗位匹配分析',            sub: '分析简历与 JD 的匹配度，获得针对性建议' },
+  ai_translate:   { title: '一键生成英文简历',          sub: '订阅 Pro 会员，将中文简历智能翻译为英文版' },
+  ai_analyze:     { title: '解锁岗位匹配分析',            sub: '分析简历与目标职位的匹配度，获得针对性建议' },
+  compress:       { title: '一键压缩至 1 页',              sub: '订阅 Pro 会员，AI 自动精简描述 · 智能字号缩放' },
   import_limit:   { title: '今日导入次数已用完',           sub: '免费用户每天可导入 2 份，升级 Pro 每天 10 份' },
-  upgrade:        { title: '升级 Pro 会员',               sub: '解锁全部功能 · 无水印下载 · AI 优化无限次' },
+  upgrade:        { title: '升级 Pro 会员',               sub: '解锁全部功能 · 无水印下载 · AI 分析每日 20 次' },
 }
 
 const PLAN_META = {
@@ -915,6 +1055,7 @@ const SUB_BENEFITS = [
   'AI 优化 100次/天',
   '简历智能解析',
   '岗位匹配分析',
+  '一键 AI 压缩至 1 页',
   'PNG 高清图片导出',
 ]
 
@@ -972,7 +1113,7 @@ export function PaywallModal({
       resumeId:   planType === 'single' ? resumeId   : undefined,
       templateId: planType === 'single' ? templateId : undefined,
       paidAt: now, expiresAt, payMethod: 'wechat',
-      aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
+      aiAnalyzeUsed: 0,
     })
     setPhase('success')
     setTimeout(() => { onSuccess(planType, orderId); onClose() }, 1200)
@@ -1049,7 +1190,7 @@ export function PaywallModal({
       addPayment({
         orderId, deviceId, planType, amount: 0, isStudent,
         paidAt: now, expiresAt, payMethod: 'wechat',
-        aiOptimizeUsed: 0, aiAnalyzeUsed: 0,
+        aiAnalyzeUsed: 0,
       })
       markCodeRedeemed(trimmed)
       const PLAN_ZH: Record<string, string> = { trial7: '7天体验卡', monthly: '月卡', quarterly: '季卡', yearly: '年卡' }

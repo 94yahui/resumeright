@@ -12,7 +12,7 @@ const COOKIE_DEVICE = 'rc_did'
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type PlanType  = 'single' | 'monthly' | 'quarterly' | 'yearly' | 'trial7'
 export type PayMethod = 'wechat'
-export type UsageType = 'import' | 'ai_optimize' | 'ai_analyze'
+export type UsageType = 'import' | 'ai_analyze' | 'ai_translate'
 
 export interface PaymentRecord {
   orderId: string
@@ -25,7 +25,6 @@ export interface PaymentRecord {
   paidAt: number          // unix ms
   expiresAt?: number      // unix ms; undefined for 'single' (no expiry)
   payMethod: PayMethod
-  aiOptimizeUsed: number  // lifetime quota for 'single' plan
   aiAnalyzeUsed: number
 }
 
@@ -47,7 +46,7 @@ interface DailyUsage {
 // ─── Resolved pro status ──────────────────────────────────────────────────────
 export type ProStatus =
   | { kind: 'free' }
-  | { kind: 'single'; orderId: string; resumeId: string; templateId: string; aiOptimizeLeft: number; aiAnalyzeLeft: number }
+  | { kind: 'single'; orderId: string; resumeId: string; templateId: string; aiAnalyzeLeft: number }
   | { kind: 'subscription'; plan: 'monthly' | 'quarterly' | 'yearly'; expiresAt: number }
 
 // ─── Plan prices (fen) ────────────────────────────────────────────────────────
@@ -196,8 +195,7 @@ export function getProStatus(deviceId: string, resumeId?: string): ProStatus {
         orderId: single.orderId,
         resumeId,
         templateId: single.templateId ?? '',  // empty = old purchase without template binding
-        aiOptimizeLeft: Math.max(0, 5 - (single.aiOptimizeUsed ?? 0)),
-        aiAnalyzeLeft:  Math.max(0, 2 - (single.aiAnalyzeUsed ?? 0)),
+        aiAnalyzeLeft: Math.max(0, 2 - (single.aiAnalyzeUsed ?? 0)),
       }
     }
   }
@@ -286,18 +284,6 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
     return { allowed: true }
   }
 
-  if (type === 'ai_optimize') {
-    if (status.kind === 'free') return { allowed: false, reason: 'not_paid', used: 0, limit: 0 }
-    if (status.kind === 'single') {
-      const left = status.aiOptimizeLeft
-      if (left <= 0) return { allowed: false, reason: 'total_limit', used: 5, limit: 5 }
-      return { allowed: true }
-    }
-    const used = getDailyCount(deviceId, 'ai_optimize')
-    if (used >= 100) return { allowed: false, reason: 'daily_limit', used, limit: 100 }
-    return { allowed: true }
-  }
-
   if (type === 'ai_analyze') {
     if (status.kind === 'free') {
       const used = getFreeAnalyzeUsed()
@@ -310,7 +296,14 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
       return { allowed: true }
     }
     const used = getDailyCount(deviceId, 'ai_analyze')
-    if (used >= 30) return { allowed: false, reason: 'daily_limit', used, limit: 30 }
+    if (used >= 20) return { allowed: false, reason: 'daily_limit', used, limit: 20 }
+    return { allowed: true }
+  }
+
+  if (type === 'ai_translate') {
+    if (status.kind !== 'subscription') return { allowed: false, reason: 'not_paid', used: 0, limit: 0 }
+    const used = getDailyCount(deviceId, 'ai_translate')
+    if (used >= 5) return { allowed: false, reason: 'daily_limit', used, limit: 5 }
     return { allowed: true }
   }
 
@@ -321,15 +314,6 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
 export function recordUsage(deviceId: string, type: UsageType, status: ProStatus): void {
   if (type === 'import') {
     incrementDaily(deviceId, 'import')
-    return
-  }
-  if (type === 'ai_optimize' && status.kind === 'single') {
-    const list = getPayments()
-    const idx  = list.findIndex(p => p.orderId === status.orderId)
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], aiOptimizeUsed: (list[idx].aiOptimizeUsed ?? 0) + 1 }
-      lsSet(LS_PAYMENTS, list)
-    }
     return
   }
   if (type === 'ai_analyze' && status.kind === 'free') {

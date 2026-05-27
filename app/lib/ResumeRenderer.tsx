@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import { ResumeData, SelectionType, SectionKey, Entry } from './types'
+import { ResumeData, SelectionType, SectionKey, Entry, hasDiffMarkup, parseDiffBullet } from './types'
 import { TemplateConfig } from './templates-config'
 import { Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
 
@@ -30,6 +30,10 @@ interface Props {
   onSharedDropTargetChange?: (dt: DropState | null) => void
   /** Keys like 'summary', 'skills', 'exp:0', 'exp:1', 'project:0' that have AI suggestions */
   aiSuggestionSections?: Set<string>
+  /** Diff-markup bullets keyed by "sectionKey:entryIndex" — replaces entry bullets with inline diff view before user applies */
+  bulletDiffs?: Record<string, string[]>
+  /** Skills checked in the AI panel but not yet applied — shown in --highlight color in real-time */
+  pendingSkills?: string[]
 }
 
 const PAGE_WIDTH = 794   // A4 width @ 96dpi
@@ -37,7 +41,7 @@ const PAGE_HEIGHT = 1123 // A4 height @ 96dpi
 
 export default function ResumeRenderer({
   data, template, color, interactive = false, selection, onSelect, onPhotoUpload, onReorderSection, pageCount = 1,
-  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections,
+  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections, bulletDiffs, pendingSkills,
 }: Props) {
 
   // Internal fallbacks used when not in a paginated context (thumbnails, print layer, etc.)
@@ -51,6 +55,24 @@ export default function ResumeRenderer({
 
   const accent = color || template.accentColor
   const aiSectionSet = aiSuggestionSections ?? new Set<string>()
+
+  const EN: Record<string, string> = {
+    exp: 'Work Experience', edu: 'Education', project: 'Projects',
+    award: 'Awards & Honors', cert: 'Certifications', volunteer: 'Volunteering',
+    interest: 'Interests', language: 'Languages',
+    summary: 'Professional Summary', skills: 'Skills', contact: 'Contact',
+  }
+  const ZH: Record<string, string> = {
+    exp: '工作经历', edu: '教育背景', project: '项目经历',
+    award: '荣誉奖项', cert: '资质证书', volunteer: '志愿服务',
+    interest: '兴趣爱好', language: '语言能力',
+    summary: '个人简介', skills: '专业技能', contact: '联系方式',
+  }
+  const T = (k: string): string => (data.resumeLang === 'en' ? EN : ZH)[k] ?? k
+
+  // Scale font sizes and vertical spacings only — structural dimensions (widths, sidebar fills) are untouched
+  const sc = data.fontScale ?? 1
+  const s = (x: number): string => sc === 1 ? `${x}px` : `${+(x * sc).toFixed(1)}px`
 
   const AIChip = () => (
     <div className="no-print" style={{
@@ -105,32 +127,32 @@ export default function ResumeRenderer({
     const titleColor = onDark ? '#ffffff' : accent
     const baseProps: React.CSSProperties = {
       fontFamily: headingFont,
-      fontSize: '13px',
+      fontSize: s(13),
       fontWeight: 700,
       letterSpacing: template.fontPair === 'serif-heading' ? '0.5px' : '1.5px',
       textTransform: template.fontPair === 'serif-heading' ? 'none' : 'uppercase',
       color: titleColor,
-      marginBottom: '5px',
+      marginBottom: s(5),
     }
 
     switch (template.accentStyle) {
       case 'underline-bar':
         return (
-          <div style={{ marginBottom: '5px' }}>
+          <div style={{ marginBottom: s(5) }}>
             <div style={baseProps}>{children}</div>
             <div style={{ height: '2px', background: titleColor, width: '36px' }} />
           </div>
         )
       case 'left-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: s(5) }}>
             <div style={{ width: '4px', height: '16px', background: titleColor }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
           </div>
         )
       case 'side-icon':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: s(5) }}>
             <div style={{ width: '8px', height: '8px', background: titleColor, borderRadius: '50%' }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.3 }} />
@@ -146,23 +168,23 @@ export default function ResumeRenderer({
               padding: '4px 12px',
               borderRadius: '4px',
               fontFamily: headingFont,
-              fontSize: '12px',
+              fontSize: s(12),
               fontWeight: 700,
               letterSpacing: '1px',
               textTransform: 'uppercase',
-              marginBottom: '7px',
+              marginBottom: s(7),
             }}>{children}</div>
           </div>
         )
       case 'thin-line':
         return (
-          <div style={{ marginBottom: '5px', borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
+          <div style={{ marginBottom: s(5), borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
             <div style={{ ...baseProps, marginBottom: 0, fontWeight: 500 }}>{children}</div>
           </div>
         )
       case 'double-line':
         return (
-          <div style={{ marginBottom: '5px' }}>
+          <div style={{ marginBottom: s(5) }}>
             <div style={{ height: '1px', background: titleColor, marginBottom: '3px' }} />
             <div style={{ ...baseProps, textAlign: 'center', marginBottom: '3px' }}>{children}</div>
             <div style={{ height: '1px', background: titleColor }} />
@@ -170,7 +192,7 @@ export default function ResumeRenderer({
         )
       case 'triple-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: s(5) }}>
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
               <div style={{ width: '6px', height: '13px', background: titleColor, opacity: 1 }} />
@@ -182,7 +204,7 @@ export default function ResumeRenderer({
       case 'gradient-band':
         return (
           <div style={{
-            marginBottom: '7px',
+            marginBottom: s(7),
             marginLeft: '-8px',
             marginRight: '-8px',
             padding: '5px 8px',
@@ -196,7 +218,7 @@ export default function ResumeRenderer({
         )
       case 'plain-bold':
       default:
-        return <div style={{ ...baseProps, fontSize: '14px' }}>{children}</div>
+        return <div style={{ ...baseProps, fontSize: s(14) }}>{children}</div>
     }
   }
 
@@ -282,7 +304,7 @@ export default function ResumeRenderer({
         style={{
           ...editStyle({ kind: 'entry', sec, idx }),
           position: 'relative',
-          marginBottom: isLast ? 0 : '6px',
+          marginBottom: isLast ? 0 : s(6),
           padding: interactive ? '0 6px' : '0',
           marginLeft: interactive ? '-6px' : 0,
           breakInside: 'avoid',
@@ -298,11 +320,11 @@ export default function ResumeRenderer({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '2px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: headingFont, fontSize: '14px', fontWeight: 600, color: titleC, lineHeight: 1.3 }}>
+            <div style={{ fontFamily: headingFont, fontSize: s(14), fontWeight: 600, color: titleC, lineHeight: 1.3 }}>
               {entry.title}
             </div>
             {entry.sub && (
-              <div style={{ fontSize: '12.5px', color: subC, marginTop: '1px' }}>
+              <div style={{ fontSize: s(12.5), color: subC, marginTop: '1px' }}>
                 {entry.sub}
               </div>
             )}
@@ -310,40 +332,49 @@ export default function ResumeRenderer({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {interactive && aiSectionSet.has(`${sec}:${idx}`) && <AIChip />}
             {entry.date && (
-              <div style={{ fontSize: '11.5px', color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
+              <div style={{ fontSize: s(11.5), color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
                 {entry.date}
               </div>
             )}
           </div>
         </div>
         {/* Bullets */}
-        {entry.bullets && entry.bullets.length > 0 && (
-          <ul style={{
-            listStyle: 'none',
-            margin: '3px 0 0',
-            padding: 0,
-          }}>
-            {entry.bullets.filter(b => b.trim()).map((b, i) => (
-              <li key={i} style={{
-                fontSize: '12px',
-                color: bodyC,
-                lineHeight: 1.55,
-                paddingLeft: '14px',
-                position: 'relative',
-                marginBottom: '1px',
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  left: 0, top: '8px',
-                  width: '4px', height: '4px',
-                  borderRadius: '50%',
-                  background: onDark ? 'rgba(255,255,255,0.6)' : accent,
-                }} />
-                {b}
-              </li>
-            ))}
-          </ul>
-        )}
+        {(() => {
+          // Use diff bullets (from pending AI suggestion) when available, otherwise entry.bullets
+          const diffBullets = bulletDiffs?.[`${sec}:${idx}`]
+          const bulletsToRender = (diffBullets ?? entry.bullets ?? []).filter(b => {
+            // In diff mode: exclude bullets that are pure deletion (whole bullet is [[~...~]])
+            // so they don't take up space — they're shown via strikethrough inline
+            // But we still need to render them so the strikethrough is visible
+            return b.trim().length > 0
+          })
+          if (bulletsToRender.length === 0) return null
+          return (
+            <ul style={{ listStyle: 'none', margin: '3px 0 0', padding: 0 }}>
+              {bulletsToRender.map((b, i) => {
+                const hasDiff = hasDiffMarkup(b)
+                // Pure-deletion bullet: [[~entire text~]] — render faded with strikethrough, no bullet dot
+                const isPureDeletion = hasDiff && /^\[\[~.*~\]\]$/.test(b.trim())
+                const segments = hasDiff ? parseDiffBullet(b) : null
+                return (
+                  <li key={i} style={{ fontSize: s(12), lineHeight: 1.55, paddingLeft: '14px', position: 'relative', marginBottom: '1px', color: bodyC }}>
+                    {!isPureDeletion && (
+                      <span style={{ position: 'absolute', left: 0, top: '8px', width: '4px', height: '4px', borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--highlight)' : accent) }} />
+                    )}
+                    {segments ? (
+                      segments.map((seg, si) => (
+                        <span key={si} style={{
+                          color: seg.type === 'add' ? 'var(--highlight)' : seg.type === 'del' ? (onDark ? 'rgba(255,255,255,0.35)' : '#94a3b8') : bodyC,
+                          textDecoration: seg.type === 'del' ? 'line-through' : 'none',
+                        }}>{seg.text}</span>
+                      ))
+                    ) : b}
+                  </li>
+                )
+              })}
+            </ul>
+          )
+        })()}
 
         {/* Drop indicator: bottom edge */}
         {isDropBottom && (
@@ -364,8 +395,8 @@ export default function ResumeRenderer({
     const pillBg = onDark ? 'rgba(255,255,255,0.12)' : `${accent}12`
     const pillBorder = onDark ? 'rgba(255,255,255,0.22)' : `${accent}35`
     return (
-      <div data-section-start="1" style={{ marginBottom: '10px' }}>
-        <SectionTitle onDark={onDark}>语言能力</SectionTitle>
+      <div data-section-start="1" style={{ marginBottom: s(10) }}>
+        <SectionTitle onDark={onDark}>{T('language')}</SectionTitle>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {data.language.map((entry, idx) => {
             const sel = isSelected({ kind: 'entry', sec: 'language', idx })
@@ -380,7 +411,7 @@ export default function ResumeRenderer({
                   background: sel ? `${accent}20` : pillBg,
                   border: `1.5px solid ${sel ? accent : pillBorder}`,
                   borderRadius: '20px',
-                  fontSize: '12px',
+                  fontSize: s(12),
                   color: textC,
                   cursor: interactive ? 'pointer' : 'default',
                   transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
@@ -408,7 +439,7 @@ export default function ResumeRenderer({
     if (!items || items.length === 0) return null
     const hasSectionAI = interactive && items.some((_, idx) => aiSectionSet.has(`${sec}:${idx}`))
     return (
-      <div style={{ marginBottom: '10px' }}>
+      <div style={{ marginBottom: s(10) }}>
         <div data-section-start="1" style={hasSectionAI ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' } : undefined}>
           <div style={hasSectionAI ? { flex: 1 } : undefined}>
             <SectionTitle onDark={onDark}>{label}</SectionTitle>
@@ -426,15 +457,15 @@ export default function ResumeRenderer({
     if (!data.hasSummary) return null
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
     return (
-      <div data-section-start="1" style={{ marginBottom: '10px' }}>
+      <div data-section-start="1" style={{ marginBottom: s(10) }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-          <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>个人简介</SectionTitle></div>
+          <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('summary')}</SectionTitle></div>
           {interactive && aiSectionSet.has('summary') && <AIChip />}
         </div>
         <p onClick={click({ kind: 'field', field: 'summary' })}
           style={{
             ...editStyle({ kind: 'field', field: 'summary' }),
-            fontSize: '12.5px',
+            fontSize: s(12.5),
             color: c,
             lineHeight: 1.7,
             padding: interactive ? '6px' : 0,
@@ -446,13 +477,15 @@ export default function ResumeRenderer({
 
   // ============ SKILLS ============
   const SkillsBlock = ({ onDark = false, asPills = true }: { onDark?: boolean; asPills?: boolean }) => {
-    if (!data.hasSkills || data.skills.length === 0) return null
+    const hasPending = !!pendingSkills && pendingSkills.length > 0
+    if (!data.hasSkills && !hasPending) return null
+    if (data.skills.length === 0 && !hasPending) return null
 
     if (asPills) {
       return (
-        <div data-section-start="1" style={{ marginBottom: '10px' }}>
+        <div data-section-start="1" style={{ marginBottom: s(10) }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>专业技能</SectionTitle></div>
+            <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('skills')}</SectionTitle></div>
             {interactive && aiSectionSet.has('skills') && <AIChip />}
           </div>
           <div onClick={click({ kind: 'skills' })}
@@ -461,17 +494,25 @@ export default function ResumeRenderer({
               display: 'flex', flexWrap: 'wrap', gap: '6px',
               padding: interactive ? '4px' : 0,
             }}>
-            {data.skills.map((s, i) => (
+            {data.skills.map((sk, i) => (
               <span key={i} style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '4px 12px',
-                borderRadius: '4px',
-                fontSize: '11.5px', lineHeight: 1,
-                fontWeight: 500,
+                padding: '4px 12px', borderRadius: '4px',
+                fontSize: s(11.5), lineHeight: 1, fontWeight: 500,
                 background: onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
                 color: onDark ? '#fff' : accent,
                 border: onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
-              }}>{s}</span>
+              }}>{sk}</span>
+            ))}
+            {(pendingSkills ?? []).map((sk, i) => (
+              <span key={`ps_${i}`} style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '4px 12px', borderRadius: '4px',
+                fontSize: s(11.5), lineHeight: 1, fontWeight: 600,
+                background: 'rgba(255,103,0,0.08)',
+                color: 'var(--highlight)',
+                border: '1px solid rgba(255,103,0,0.25)',
+              }}>{sk}</span>
             ))}
           </div>
         </div>
@@ -479,27 +520,20 @@ export default function ResumeRenderer({
     }
 
     return (
-      // Outer wrapper has no interactive padding so SectionTitle stays flush with ContactInline above it
-      <div data-section-start="1" style={{ marginBottom: '10px' }}>
-        <SectionTitle onDark>专业技能</SectionTitle>
+      <div data-section-start="1" style={{ marginBottom: s(10) }}>
+        <SectionTitle onDark>{T('skills')}</SectionTitle>
         <div onClick={click({ kind: 'skills' })}
           style={{ ...editStyle({ kind: 'skills' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
-          {data.skills.map((s, i) => (
-            <div key={i} style={{
-              fontSize: '12px',
-              color: 'rgba(255,255,255,0.9)',
-              marginBottom: '2px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}>
-              <span style={{
-                width: '4px', height: '4px',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.6)',
-                flexShrink: 0,
-              }} />
-              {s}
+          {data.skills.map((sk, i) => (
+            <div key={i} style={{ fontSize: s(12), color: 'rgba(255,255,255,0.9)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+              {sk}
+            </div>
+          ))}
+          {(pendingSkills ?? []).map((sk, i) => (
+            <div key={`ps_${i}`} style={{ fontSize: s(12), color: 'var(--highlight)', fontWeight: 600, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--highlight)', flexShrink: 0 }} />
+              {sk}
             </div>
           ))}
         </div>
@@ -528,14 +562,14 @@ export default function ResumeRenderer({
           flexDirection: vertical ? 'column' : 'row',
           flexWrap: vertical ? 'nowrap' : 'wrap',
           gap: vertical ? '6px' : '6px 18px',
-          fontSize: '11.5px',
+          fontSize: s(11.5),
           color: c,
           padding: interactive ? '4px' : 0,
           margin: interactive ? '-4px' : 0,
         }}>
         {items.map((it, i) => (
           <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
-            <span style={{ opacity: 0.85 }}>{it.icon}</span>
+            <span style={{ opacity: 0.85, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{it.icon}</span>
             {it.href ? (
               <a
                 href={it.href}
@@ -557,17 +591,22 @@ export default function ResumeRenderer({
   // ============ PHOTO ============
   const PhotoBlock = ({ size = 90, onDark = false }: { size?: number; onDark?: boolean }) => {
     const meta = data.photoMeta
+    const photoShape = meta?.shape ?? 'circle'
+    const PORTRAIT_RATIO = 4 / 3
+    const containerW = size
+    const containerH = photoShape === 'rounded' ? Math.round(size * PORTRAIT_RATIO) : size
+    const borderRadius = photoShape === 'rounded' ? `${Math.round(size * 0.15)}px` : '50%'
 
     // Compute rendered image dimensions preserving natural aspect ratio.
-    // Without natW/natH (legacy photos), fall back to object-fit: cover on a square.
-    let imgW = size, imgH = size, imgLeft = 0, imgTop = 0, hasMeta = false
+    // Without natW/natH (legacy photos), fall back to object-fit: cover on the container.
+    let imgW = containerW, imgH = containerH, imgLeft = 0, imgTop = 0, hasMeta = false
     if (meta && meta.natW && meta.natH) {
       hasMeta = true
-      const coverScale = Math.max(size / meta.natW, size / meta.natH)
+      const coverScale = Math.max(containerW / meta.natW, containerH / meta.natH)
       imgW = meta.natW * coverScale * meta.scale
       imgH = meta.natH * coverScale * meta.scale
-      imgLeft = (size - imgW) / 2 + meta.x * size
-      imgTop  = (size - imgH) / 2 + meta.y * size
+      imgLeft = (containerW - imgW) / 2 + meta.x * containerW
+      imgTop  = (containerH - imgH) / 2 + meta.y * containerH
     }
 
     const handleClick = (e: React.MouseEvent) => {
@@ -578,8 +617,8 @@ export default function ResumeRenderer({
       <div onClick={interactive ? handleClick : undefined}
         className={interactive ? 'resume-photo-circle' : undefined}
         style={{
-          width: size, height: size,
-          borderRadius: '50%',
+          width: containerW, height: containerH,
+          borderRadius,
           background: data.photo ? 'transparent' : (onDark ? 'rgba(255,255,255,0.15)' : `${accent}15`),
           border: `2px solid ${onDark ? 'rgba(255,255,255,0.3)' : accent + '30'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -627,7 +666,7 @@ export default function ResumeRenderer({
       }}>
       <div style={{
         fontFamily: headingFont,
-        fontSize: big ? '32px' : '22px',
+        fontSize: big ? s(32) : s(22),
         fontWeight: 700,
         letterSpacing: '-0.5px',
         lineHeight: 1.1,
@@ -636,10 +675,10 @@ export default function ResumeRenderer({
       {data.jobtitle && (
         <div style={{
           fontFamily: baseFont,
-          fontSize: big ? '14px' : '12px',
+          fontSize: big ? s(14) : s(12),
           fontWeight: 400,
           color: onDark ? 'rgba(255,255,255,0.75)' : '#475569',
-          marginTop: '4px',
+          marginTop: s(4),
         }}>{data.jobtitle}</div>
       )}
     </div>
@@ -649,19 +688,19 @@ export default function ResumeRenderer({
   const MainBody = ({ onDark = false }: { onDark?: boolean }) => (
     <>
       <SummaryBlock onDark={onDark} />
-      <Section sec="exp" label="工作经历" items={data.exp} onDark={onDark} />
-      {data.hasProject && <Section sec="project" label="项目经历" items={data.project} onDark={onDark} />}
-      <Section sec="edu" label="教育背景" items={data.edu} onDark={onDark} />
+      <Section sec="exp" label={T('exp')} items={data.exp} onDark={onDark} />
+      {data.hasProject && <Section sec="project" label={T('project')} items={data.project} onDark={onDark} />}
+      <Section sec="edu" label={T('edu')} items={data.edu} onDark={onDark} />
       {data.hasLanguage && <LanguageSection onDark={onDark} />}
-      {data.hasAward && <Section sec="award" label="荣誉奖项" items={data.award} onDark={onDark} />}
-      {data.hasCert && <Section sec="cert" label="资质证书" items={data.cert} onDark={onDark} />}
-      {data.hasVolunteer && <Section sec="volunteer" label="志愿服务" items={data.volunteer} onDark={onDark} />}
-      {data.hasInterest && <Section sec="interest" label="兴趣爱好" items={data.interest} onDark={onDark} />}
+      {data.hasAward && <Section sec="award" label={T('award')} items={data.award} onDark={onDark} />}
+      {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} onDark={onDark} />}
+      {data.hasVolunteer && <Section sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} />}
+      {data.hasInterest && <Section sec="interest" label={T('interest')} items={data.interest} onDark={onDark} />}
     </>
   )
 
   // ============ ROOT ============
-  // All papers white
+  // All papers white; structural dimensions are fixed — only typography scales via s()
   const rootStyle: React.CSSProperties = {
     width: `${PAGE_WIDTH}px`,
     minHeight: `${PAGE_HEIGHT}px`,
@@ -696,7 +735,7 @@ export default function ResumeRenderer({
             </div>
 
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle onDark>联系方式</SectionTitle>
+              <SectionTitle onDark>{T('contact')}</SectionTitle>
               <ContactInline onDark vertical />
             </div>
 
@@ -734,7 +773,7 @@ export default function ResumeRenderer({
               <NameBlock centered big={false} />
             </div>
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle>联系方式</SectionTitle>
+              <SectionTitle>{T('contact')}</SectionTitle>
               <ContactInline vertical />
             </div>
             <SkillsBlock />
@@ -849,17 +888,17 @@ export default function ResumeRenderer({
         <div style={{ display: 'flex', padding: '28px 48px 40px', gap: '32px' }}>
           <div style={{ flex: 2 }}>
             <SummaryBlock />
-            <Section sec="exp" label="工作经历" items={data.exp} />
-            {data.hasProject && <Section sec="project" label="项目经历" items={data.project} />}
-            {data.hasVolunteer && <Section sec="volunteer" label="志愿服务" items={data.volunteer} />}
-            {data.hasInterest && <Section sec="interest" label="兴趣爱好" items={data.interest} />}
+            <Section sec="exp" label={T('exp')} items={data.exp} />
+            {data.hasProject && <Section sec="project" label={T('project')} items={data.project} />}
+            {data.hasVolunteer && <Section sec="volunteer" label={T('volunteer')} items={data.volunteer} />}
+            {data.hasInterest && <Section sec="interest" label={T('interest')} items={data.interest} />}
           </div>
           <div style={{ flex: 1 }}>
-            <Section sec="edu" label="教育背景" items={data.edu} />
+            <Section sec="edu" label={T('edu')} items={data.edu} />
             <SkillsBlock />
             {data.hasLanguage && <LanguageSection />}
-            {data.hasAward && <Section sec="award" label="荣誉奖项" items={data.award} />}
-            {data.hasCert && <Section sec="cert" label="资质证书" items={data.cert} />}
+            {data.hasAward && <Section sec="award" label={T('award')} items={data.award} />}
+            {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} />}
           </div>
         </div>
       </div>

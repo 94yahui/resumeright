@@ -7,7 +7,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
   return (
     <div
       style={{
-        background: "linear-gradient(65deg, #6d28d9, var(--gold2))",
+        background: "linear-gradient(65deg, #5465ff, #d2b7e5)",
         minHeight: "90vh",
         display: "flex",
         flexDirection: "column",
@@ -77,7 +77,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
                 AI
               </em>
-              驱动，快速打造
+              助力，快速打造
             </div>
             <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
               专业
@@ -210,16 +210,6 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           className="hero-right fade-in"
           style={{ position: "relative", transitionDelay: "0.2s" }}
         >
-          <style>{`
-            @keyframes heroTilt5 {
-              from { transform: rotate(0deg); }
-              to   { transform: rotate(5deg); }
-            }
-            @keyframes heroTilt2 {
-              from { transform: rotate(0deg); }
-              to   { transform: rotate(2deg); }
-            }
-          `}</style>
           {/* Stacked background cards */}
           <div style={{
             position: "absolute",
@@ -228,7 +218,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             borderRadius: "16px",
             border: "1px solid rgba(255,255,255,0.5)",
             boxShadow: "0 6px 24px rgba(26,24,20,0.08)",
-            animation: "heroTilt5 0.9s cubic-bezier(0.34,1.56,0.64,1) .5s both",
+            animation: "heroTilt5 0.9s cubic-bezier(0.34,1.56,0.64,1) .8s both",
             zIndex: 0,
           }} />
           <div style={{
@@ -238,13 +228,14 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             borderRadius: "16px",
             border: "1px solid rgba(255,255,255,0.6)",
             boxShadow: "0 6px 20px rgba(26,24,20,0.08)",
-            animation: "heroTilt2 0.7s cubic-bezier(0.34,1.56,0.64,1) .6s both",
+            animation: "heroTilt2 0.7s cubic-bezier(0.34,1.56,0.64,1) .9s both",
             zIndex: 1,
           }} />
 
           <div
             style={{
-              background: "#fff",
+              background: "rgba(255, 255, 255, 0.2)",
+              backdropFilter: "blur(5px)",
               borderRadius: "16px",
               boxShadow:
                 "0 16px 50px rgba(26,24,20,0.18), 0 4px 12px rgba(26,24,20,0.08)",
@@ -256,14 +247,15 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           >
             <div
               style={{
-                background: "rgba(234, 88, 12, 0.85)",
+                background: "rgba(0, 37, 255, 0.7)",
+                backdropFilter: "blur(12px)",
                 padding: "28px 32px 24px",
                 color: "white",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "4px" }}>
                 <img
-                  src="/virtua_photo.png"
+                  src="/virtual_photo.png"
                   alt=""
                   style={{
                     width: "48px", height: "60px",
@@ -311,14 +303,13 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               >
                 {(
                   [
-                    { Icon: Mail, text: "meng@example.com", href: "mailto:meng@example.com" },
-                    { Icon: Phone, text: "138 0000 0000", href: "tel:13800000000" },
-                    { Icon: Globe, text: "portfolio.io", href: "https://portfolio.io" },
-                  ] as { Icon: React.ElementType; text: string; href: string }[]
-                ).map(({ Icon, text, href }) => (
-                  <a
+                    { Icon: Mail, text: "meng@example.com"},
+                    { Icon: Phone, text: "138 0000 0000"},
+                    { Icon: Globe, text: "portfolio.io"},
+                  ] as { Icon: React.ElementType; text: string;}[]
+                ).map(({ Icon, text}) => (
+                  <div
                     key={text}
-                    href={href}
                     onClick={(e) => e.preventDefault()}
                     style={{
                       fontSize: "11px",
@@ -330,7 +321,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                     }}
                   >
                     <Icon size={10} /> {text}
-                  </a>
+                  </div>
                 ))}
               </div>
             </div>
@@ -351,7 +342,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                   </div>
                   {sec.bars.map((w, j) => (
                     <div key={j} style={{
-                      height: "7px", background: "var(--paper2)",
+                      height: "7px", background: "rgba(198, 198, 198, 0.27)",
                       borderRadius: "3px", marginBottom: "5px", width: `${w}%`,
                     }} />
                   ))}
@@ -368,7 +359,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                   {[60, 70, 50, 80, 55, 65].map((w, j) => (
                     <div key={j} style={{
                       height: "18px", width: `${w}px`,
-                      background: "var(--paper2)", borderRadius: "12px",
+                      background: "rgba(198, 198, 198, 0.27)", borderRadius: "12px",
                     }} />
                   ))}
                 </div>
@@ -383,7 +374,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               zIndex: 5,
               top: "105px",
               right: "-16px",
-              background: "linear-gradient(90deg, var(--theme-blue), var(--ink))",
+              background: "linear-gradient(90deg, #ff6b35, #ef4444)",
               color: "var(--paper)",
               padding: "10px 14px",
               border: "1px white solid",
@@ -406,17 +397,19 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               }}
             />{" "}
             点击任意模块开始编辑
-            <div
-              style={{
-                position: "absolute",
-                left: "-6px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                borderTop: "6px solid transparent",
-                borderBottom: "6px solid transparent",
-                borderRight: "6px solid var(--theme-blue)",
-              }}
-            />
+            {/* Arrow: rotated square with consistent 1px white border */}
+            <div style={{
+              position: "absolute",
+              left: "-7px",
+              top: "50%",
+              transform: "translateY(-50%) rotate(45deg)",
+              width: "12px",
+              height: "12px",
+              background: "#ff6b35",
+              borderLeft: "1px solid white",
+              borderBottom: "1px solid white",
+              borderRadius: "1px",
+            }} />
           </div>
 
           <div

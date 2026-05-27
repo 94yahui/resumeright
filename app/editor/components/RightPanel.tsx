@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Lightbulb, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X, Lock } from "lucide-react";
+import { Trash2, Lightbulb, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X } from "lucide-react";
 import {
   ResumeData,
   SelectionType,
@@ -31,11 +31,6 @@ interface Props {
   onAddEntry: (sec: SectionKey) => void;
   onClose: () => void;
   onMoveEntry?: (sec: SectionKey, idx: number, dir: 'up' | 'down') => void;
-  onAIApplied?: () => void;
-  canAIOptimize?: boolean;
-  onAIBlocked?: () => void;
-  onAIOptimizeSuccess?: () => void;
-  deviceId?: string;
 }
 
 export default function RightPanel({
@@ -47,109 +42,7 @@ export default function RightPanel({
   onAddEntry,
   onClose,
   onMoveEntry,
-  onAIApplied,
-  canAIOptimize = false,
-  onAIBlocked,
-  onAIOptimizeSuccess,
-  deviceId = '',
 }: Props) {
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<string[] | null>(null);
-  const [aiKey, setAiKey] = useState("");
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
-  const [aiSummaryResult, setAiSummaryResult] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  // Abort any in-flight AI request and reset state when the selected item changes
-  useEffect(() => {
-    if (abortRef.current) {
-      abortRef.current.abort();
-      abortRef.current = null;
-    }
-    setAiResult(null);
-    setAiKey("");
-    setAiSummaryResult(null);
-    setAiError(null);
-    setAiLoading(false);
-    setAiSummaryLoading(false);
-  }, [selection]);
-
-  const runAI = async (key: string, currentBullets: string[], entryContext?: string) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setAiKey(key);
-    setAiLoading(true);
-    setAiResult(null);
-    setAiError(null);
-    try {
-      const res = await fetch('/api/ai/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'bullets',
-          text: currentBullets.join('\n'),
-          context: entryContext ?? '',
-          deviceId,
-        }),
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        setAiError('AI 开小差了，请稍后重试');
-      } else {
-        const json = await res.json();
-        if (Array.isArray(json.bullets)) {
-          setAiResult(json.bullets.map((b: string) => b.replace(/[。.]+$/, '').trim()));
-          onAIOptimizeSuccess?.()
-        } else {
-          setAiError('AI 返回数据异常，请重试');
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== 'AbortError') setAiError('AI 开小差了，请稍后重试');
-    }
-    setAiLoading(false);
-  };
-
-  const runSummaryAI = async (currentSummary: string) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setAiSummaryLoading(true);
-    setAiSummaryResult(null);
-    setAiError(null);
-    try {
-      const res = await fetch('/api/ai/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'summary', text: currentSummary, context: '', deviceId }),
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        setAiError('AI 开小差了，请稍后重试');
-      } else {
-        const json = await res.json();
-        if (typeof json.summary === 'string') {
-          setAiSummaryResult(json.summary);
-          onAIOptimizeSuccess?.()
-        } else {
-          setAiError('AI 返回数据异常，请重试');
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== 'AbortError') setAiError('AI 开小差了，请稍后重试');
-    }
-    setAiSummaryLoading(false);
-  };
-
-  const applyAI = (sec: SectionKey, idx: number) => {
-    if (!aiResult) return;
-    onUpdateEntry(sec, idx, { bullets: aiResult });
-    setAiResult(null);
-    setAiKey("");
-    onAIApplied?.();
-  };
 
   const headerTitle =
     selection.kind === "field" && selection.field === "name"
@@ -327,47 +220,6 @@ export default function RightPanel({
               rows={6}
               hint="一段简短的自我介绍"
             />
-            <button
-              onClick={() => canAIOptimize ? runSummaryAI(data.summary) : onAIBlocked?.()}
-              disabled={aiSummaryLoading}
-              style={btnAI(aiSummaryLoading)}
-            >
-              <div className="animate-pulse-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }} />
-              {aiSummaryLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : <><Lock size={11} style={{ flexShrink: 0 }} /> AI 优化描述</>}
-            </button>
-            {aiError && !aiSummaryResult && (
-              <div style={{ fontSize: "12px", color: "#dc2626", marginTop: "6px", textAlign: "center" }}>{aiError}</div>
-            )}
-            {aiSummaryResult && (
-              <div style={{
-                marginTop: "10px", padding: "12px",
-                background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
-                borderRadius: "8px",
-              }}>
-                <div style={{
-                  fontSize: "10px", fontWeight: 700, color: "#fff",
-                  marginBottom: "8px", display: "flex", alignItems: "center", gap: "5px",
-                }}>
-                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#fff" }} />
-                  AI 优化结果
-                </div>
-                <p style={{ fontSize: "12px", color: "#fff", lineHeight: 1.65, margin: 0 }}>
-                  {aiSummaryResult}
-                </p>
-                <button
-                  onClick={() => { onUpdate({ summary: aiSummaryResult }); setAiSummaryResult(null); onAIApplied?.(); }}
-                  style={{
-                    width: "100%", marginTop: "10px", padding: "7px",
-                    background: "var(--theme-blue)", color: "white",
-                    border: "1px solid white", borderRadius: "6px",
-                    fontFamily: "var(--font-sans)", fontSize: "12px",
-                    cursor: "pointer", fontWeight: 500,
-                  }}
-                >
-                  ✓ 应用优化
-                </button>
-              </div>
-            )}
             <div style={{ height: "1px", background: "#e2e8f0", margin: "14px 0" }} />
             <button
               onClick={() => { onUpdate({ hasSummary: false }); onClose() }}
@@ -448,7 +300,6 @@ export default function RightPanel({
             const { sec, idx } = selection;
             const entry = data[sec]?.[idx];
             if (!entry) return null;
-            const aiKeyId = `${sec}-${idx}`;
 
             const SECTION_META: Record<string, { title: string; sub: string; date: string }> = {
               exp:       { title: "职位 / 标题", sub: "公司 / 机构",  date: "时间段" },
@@ -514,62 +365,6 @@ export default function RightPanel({
                     rows={5}
                     hint="每按一次回车，就会显示成新的一条"
                   />
-                )}
-
-                {(["exp", "project", "edu", "volunteer", "award", "cert"].includes(sec)) && (
-                  <>
-                    <button
-                      onClick={() => canAIOptimize
-                        ? runAI(aiKeyId, entry.bullets, `${entry.title} - ${entry.sub}`)
-                        : onAIBlocked?.()}
-                      disabled={aiLoading || (!canAIOptimize ? false : !entry.bullets.some(b => b.trim()))}
-                      style={btnAI(aiLoading || (canAIOptimize && !entry.bullets.some(b => b.trim())))}
-                    >
-                      <div
-                        className="animate-pulse-dot"
-                        style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }}
-                      />
-                      {aiLoading ? "AI 优化中..." : canAIOptimize ? "AI 优化描述" : <><Lock size={11} style={{ flexShrink: 0 }} /> AI 优化描述</>}
-                    </button>
-
-                    {aiError && aiKey === aiKeyId && !aiResult && (
-                      <div style={{ fontSize: "12px", color: "#dc2626", marginTop: "6px", textAlign: "center" }}>{aiError}</div>
-                    )}
-                    {aiResult && aiKey === aiKeyId && (
-                      <div style={{
-                        marginTop: "10px", padding: "12px",
-                        background: "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
-                        borderRadius: "8px",
-                      }}>
-                        <div style={{
-                          fontSize: "10px", fontWeight: 700, color: "#fff",
-                          marginBottom: "8px", display: "flex", alignItems: "center", gap: "5px",
-                        }}>
-                          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#fff" }} />
-                          AI 优化结果
-                        </div>
-                        <ul style={{ margin: 0, paddingLeft: "14px" }}>
-                          {aiResult.map((b, i) => (
-                            <li key={i} style={{ fontSize: "12px", color: "#fff", lineHeight: 1.55, marginBottom: "4px" }}>
-                              {b}
-                            </li>
-                          ))}
-                        </ul>
-                        <button
-                          onClick={() => applyAI(sec, idx)}
-                          style={{
-                            width: "100%", marginTop: "10px", padding: "7px",
-                            background: "var(--theme-blue)", color: "white",
-                            border: "1px solid white", borderRadius: "6px",
-                            fontFamily: "var(--font-sans)", fontSize: "12px",
-                            cursor: "pointer", fontWeight: 500,
-                          }}
-                        >
-                          ✓ 应用优化
-                        </button>
-                      </div>
-                    )}
-                  </>
                 )}
 
                 <div style={{ height: "1px", background: "#e2e8f0", margin: "16px 0" }} />
@@ -644,15 +439,6 @@ const btnDanger: React.CSSProperties = {
   cursor: "pointer", fontWeight: 500,
   display: "flex", alignItems: "center", gap: "6px",
 };
-const btnAI = (disabled: boolean): React.CSSProperties => ({
-  width: "100%", padding: "10px",
-  background: "linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))",
-  color: "white", border: "none", borderRadius: "8px",
-  fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: 500,
-  cursor: disabled ? "not-allowed" : "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-  marginTop: "6px", opacity: disabled ? 0.5 : 1,
-});
 const tipBox: React.CSSProperties = {
   marginTop: "14px", padding: "10px 12px",
   background: "#f8fafc", borderRadius: "6px",

@@ -1,15 +1,32 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 
+const DEFAULT_STAGES = [
+  { after: 0,     msg: '正在读取简历内容…' },
+  { after: 4000,  msg: '提取关键信息与技能…' },
+  { after: 9000,  msg: 'AI 深度分析竞争力…' },
+  { after: 15000, msg: '生成个性化评估报告…' },
+  { after: 22000, msg: '即将完成，请稍候…' },
+]
+
 interface Props {
-  message?: string
+  stages?: Array<{ after: number; msg: string }>
 }
 
-export default function LogoSweepLoader({ message = 'AI 正在分析你的简历' }: Props) {
+export default function LogoSweepLoader({ stages }: Props) {
+  const STAGES = stages ?? DEFAULT_STAGES
+  const [msg, setMsg] = useState(STAGES[0].msg)
   const sweepRef  = useRef<HTMLDivElement>(null)
   const breathRef = useRef<HTMLDivElement>(null)
   const dotsRef   = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const timers = STAGES.slice(1).map(({ after, msg }) =>
+      setTimeout(() => setMsg(msg), after)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [])
 
   useEffect(() => {
     let raf: number
@@ -69,17 +86,6 @@ export default function LogoSweepLoader({ message = 'AI 正在分析你的简历
       alignItems: 'center', justifyContent: 'center',
       gap: '28px', padding: '40px 24px',
     }}>
-      <style>{`
-        @keyframes sweepOuterRing {
-          0%, 100% { opacity: 0.20; transform: scale(1); }
-          50%       { opacity: 0.52; transform: scale(1.05); }
-        }
-        @keyframes sweepInnerRing {
-          0%, 100% { opacity: 0.10; }
-          50%       { opacity: 0.28; }
-        }
-      `}</style>
-
       {/* Breathing wrapper */}
       <div ref={breathRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{
@@ -126,13 +132,8 @@ export default function LogoSweepLoader({ message = 'AI 正在分析你的简历
           fontFamily: "'Inter','Noto Sans SC',sans-serif",
           margin: 0, letterSpacing: '0.3px',
         }}>
-          {message}<span ref={dotsRef} style={{ display: 'inline-block', minWidth: '26px', textAlign: 'left' }} />
+          {msg}<span ref={dotsRef} style={{ display: 'inline-block', minWidth: '26px', textAlign: 'left' }} />
         </p>
-        <p style={{
-          color: 'rgba(255,255,255,0.34)', fontSize: '12px',
-          fontFamily: "'Inter','Noto Sans SC',sans-serif",
-          margin: '10px 0 0',
-        }}>加速处理中</p>
       </div>
     </div>
   )

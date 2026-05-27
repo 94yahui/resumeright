@@ -25,7 +25,7 @@ export interface ResumeData {
   website: string
   extraWebsites?: string[]   // additional website links beyond the first
   photo: string  // base64 data URL or empty
-  photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number }  // crop: x/y fractions of circle size, scale ≥ 1, natW/natH = source px
+  photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number; shape?: 'circle' | 'rounded' }
   summary: string
 
   // Contact visibility (undefined = visible)
@@ -54,6 +54,9 @@ export interface ResumeData {
   interest: Entry[]
   language: Entry[]
   skills: string[]
+
+  resumeLang?: 'zh' | 'en'
+  fontScale?: number
 }
 
 export type SectionKey =
@@ -67,7 +70,51 @@ export interface AISuggestion {
   field: 'bullets' | 'summary' | 'skills'
   label: string                          // human-readable label, e.g. "工作经历 · 前端工程师"
   tip: string                            // short improvement hint
-  optimizedContent: string | string[]    // string for summary, string[] for bullets
+  changeDescription?: string             // brief: which module, what changed, core advantage
+  // bullets strings may contain [[+added+]] and [[~deleted~]] inline diff markers
+  optimizedContent: string | string[]
+}
+
+// ── Inline diff helpers ──────────────────────────────────────
+// Markup: [[+new text+]] = addition (highlight color)
+//         [[~old text~]] = deletion (strikethrough)
+// These appear only inside exp/project bullet strings before the user applies.
+
+export interface DiffSegment { text: string; type: 'keep' | 'add' | 'del' }
+
+export function hasDiffMarkup(s: string): boolean {
+  return /\[\[[\+~]/.test(s)
+}
+
+const STRAY_MARKERS = /\[\[[\+~]|[\+~]\]\]/g
+
+export function parseDiffBullet(s: string): DiffSegment[] {
+  const segs: DiffSegment[] = []
+  let rem = s
+  while (rem.length > 0) {
+    const aM = /\[\[\+(.*?)\+\]\]/.exec(rem)
+    const dM = /\[\[~(.*?)~\]\]/.exec(rem)
+    const ai = aM ? aM.index : Infinity
+    const di = dM ? dM.index : Infinity
+    if (ai === Infinity && di === Infinity) {
+      if (rem) segs.push({ text: rem.replace(STRAY_MARKERS, ''), type: 'keep' })
+      break
+    }
+    const fi = Math.min(ai, di)
+    if (fi > 0) segs.push({ text: rem.slice(0, fi).replace(STRAY_MARKERS, ''), type: 'keep' })
+    if (ai <= di && aM) { segs.push({ text: aM[1], type: 'add' }); rem = rem.slice(ai + aM[0].length) }
+    else if (dM)        { segs.push({ text: dM[1], type: 'del' }); rem = rem.slice(di + dM[0].length) }
+    else break
+  }
+  return segs
+}
+
+export function applyDiffBullet(s: string): string {
+  return s
+    .replace(/\[\[~.*?~\]\]/g, '')           // drop deleted segments
+    .replace(/\[\[\+(.*?)\+\]\]/g, '$1')     // keep added content, strip markers
+    .replace(STRAY_MARKERS, '')              // strip any remaining malformed/unclosed markers
+    .trim()
 }
 
 export type SelectionType =
@@ -100,7 +147,7 @@ export const DEMO_DATA: ResumeData = {
   phone: '138-0000-0000',
   city: '上海',
   website: 'jianliall.com',
-  photo: '/virtua_photo.png',
+  photo: '/virtual_photo.png',
   summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。在字节跳动、美团等头部互联网公司积累了丰富的大规模产品研发经验。',
   hasSummary: false,
   hasSkills: true,

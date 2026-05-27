@@ -13,7 +13,7 @@ const MIN_LAST_PAGE_CONTENT = 20
 // Pixels pulled UP from the detected entry boundary to create visual breathing room
 // on the next page. Larger value gives more buffer against font-metric differences
 // between the browser (where break points are measured) and headless Chromium (PDF).
-const TOP_PAD = 9
+const TOP_PAD = 8
 // White space reserved at the top and bottom of continuation pages (page 2+).
 // This ensures content has equal breathing room at the top and bottom of every page.
 const CONTINUATION_PAD = 36
@@ -36,6 +36,8 @@ interface Props {
   /** Called after measurement with the total content height in px (only fires when no externalBreakPoints). */
   onMeasure?: (totalHeight: number) => void
   aiSuggestionSections?: Set<string>
+  bulletDiffs?: Record<string, string[]>
+  pendingSkills?: string[]
 }
 
 /**
@@ -68,7 +70,7 @@ function getSidebarOverlay(layout: string): { left: number; right: number } | nu
 
 export default function PaginatedResume({
   data, template, color, interactive, selection, onSelect, onPhotoUpload, onPagesChange,
-  onReorderSection, showWatermark, externalBreakPoints, onBreakPointsChange, onMeasure, aiSuggestionSections,
+  onReorderSection, showWatermark, externalBreakPoints, onBreakPointsChange, onMeasure, aiSuggestionSections, bulletDiffs, pendingSkills,
 }: Props) {
   const measureRef = useRef<HTMLDivElement>(null)
   const [internalPages, setInternalPages] = useState(1)
@@ -263,6 +265,8 @@ export default function PaginatedResume({
                     sharedDropTarget={sharedDropTarget}
                     onSharedDropTargetChange={setSharedDropTarget}
                     aiSuggestionSections={aiSuggestionSections}
+                    bulletDiffs={bulletDiffs}
+                    pendingSkills={pendingSkills}
                   />
                 </div>
                 {/* Top overlay for continuation pages: hides page-1 tail that bleeds into y=0 */}
@@ -316,6 +320,8 @@ export default function PaginatedResume({
                       sharedDropTarget={sharedDropTarget}
                       onSharedDropTargetChange={setSharedDropTarget}
                       aiSuggestionSections={aiSuggestionSections}
+                      bulletDiffs={bulletDiffs}
+                      pendingSkills={pendingSkills}
                     />
                   </div>
                 </div>

@@ -9,26 +9,27 @@ import type { PaywallTrigger } from '../editor/components/Modals'
 
 const FREE_FEATURES = [
   '基础模板（5 套）',
-  '基础在线编辑',
+  '在线编辑',
   'PDF 下载（带水印）',
-  '模块拖拽排序',
   '保存无限份简历',
+  '2 次免费 AI 简历优化',
 ]
 
 const PRO_FEATURES = [
-  '所有精美模板随心用',
+  '全部精美模板随心用',
   '无水印 PDF 下载',
-  'AI 优化 100次/天',
-  '简历智能解析',
-  '岗位匹配分析',
-  'PNG 高清图片导出',
+  'AI 简历优化 20 次/天',
+  '岗位匹配分析 & 面试题预测',
+  '一键生成英文简历（5 次/天）',
+  '一键 AI 压缩至 1 页',
+  '简历智能导入（10 次/天）',
 ]
 
 const SINGLE_FEATURES = [
   '解锁指定 1 套模板',
-  '无水印下载',
+  '无水印 PDF 下载',
   '永久重新下载',
-  'AI 优化 5 次',
+  'AI 简历优化 2 次',
 ]
 
 const SUB_PLANS = [

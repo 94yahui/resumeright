@@ -3,16 +3,27 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
-import { getDeviceId, getProStatus, checkUsage, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, type ProStatus } from '../lib/payment'
+import { getDeviceId, getProStatus, checkUsage, recordUsage, getFreeAnalyzeUsed, getDailyCount, FREE_ANALYZE_LIMIT, type ProStatus } from '../lib/payment'
 import LogoSweepLoader from './LogoSweepLoader'
 
 interface AnalysisResult {
   hasOfferRate: boolean
   offerRate?: number
   overview: string
-  suggestions: Array<{ label: string; tip: string }>
+  suggestions: Array<{ label: string; tip: string; optimizedContent?: string[] | string }>
   interviewQuestions?: string[]
   interviewAnswers?: string[]
+  missingSkills?: string[]
+  jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null
+  matchBreakdown?: { overall?: number; experience: number; skills: number; other: number } | null
+}
+
+function formatSkillTag(s: string): string {
+  return s
+    .replace(/^无([^\s])/, '需$1')
+    .replace(/^不会/, '需掌握')
+    .replace(/^[缺欠]乏?/, '需')
+    .replace(/^需需/, '需')
 }
 
 const FREE_LIMIT = FREE_ANALYZE_LIMIT
@@ -31,13 +42,25 @@ export default function LandingAnalysisSection() {
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
   const [usedToday, setUsedToday] = useState(0)
+  const [proUsedToday, setProUsedToday] = useState(0)
+  const analyzeAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const did = getDeviceId()
     setDeviceId(did)
-    setProStatus(getProStatus(did))
+    const status = getProStatus(did)
+    setProStatus(status)
     setUsedToday(getFreeAnalyzeUsed())
+    setProUsedToday(getDailyCount(did, 'ai_analyze'))
   }, [])
+
+  useEffect(() => {
+    if (!showModal) { setAnimRate(0); return }
+    const t = setTimeout(() => setAnimRate(result?.offerRate ?? 0), 80)
+    return () => clearTimeout(t)
+  }, [showModal, result])
+
+  const optimizedOfferRate = (rate: number) => Math.min(95, rate + 15)
 
   const toggleAnswer = (i: number) => {
     setExpandedAnswers(prev => {
@@ -46,6 +69,8 @@ export default function LandingAnalysisSection() {
       return next
     })
   }
+  const reportRef = useRef<HTMLDivElement>(null)
+  const [animRate, setAnimRate] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleGoToEditor = () => {
@@ -59,6 +84,10 @@ export default function LandingAnalysisSection() {
     router.push('/editor')
   }
 
+  useEffect(() => {
+    return () => { analyzeAbortRef.current?.abort() }
+  }, [])
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const f = e.dataTransfer.files[0]
@@ -66,56 +95,74 @@ export default function LandingAnalysisSection() {
   }
 
   const handleAnalyze = async () => {
-    if (!file) { setError('请上传你的简历文件'); return }
+    if (!file) { setError('请上传简历文件'); return }
 
     // Check shared AI-analyze quota (free: 2 lifetime, shared with editor analyze)
     const check = checkUsage(deviceId, 'ai_analyze', proStatus)
     if (!check.allowed) {
-      setError(`${check.limit} 次免费次数已用完，升级 Pro 即可无限使用 →`)
+      setError(proStatus.kind === 'free'
+        ? `${check.limit} 次免费次数已用完，升级 Pro 每天可用 30 次 →`
+        : `今日分析次数已达上限（${check.limit} 次/天）`
+      )
       return
     }
+
+    // Abort any previous in-flight analysis
+    analyzeAbortRef.current?.abort()
+    const controller = new AbortController()
+    analyzeAbortRef.current = controller
 
     setError('')
     setLoading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('deviceId', deviceId)
-      const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('deviceId', deviceId)
+      const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: fd, signal: controller.signal })
+      if (controller.signal.aborted) return
       if (parseRes.status === 422) {
         setError('未检测到简历内容，请上传简历文件')
-        setLoading(false)
         return
       }
       if (!parseRes.ok) {
         setError('AI 开小差了，请稍后重试')
-        setLoading(false)
         return
       }
       const parseJson = await parseRes.json()
-      setParsedRawData(parseJson.data ?? {})
-      const resumeData = parsedToResumeData(parseJson.data ?? {})
+      if (controller.signal.aborted) return
+      const parsedRaw = parseJson.data ?? {}
+      setParsedRawData(parsedRaw)
+      const resumeData = parsedToResumeData(parsedRaw)
 
       const analyzeRes = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeData, jobDesc, deviceId }),
+        signal: controller.signal,
       })
+      if (controller.signal.aborted) return
       if (!analyzeRes.ok) {
         setError('AI 开小差了，请稍后重试')
-        setLoading(false)
         return
       }
+      const analysisResult = await analyzeRes.json()
+      if (controller.signal.aborted) return
       // Record usage only after both calls succeed
       recordUsage(deviceId, 'ai_analyze', proStatus)
       setUsedToday(getFreeAnalyzeUsed())
-      setResult(await analyzeRes.json())
+      setProUsedToday(getDailyCount(deviceId, 'ai_analyze'))
+      setResult(analysisResult)
       setShowInterviewQ(false)
       setShowModal(true)
-    } catch {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return
       setError('AI 开小差了，请稍后重试')
+    } finally {
+      if (analyzeAbortRef.current === controller) {
+        analyzeAbortRef.current = null
+        setLoading(false)
+      }
     }
-    setLoading(false)
   }
 
   return (
@@ -190,7 +237,7 @@ export default function LandingAnalysisSection() {
               backdropFilter: 'blur(1px)'
             }}>
               <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#a78bfa' }} />
-              免费 AI 简历诊断
+              精准定向优化
             </div>
 
             <h2 style={{
@@ -199,7 +246,7 @@ export default function LandingAnalysisSection() {
               color: 'white', lineHeight: 1.2,
               letterSpacing: '-1px', marginBottom: '24px',
             }}>
-              30 秒了解你的<br />
+              针对目标职位<br />
               <em style={{
                 fontStyle: 'italic',
                 background: 'linear-gradient(90deg, #c4b5fd 0%, #67e8f9 100%)',
@@ -207,19 +254,19 @@ export default function LandingAnalysisSection() {
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
                 paddingRight: '0.2em'
-              }}>简历竞争力</em>
+              }}>一键优化你的简历</em>
             </h2>
 
             <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.8, fontWeight: 300, marginBottom: '40px', maxWidth: '420px' }}>
-              上传简历，AI 即时分析内容质量、成果量化程度与竞争力，并给出具体改进建议
+              AI 深度解析职位要求，定向优化简历内容，让每一句话都精准命中面试官的需求
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {[
-                { text: '识别简历内容薄弱点，量化改进建议', icon: CheckCircle2, color: '#a78bfa', bg: 'rgba(109,40,217,0.22)', border: 'rgba(139,92,246,0.45)' },
-                { text: '分析与目标岗位匹配度，估算 Offer 率', icon: Target, color: '#60a5fa', bg: 'rgba(7,137,236,0.2)', border: 'rgba(7,137,236,0.45)' },
-                { text: '生成专属优化内容，一键应用到编辑器', icon: Sparkles, color: '#34d399', bg: 'rgba(16,185,129,0.18)', border: 'rgba(52,211,153,0.45)' },
-                { text: '预测 15 道最可能被问到的面试题', icon: MessageSquare, color: '#67e8f9', bg: 'rgba(14,165,233,0.18)', border: 'rgba(14,165,233,0.45)' },
+                { text: '解析岗位要求，精准评估简历与职位契合度', icon: Target, color: '#a78bfa', bg: 'rgba(109,40,217,0.22)', border: 'rgba(139,92,246,0.45)' },
+                { text: '定向识别薄弱点，给出岗位导向优化建议', icon: CheckCircle2, color: '#60a5fa', bg: 'rgba(7,137,236,0.2)', border: 'rgba(7,137,236,0.45)' },
+                { text: '一键导入编辑器，应用 AI 建议快速优化', icon: Sparkles, color: '#34d399', bg: 'rgba(16,185,129,0.18)', border: 'rgba(52,211,153,0.45)' },
+                { text: '预测针对目标职位的专属面试题', icon: MessageSquare, color: '#67e8f9', bg: 'rgba(14,165,233,0.18)', border: 'rgba(14,165,233,0.45)' },
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '15px', color: 'rgba(255,255,255,0.75)' }}>
                   <div style={{
@@ -249,18 +296,19 @@ export default function LandingAnalysisSection() {
               display: 'flex', flexDirection: 'column', justifyContent: 'center',
             }}>
               {loading ? (
-                <LogoSweepLoader message="AI 正在分析你的简历" />
+                <LogoSweepLoader />
               ) : (<>
               {/* JD on top */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
                   目标岗位详情{' '}
-                  <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: '11px', color: '#94a3b8' }}>（可选，分析匹配度）</span>
+                  <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: '11px', color: '#94a3b8' }}>（推荐填写，定向优化简历）</span>
                 </label>
                 <textarea
+                  suppressHydrationWarning
                   value={jobDesc}
                   onChange={e => setJobDesc(e.target.value)}
-                  placeholder="粘贴目标岗位招聘信息，AI 将评估匹配度并给出 Offer 率..."
+                  placeholder="粘贴目标岗位招聘信息，AI 将定向优化简历内容并估算 Offer 率..."
                   rows={3}
                   style={{
                     width: '100%', padding: '12px 14px', boxSizing: 'border-box',
@@ -315,17 +363,15 @@ export default function LandingAnalysisSection() {
 
               <button
                 onClick={handleAnalyze}
-                disabled={loading || !file}
+                disabled={loading}
                 style={{
                   width: '100%', padding: '14px',
                   background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
                   color: 'white', border: 'none', borderRadius: '12px',
                   fontFamily: "'Inter','Noto Sans SC',sans-serif",
                   fontSize: '14px', fontWeight: 600,
-                  cursor: !file || loading ? 'not-allowed' : 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  transition: 'opacity 0.2s',
-                  opacity: !file && !loading ? 0.55 : 1,
                 }}
               >
                 {loading ? (
@@ -334,16 +380,18 @@ export default function LandingAnalysisSection() {
                     AI 分析中...
                   </>
                 ) : (
-                  <><Sparkles size={15} /> 分析我的简历</>
+                  <>分析我的简历</>
                 )}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
-                {proStatus.kind !== 'free'
-                  ? '已升级 · 无限使用 · 数据不存储'
-                  : usedToday === 0
-                    ? '首次免费 · 无需注册 · 数据不存储'
-                    : `还剩 ${Math.max(0, FREE_LIMIT - usedToday)} 次免费机会 · 数据不存储`
+                {proStatus.kind === 'subscription'
+                  ? `今日已用 ${proUsedToday}/30 次 · 数据不存储`
+                  : proStatus.kind === 'single'
+                    ? `今日已用 ${proUsedToday} 次 · 数据不存储`
+                    : usedToday === 0
+                      ? '首次免费 · 无需注册 · 数据不存储'
+                      : `还剩 ${Math.max(0, FREE_LIMIT - usedToday)} 次免费机会 · 数据不存储`
                 }
               </div>
             </>)}
@@ -353,73 +401,113 @@ export default function LandingAnalysisSection() {
       </div>
 
       {/* Result modal */}
-      {showModal && result && (
+      {showModal && result && (() => {
+        const offerRate = result.offerRate ?? 0
+        const showOfferRate = result.hasOfferRate === true
+        const offerColor = offerRate >= 70 ? '#22c55e' : offerRate >= 50 ? '#eab308' : offerRate >= 30 ? '#f97316' : '#ef4444'
+        const optRate = optimizedOfferRate(offerRate)
+        return (
         <div
-          onClick={e => e.target === e.currentTarget && setShowModal(false)}
+          onClick={() => {}}
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
-            background: 'rgba(7,6,15,0.85)', backdropFilter: 'blur(10px)',
+            background: 'rgba(7,6,15,0.88)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
           }}
         >
-          <style>{`@keyframes analysisUp{from{opacity:0;transform:scale(0.96) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-          <div className="overlay-scroll" style={{
+          <style>{`
+            @keyframes analysisUp{from{opacity:0;transform:scale(0.96) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+            @keyframes landingAnswerSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+          `}</style>
+          <div ref={reportRef} className="overlay-scroll" style={{
             background: 'white', borderRadius: '20px', padding: '28px',
-            maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+            maxWidth: '680px', width: '100%', maxHeight: '92vh', overflowY: 'auto',
             boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
             animation: 'analysisUp 0.25s ease',
           }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Sparkles size={15} color="white" />
-                </div>
-                <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>AI 简历诊断报告</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Sparkles size={15} color="white" />
               </div>
-              <button onClick={() => setShowModal(false)} style={{ width: '28px', height: '28px', borderRadius: '7px', border: '1px solid #e2e8f0', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+              <span style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', flex: 1 }}>AI 简历诊断报告</span>
+              <button onClick={() => setShowModal(false)} style={{ width: '28px', height: '28px', borderRadius: '7px', border: '1px solid #e2e8f0', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0 }}>
                 <X size={14} />
               </button>
             </div>
 
-            {/* Offer rate */}
-            {(result.hasOfferRate || result.offerRate !== undefined) && (
-              <div style={{ background: '#f0f9ff', borderRadius: '12px', padding: '16px 18px', marginBottom: '16px', border: '1px solid rgba(14,165,233,0.28)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <Target size={14} color="var(--ai-color-2)" />
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase' }}>匹配 Offer 率</span>
+            {/* Offer rate — current vs post-optimization */}
+            {showOfferRate && (
+              <div style={{ background: '#0a0a0f', borderRadius: '16px', padding: '22px 28px', marginBottom: '18px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Target size={10} color="rgba(255,255,255,0.35)" /> 拿到 Offer 率预测
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ flex: 1, height: '8px', background: 'rgba(14,165,233,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${result.offerRate ?? 0}%`, height: '100%', background: 'linear-gradient(90deg, var(--ai-color-1), var(--ai-color-2))', borderRadius: '4px', transition: 'width 0.8s ease' }} />
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginBottom: '6px' }}>当前预计</div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '48px', fontWeight: 800, color: offerColor, lineHeight: 1 }}>{offerRate}%</div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>拿到 Offer 率</div>
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: 700, color: (result.offerRate ?? 0) >= 70 ? '#16a34a' : (result.offerRate ?? 0) >= 40 ? '#d97706' : '#dc2626', minWidth: '50px', textAlign: 'right' }}>{result.offerRate ?? 0}%</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', color: 'rgba(255,255,255,0.2)' }}>
+                    <ChevronRight size={20} />
+                    <div style={{ fontSize: '9px', fontWeight: 700, whiteSpace: 'nowrap' }}>AI优化后</div>
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginBottom: '6px' }}>优化后预计</div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '48px', fontWeight: 800, color: '#22c55e', lineHeight: 1 }}>{optRate}%</div>
+                    <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '4px', fontWeight: 600 }}>+{optRate - offerRate}% 提升空间</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '16px', height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${animRate}%`, height: '100%', background: 'linear-gradient(90deg, var(--theme-blue), #22c55e)', borderRadius: '3px', transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.15)' }}>0%</span>
+                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.15)' }}>100%</span>
                 </div>
               </div>
             )}
 
             {/* Overview */}
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', letterSpacing: '0.5px', marginBottom: '8px', textTransform: 'uppercase' }}>总体评估</div>
-              <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.75, margin: 0, padding: '12px 14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>总体评估</div>
+              <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.8, margin: 0, padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 {result.overview}
               </p>
             </div>
 
+            {/* Missing skills tags */}
+            {showOfferRate && result.missingSkills && result.missingSkills.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>职位不符部分</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {result.missingSkills.map((skill, i) => (
+                    <span key={i} style={{
+                      fontSize: '12px', fontWeight: 500,
+                      color: '#dc2626',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      fontFamily: "'Inter','Noto Sans SC',sans-serif",
+                    }}>{formatSkillTag(skill)}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Interview questions (expandable) */}
             {result.interviewQuestions && result.interviewQuestions.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
-                <style>{`@keyframes landingAnswerSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}`}</style>
                 <button
                   onClick={() => setShowInterviewQ(v => !v)}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 14px',
-                    background: showInterviewQ ? '#f0f9ff' : '#f8fafc',
-                    border: `1px solid ${showInterviewQ ? 'rgba(14,165,233,0.28)' : '#e2e8f0'}`,
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                     borderRadius: showInterviewQ ? '10px 10px 0 0' : '10px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    cursor: 'pointer', transition: 'all 0.2s',
                     fontFamily: 'var(--font-sans)',
                   }}
                 >
@@ -434,96 +522,70 @@ export default function LandingAnalysisSection() {
                 </button>
 
                 {showInterviewQ && (
-                  <div style={{
-                    border: '1px solid rgba(14,165,233,0.25)', borderTop: 'none',
-                    borderRadius: '0 0 10px 10px',
-                    background: '#f0f9ff',
-                    overflow: 'hidden',
-                  }}>
+                  <div style={{ border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f8fafc', overflow: 'hidden' }}>
                     {result.interviewQuestions.map((q, i) => {
                       const answer = result.interviewAnswers?.[i]
                       const answerExpanded = expandedAnswers.has(i)
                       return (
                         <div key={i} style={{ borderTop: i > 0 ? '1px solid rgba(14,165,233,0.12)' : 'none' }}>
-                          <div
-                            onClick={() => answer && toggleAnswer(i)}
-                            style={{
-                              display: 'flex', gap: '10px', alignItems: 'flex-start',
-                              padding: '10px 14px',
-                              cursor: answer ? 'pointer' : 'default',
-                            }}
-                          >
-                            <span style={{
-                              minWidth: '20px', height: '20px', borderRadius: '50%',
-                              background: 'rgba(13,148,136,0.12)',
-                              color: 'var(--teal)',
-                              fontSize: '10px', fontWeight: 700,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              flexShrink: 0, marginTop: '2px',
-                            }}>{i + 1}</span>
+                          <div onClick={() => answer && toggleAnswer(i)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '10px 14px', cursor: answer ? 'pointer' : 'default' }}>
+                            <span style={{ minWidth: '20px', height: '20px', borderRadius: '50%', background: 'rgba(13,148,136,0.12)', color: 'var(--teal)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>{i + 1}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <span style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.65, fontFamily: 'var(--font-sans)' }}>{q}</span>
                               {answer && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                                   <Lightbulb size={10} color="var(--teal)" />
-                                  <span style={{ fontSize: '10px', color: 'var(--teal)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}>
-                                    {answerExpanded ? '收起回答建议' : '查看回答建议'}
-                                  </span>
-                                  {answerExpanded
-                                    ? <ChevronUp size={10} color="var(--teal)" />
-                                    : <ChevronDown size={10} color="var(--teal)" />}
+                                  <span style={{ fontSize: '10px', color: 'var(--teal)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}>{answerExpanded ? '收起回答建议' : '查看回答建议'}</span>
+                                  {answerExpanded ? <ChevronUp size={10} color="var(--teal)" /> : <ChevronDown size={10} color="var(--teal)" />}
                                 </div>
                               )}
                             </div>
                           </div>
                           {answer && answerExpanded && (
-                            <div style={{
-                              margin: '0 14px 10px 44px',
-                              padding: '9px 12px',
-                              background: 'rgba(13,148,136,0.07)',
-                              borderRadius: '7px',
-                              borderLeft: '2px solid var(--teal)',
-                              animation: 'landingAnswerSlide 0.22s ease',
-                            }}>
-                              <p style={{ margin: 0, fontSize: '11.5px', color: '#334155', lineHeight: 1.7, fontFamily: 'var(--font-sans)' }}>
-                                {answer}
-                              </p>
+                            <div style={{ margin: '0 14px 10px 44px', padding: '9px 12px', background: 'rgba(13,148,136,0.07)', borderRadius: '7px', borderLeft: '2px solid var(--teal)', animation: 'landingAnswerSlide 0.22s ease' }}>
+                              <p style={{ margin: 0, fontSize: '11.5px', color: '#334155', lineHeight: 1.7, fontFamily: 'var(--font-sans)' }}>{answer}</p>
                             </div>
                           )}
                         </div>
                       )
                     })}
-                    <div style={{ padding: '8px 14px 12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {['技术深度 ×4', '项目细节 ×4', '行为问题 ×3', '情景问题 ×2', '职业规划 ×2'].map((tag, i) => (
-                        <span key={i} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: 'rgba(14,165,233,0.12)', color: 'var(--ai-color-2)', fontWeight: 500, fontFamily: 'var(--font-sans)' }}>{tag}</span>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Suggestions */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', letterSpacing: '0.5px', marginBottom: '10px', textTransform: 'uppercase' }}>优化建议</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Suggestions — summary only, details in editor */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px' }}>优化方向</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {result.suggestions.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '10px', fontSize: '13px', color: '#475569', lineHeight: 1.65, padding: '10px 12px', background: 'linear-gradient(135deg, rgba(28,53,240,0.06), rgba(191,70,197,0.04))', borderRadius: '8px', border: '1px solid rgba(28,53,240,0.12)' }}>
-                    <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', color: 'white', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{i + 1}</span>
-                    <span><strong style={{ color: '#334155' }}>{s.label}：</strong>{s.tip}</span>
+                  <div
+                    key={i}
+                    onClick={handleGoToEditor}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'linear-gradient(135deg, rgba(28,53,240,0.05), rgba(191,70,197,0.03))', borderRadius: '10px', border: '1px solid rgba(28,53,240,0.1)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.4)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(28,53,240,0.1)' }}
+                  >
+                    <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', color: 'white', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#334155' }}>{s.label}</div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '1px' }}>{s.tip}</div>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#7c3aed', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>查看详情 →</div>
                   </div>
                 ))}
               </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '10px' }}>进入编辑器查看完整 AI 优化内容并一键应用</div>
             </div>
 
             {/* CTA */}
-            <div style={{ padding: '16px', background: 'linear-gradient(135deg, #07060f, #1e1035)', borderRadius: '12px' }}>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '12px', lineHeight: 1.5 }}>
-                进入编辑器，应用以上建议，打造一份脱颖而出的专业简历
+            <div style={{ padding: '18px 20px', background: 'linear-gradient(135deg, #07060f, #1e1035)', borderRadius: '14px' }}>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '14px', lineHeight: 1.6 }}>
+                进入编辑器，逐条查看 AI 优化内容，一键应用到简历，让每一句话都直击目标岗位需求
               </div>
               <button onClick={handleGoToEditor} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                width: '100%', padding: '12px',
+                width: '100%', padding: '13px',
                 background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
                 color: 'white', borderRadius: '10px',
                 fontFamily: "'Inter','Noto Sans SC',sans-serif",
@@ -535,7 +597,7 @@ export default function LandingAnalysisSection() {
             </div>
           </div>
         </div>
-      )}
+      )})()}
 
       <style>{`
         @media (max-width: 768px) {

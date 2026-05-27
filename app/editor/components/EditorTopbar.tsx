@@ -19,13 +19,15 @@ interface Props {
   isMobile?: boolean
   onNewResume?: () => void
   onImportFile?: () => void
+  onTranslate?: () => void
+  translateLoading?: boolean
   disabled?: boolean
 }
 
 export default function EditorTopbar({
   docTitle, setDocTitle, onPreview, onAIAnalyze, onDownload,
   onUndo, onRedo, canUndo, canRedo, onSave, isMobile,
-  onNewResume, onImportFile, disabled,
+  onNewResume, onImportFile, onTranslate, translateLoading, disabled,
 }: Props) {
   const [dropOpen, setDropOpen] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -43,9 +45,9 @@ export default function EditorTopbar({
 
   return (
     <div style={{
-      height: '52px', background: '#0f172a',
+      position: 'relative', height: '52px', background: '#0f172a',
       display: 'flex', alignItems: 'center',
-      padding: '0 16px', gap: '12px', flexShrink: 0, zIndex: 50,
+      padding: '0 16px', gap: '12px', flexShrink: 0, zIndex: 100,
     }}>
       <Link href="/" style={{
         color: '#fff', fontSize: '16px', fontWeight: 500,
@@ -122,6 +124,16 @@ export default function EditorTopbar({
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 导入简历
+              </button>
+              <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 6px' }} />
+              <button
+                onClick={() => { setDropOpen(false); onTranslate?.() }}
+                disabled={translateLoading || disabled}
+                style={{ ...dropItem, color: (translateLoading || disabled) ? '#94a3b8' : '#334155', cursor: translateLoading ? 'wait' : disabled ? 'not-allowed' : 'pointer' }}
+                onMouseEnter={e => { if (!translateLoading && !disabled) e.currentTarget.style.background = '#f1f5f9' }}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                {translateLoading ? '翻译中...' : '🌐 生成英文版'}
               </button>
             </div>
           )}

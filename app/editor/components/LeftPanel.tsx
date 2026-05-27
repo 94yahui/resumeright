@@ -237,6 +237,11 @@ export default function LeftPanel({
                               return
                             }
                           }
+                          // Summary: inject default text via onAddModule when empty
+                          if (m.key === 'summary' && !data.summary) {
+                            onAddModule(m.key)
+                            return
+                          }
                           // Skills: delegate to onAddModule so sample data is injected when empty
                           if (m.key === 'skills' && data.skills.length === 0) {
                             onAddModule(m.key)

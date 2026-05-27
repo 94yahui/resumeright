@@ -12,7 +12,7 @@ const features = [
     title: '智能内容优化',
     desc: '选中任意文字模块，一键让 AI 帮你改写成更专业、更有力的表达。数字化成果、量化描述、行业术语——AI 全部帮你处理。',
     tag: '内容优化',
-    num: '01',
+    num: '1',
   },
   {
     icon: FileText,
@@ -24,7 +24,7 @@ const features = [
     title: '简历智能解析',
     desc: '上传你的旧简历（PDF / Word），AI 自动识别所有内容，并按照你选择的新模板重新排版填充，秒级完成迁移。',
     tag: '文档解析',
-    num: '02',
+    num: '2',
   },
   {
     icon: Target,
@@ -36,7 +36,7 @@ const features = [
     title: '岗位匹配分析',
     desc: '粘贴目标职位详情，AI 分析你的简历与岗位要求的匹配度，并给出具体的优化建议和关键词补充。',
     tag: 'Pro 功能',
-    num: '03',
+    num: '3',
   },
   {
     icon: MessageCircle,
@@ -48,14 +48,14 @@ const features = [
     title: '面试问题预测',
     desc: '基于你的简历内容，AI 预测面试官可能提问的问题，并帮你准备 STAR 法则结构的参考回答。',
     tag: 'Pro 功能',
-    num: '04',
+    num: '4',
   },
 ]
 
 export default function AISection() {
   return (
     <section style={{
-      background: 'linear-gradient(160deg, #06080f 0%, #0d1525 50%, #06080f 100%)',
+      background: 'linear-gradient(160deg, #06080f 0%, #001d3d 50%, #06080f 100%)',
       position: 'relative', overflow: 'hidden',
     }}>
       {/* Subtle grid overlay */}
@@ -160,8 +160,8 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
       >
         {/* Number watermark */}
         <div style={{
-          position: 'absolute', top: '20px', right: '24px',
-          fontSize: '42px', fontWeight: 800, color: `rgba(${feature.rgb},0.08)`,
+          position: 'absolute', top: '20px', right: '-5px',
+          fontSize: '240px', fontWeight: 800, fontStyle: "italic", color: `rgba(${feature.rgb},0.03)`,
           letterSpacing: '-2px', lineHeight: 1, pointerEvents: 'none',
           fontFamily: "'Inter', sans-serif",
         }}>

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUp } from 'lucide-react'
 import { getDeviceId, getProStatus, checkUsage, recordUsage, type ProStatus } from '../lib/payment'
+import ImportLoadingBar from './ImportLoadingBar'
 
 export default function UploadModal({ onClose }: { onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null)
@@ -88,7 +89,6 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
     >
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:scale(0.95) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
-        @keyframes uploadBounce { 0%,80%,100%{transform:translateY(0);opacity:.35} 40%{transform:translateY(-8px);opacity:1} }
       `}</style>
       <input
         ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
@@ -103,20 +103,10 @@ export default function UploadModal({ onClose }: { onClose: () => void }) {
       }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '52px 40px' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  width: '10px', height: '10px', borderRadius: '50%', background: 'var(--theme-blue)',
-                  animation: `uploadBounce 1.2s ${i * 0.18}s infinite`,
-                }} />
-              ))}
-            </div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '6px', fontFamily: "'Inter','Noto Sans SC',sans-serif" }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '28px', fontFamily: "'Inter','Noto Sans SC',sans-serif" }}>
               AI 正在识别简历
             </div>
-            <div style={{ fontSize: '13px', color: '#64748b', fontFamily: "'Inter','Noto Sans SC',sans-serif" }}>
-              正在解析「{file?.name}」，请稍候...
-            </div>
+            <ImportLoadingBar />
           </div>
         ) : (
           <div style={{ padding: '40px' }}>

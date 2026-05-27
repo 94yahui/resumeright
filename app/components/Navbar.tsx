@@ -37,7 +37,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
       {/* Desktop nav */}
       <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: "28px" }}>
         {[
-          { label: '简历分析✦', href: '#analysis' },
+          { label: '简历优化✦', href: '#analysis' },
           { label: '模板', href: '#templates' },
           { label: 'AI功能', href: '#ai' },
           { label: '定价', href: '#pricing' },

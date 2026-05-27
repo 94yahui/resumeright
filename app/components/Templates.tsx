@@ -77,14 +77,15 @@ export default function Templates() {
                   padding: '8px 20px',
                   transform: 'skewX(-12deg)',
                   background: active
-                    ? 'linear-gradient(120deg, var(--theme-blue), #0567c4)'
+                    ? 'var(--highlight)'
                     : 'white',
                   border: active ? 'none' : '1.5px solid #e2e8f0',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontFamily: 'var(--font-sans)',
-                  transition: 'background 0.18s, color 0.1s',
+                  transition: 'background 0.18s, color 0.15s',
                   boxShadow: 'none',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <span style={{
