@@ -11,7 +11,7 @@ import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
 import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
-import { getTemplate, isSingleColumn } from '../lib/templates-config'
+import { getTemplate } from '../lib/templates-config'
 import {
   loadDraft, saveDraft, clearDraft,
   loadHistory, saveToHistory, deleteHistory, updateHistoryEntry, sortAndSaveHistory,
@@ -57,10 +57,6 @@ function cleanDataForPrint(d: ResumeData): ResumeData {
     award: clean(d.award), cert: clean(d.cert), volunteer: clean(d.volunteer),
     interest: clean(d.interest), language: clean(d.language),
   }
-}
-
-function initialDataForTemplate(templateId: string): ResumeData {
-  return isSingleColumn(templateId) ? { ...DEMO_DATA, hasAward: false } : DEMO_DATA
 }
 
 function EditorInner() {
@@ -272,7 +268,7 @@ function EditorInner() {
     // Fresh start — use a unique name in case "我的简历" already exists
     const currentHistory = loadHistory()
     const initName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: initName, data: initialDataForTemplate(initTemplate), templateId: initTemplate, color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: initName, data: DEMO_DATA, templateId: initTemplate, color: undefined, savedAt: Date.now() })
     if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
     setDocTitle(initName)
   }, [])
@@ -558,9 +554,9 @@ function EditorInner() {
     setPendingDraft(null)
     const currentHistory = loadHistory()
     const newName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: newName, data: initialDataForTemplate('classic-pro'), templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
-    setHistory([initialDataForTemplate('classic-pro')])
+    setHistory([DEMO_DATA])
     setHistoryIdx(0)
     setTemplateId('classic-pro')
     setColor(undefined)
@@ -1157,10 +1153,10 @@ ${autoprint ? `<script>
     // Create fresh resume with default free template
     const newHistorySnap = loadHistory()
     const newName = uniqueHistoryName('我的简历', newHistorySnap)
-    const newId = saveToHistory({ name: newName, data: initialDataForTemplate('classic-pro'), templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
-    setHistory([initialDataForTemplate('classic-pro')])
+    setHistory([DEMO_DATA])
     setHistoryIdx(0)
     setTemplateId('classic-pro')
     setColor(undefined)
