@@ -337,7 +337,7 @@ export function AIPanel({
         <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: 'linear-gradient(135deg,var(--ai-color-1),var(--ai-color-2))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Sparkles size={11} color="white" />
         </div>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155', flex: 1 }}>AI 解析 & 优化</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155', flex: 1 }}>AI 解析 & 定向优化</span>
         <button
           onClick={onClose}
           style={{ width: '24px', height: '24px', borderRadius: '6px', border: '1px solid #e2e8f0', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontFamily: 'var(--font-sans)', fontSize: '14px', lineHeight: 1 }}
@@ -369,7 +369,7 @@ export function AIPanel({
               <textarea
                 value={jobDesc}
                 onChange={e => onJobDescChange(e.target.value)}
-                placeholder="粘贴目标岗位 JD，AI 将精准命中岗位关键词..."
+                placeholder="粘贴目标岗位详情，AI 将精准命中岗位关键词..."
                 rows={4}
                 style={{ width: '100%', padding: '10px 12px', boxSizing: 'border-box', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#0f172a', background: '#f8fafc', outline: 'none', resize: 'none', lineHeight: 1.6 }}
                 onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
@@ -432,7 +432,7 @@ export function AIPanel({
                 transition: 'background 0.3s, box-shadow 0.3s',
               }}
             >
-              {jobDesc.trim() ? <><Sparkles size={14} />✨ 开始精准定向优化</> : '开始常规智能解析'}
+              {jobDesc.trim() ? <>开始精准定向优化</> : '开始常规智能解析'}
             </button>
 
             {/* Divider */}

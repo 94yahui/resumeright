@@ -28,6 +28,57 @@ function formatSkillTag(s: string): string {
 
 const FREE_LIMIT = FREE_ANALYZE_LIMIT
 
+const SAMPLE_JDS = [
+  {
+    label: '高级前端工程师',
+    text: `岗位职责：
+1. 负责核心产品前端架构设计与开发，推动工程化体系建设
+2. 与产品/设计/后端协作，推动功能高质量落地
+3. 持续优化页面性能，关注核心 Web 指标（LCP/FID/CLS）
+
+任职要求：
+- 3年以上前端经验，精通 React/Vue3，熟练 TypeScript
+- 熟悉 Webpack/Vite，有性能调优经验
+- 了解 Node.js，有微前端、移动端 H5/小程序开发经验优先`,
+  },
+  {
+    label: '产品经理',
+    text: `岗位职责：
+1. 负责产品从 0 到 1 规划与迭代，驱动业务目标达成
+2. 深入业务场景，洞察用户需求，输出 PRD 和原型
+3. 跨部门推动项目落地，跟踪数据并持续优化
+
+任职要求：
+- 3年以上互联网产品经验，有完整 C 端或 B 端产品经历
+- 熟练使用 Figma/Axure，具备数据分析能力
+- 有 AI 产品、SaaS 或电商平台经验者优先`,
+  },
+  {
+    label: '全栈工程师',
+    text: `岗位职责：
+1. 独立完成 Web 应用前后端开发，快速验证业务需求
+2. 设计 RESTful API，参与数据库建模与性能优化
+3. 参与技术选型，推动工程规范落地
+
+任职要求：
+- 掌握 React/Vue 前端框架，熟悉 Node.js/Python 后端
+- 熟悉 MySQL/PostgreSQL，了解 Redis 缓存机制
+- 有 Docker/云服务使用经验，有独立产品者加分`,
+  },
+  {
+    label: 'UI/UX 设计师',
+    text: `岗位职责：
+1. 负责 App/Web 端交互设计与视觉输出，参与设计系统建设
+2. 深入理解用户需求，通过研究和测试持续迭代产品体验
+3. 与研发协作，确保设计还原度和交互一致性
+
+任职要求：
+- 3年以上互联网 UI/UX 设计经验
+- 熟练使用 Figma，能输出完整设计规范和组件库
+- 作品集需包含完整设计项目，从研究到交付`,
+  },
+]
+
 export default function LandingAnalysisSection() {
   const router = useRouter()
   const [jobDesc, setJobDesc] = useState('')
@@ -322,6 +373,27 @@ export default function LandingAnalysisSection() {
                   onFocus={e => { e.target.style.borderColor = 'rgba(109,40,217,0.6)'; e.target.style.background = '#faf5ff' }}
                   onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
                 />
+                {/* Sample JD chips */}
+                <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>试试：</span>
+                  {SAMPLE_JDS.map(jd => (
+                    <button
+                      key={jd.label}
+                      onClick={() => setJobDesc(jd.text)}
+                      style={{
+                        padding: '3px 10px', borderRadius: '20px',
+                        border: `1px solid ${jobDesc === jd.text ? 'rgba(109,40,217,0.45)' : '#e2e8f0'}`,
+                        background: jobDesc === jd.text ? '#faf5ff' : '#f8fafc',
+                        color: jobDesc === jd.text ? '#7c3aed' : '#64748b',
+                        fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                        fontFamily: "'Inter','Noto Sans SC',sans-serif",
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { if (jobDesc !== jd.text) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#cbd5e1' } }}
+                      onMouseLeave={e => { if (jobDesc !== jd.text) { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' } }}
+                    >{jd.label}</button>
+                  ))}
+                </div>
               </div>
 
               {/* File upload */}
@@ -366,12 +438,16 @@ export default function LandingAnalysisSection() {
                 disabled={loading}
                 style={{
                   width: '100%', padding: '14px',
-                  background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
+                  background: loading ? 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))' : jobDesc.trim()
+                    ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)'
+                    : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
+                  boxShadow: !loading && jobDesc.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : '0 2px 8px rgba(0,0,0,0.08)',
                   color: 'white', border: 'none', borderRadius: '12px',
                   fontFamily: "'Inter','Noto Sans SC',sans-serif",
                   fontSize: '14px', fontWeight: 600,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  transition: 'background 0.3s, box-shadow 0.3s',
                 }}
               >
                 {loading ? (
@@ -379,6 +455,8 @@ export default function LandingAnalysisSection() {
                     <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'landingSpin 0.8s linear infinite', flexShrink: 0 }} />
                     AI 分析中...
                   </>
+                ) : jobDesc.trim() ? (
+                  <>✨ 精准定向分析</>
                 ) : (
                   <>分析我的简历</>
                 )}

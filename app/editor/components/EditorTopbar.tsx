@@ -133,7 +133,7 @@ export default function EditorTopbar({
                 onMouseEnter={e => { if (!translateLoading && !disabled) e.currentTarget.style.background = '#f1f5f9' }}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                {translateLoading ? '翻译中...' : '🌐 生成英文版'}
+                {translateLoading ? '翻译中...' : '生成英文版'}
               </button>
             </div>
           )}
@@ -184,7 +184,7 @@ export default function EditorTopbar({
             <Eye size={13} /> 预览
           </button>
         )}
-        <button onClick={disabled ? undefined : onAIAnalyze} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', borderColor: 'var(--paper)', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>✦ {isMobile ? 'AI' : 'AI 解析'}</button>
+        <button onClick={disabled ? undefined : onAIAnalyze} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', borderColor: 'var(--paper)', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>✦ {isMobile ? 'AI' : 'AI 优化'}</button>
         <button onClick={disabled ? undefined : onDownload} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'var(--theme-blue)', borderColor: disabled ? 'rgba(255,255,255,0.15)' : 'var(--theme-blue)', color: disabled ? 'rgba(255,255,255,0.3)' : 'var(--paper)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
           <Download size={13} /> {isMobile ? 'PDF' : '下载 PDF'}
         </button>
