@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Menu, Undo2, Redo2, Globe, Check } from 'lucide-react'
+import { Menu, Undo2, Redo2, Globe } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
@@ -1589,30 +1589,18 @@ ${autoprint ? `<script>
               >✨ 压缩至1页</button>
             )}
             {/* Translate shortcut in toolbar */}
-            {!noResumeOpen && !aiUploadObjectUrl && proStatus.kind === 'subscription' && !isMobile && (
+            {!noResumeOpen && !aiUploadObjectUrl && proStatus.kind === 'subscription' && !isMobile && !isCurrentEnglish && (
               <button
-                onClick={isCurrentEnglish ? undefined : handleTranslate}
-                disabled={translateLoading || isCurrentEnglish}
+                onClick={handleTranslate}
+                disabled={translateLoading}
                 style={{
-                  padding: '3px 10px', borderRadius: '5px',
-                  background: isCurrentEnglish
-                    ? 'rgba(16,185,129,0.12)'
-                    : translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
-                  color: isCurrentEnglish ? '#10b981' : 'white',
-                  fontSize: '11px', fontWeight: 700,
-                  cursor: isCurrentEnglish ? 'default' : translateLoading ? 'wait' : 'pointer',
-                  fontFamily: 'var(--font-sans)',
-                  flexShrink: 0, transition: 'all 0.2s',
-                  border: isCurrentEnglish ? '1px solid rgba(16,185,129,0.3)' : 'none',
+                  padding: '3px 10px', borderRadius: '5px', border: 'none',
+                  background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
+                  color: 'white', fontSize: '11px', fontWeight: 700,
+                  cursor: translateLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
+                  flexShrink: 0, transition: 'opacity 0.15s',
                 }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {isCurrentEnglish
-                    ? <><Check size={11} strokeWidth={2.5} />已是英文版</>
-                    : <><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</>
-                  }
-                </span>
-              </button>
+              ><span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</span></button>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>

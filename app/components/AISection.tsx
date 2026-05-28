@@ -76,12 +76,19 @@ const features = [
   },
 ]
 
+const RAINBOW = 'linear-gradient(90deg, #f87171, #fb923c, #fbbf24, #4ade80, #38bdf8, #818cf8, #f87171)'
+
 export default function AISection() {
   return (
     <section style={{
       background: 'linear-gradient(160deg, #06080f 0%, #001d3d 50%, #06080f 100%)',
       position: 'relative', overflow: 'hidden',
     }}>
+      {/* Rainbow top border */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: RAINBOW, zIndex: 1 }} />
+      {/* Rainbow bottom border */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: RAINBOW, zIndex: 1 }} />
+
       {/* Subtle grid overlay */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -99,8 +106,15 @@ export default function AISection() {
         background: 'radial-gradient(circle, rgba(109,40,217,0.1) 0%, transparent 65%)',
         bottom: '-200px', right: '-100px', pointerEvents: 'none',
       }} />
+      <div style={{
+        position: 'absolute', width: '500px', height: '500px', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(251,146,60,0.07) 0%, transparent 65%)',
+        top: '30%', right: '10%', pointerEvents: 'none',
+      }} />
 
-      <div id="ai" style={{ padding: '96px 32px', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
+      {/* Rainbow-bordered content container */}
+      <div style={{ padding: '4px', background: RAINBOW, maxWidth: '1240px', margin: '0 auto', position: 'relative', borderRadius: '20px' }}>
+      <div id="ai" style={{ padding: '92px 28px', maxWidth: '100%', margin: '0 auto', position: 'relative', background: 'linear-gradient(160deg, #060a14 0%, #001530 50%, #060a14 100%)', borderRadius: '17px' }}>
         {/* Header */}
         <div style={{ textAlign: 'center' }} className="fade-in">
           <div style={{
@@ -157,6 +171,7 @@ export default function AISection() {
           @media (max-width: 900px) { .ai-grid { grid-template-columns: 1fr 1fr !important; } }
           @media (max-width: 520px) { .ai-grid { grid-template-columns: 1fr !important; } }
         `}</style>
+      </div>
       </div>
     </section>
   )

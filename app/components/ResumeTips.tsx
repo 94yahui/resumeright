@@ -113,7 +113,7 @@ function TipCard({ tip }: { tip: typeof tips[0] }) {
         border: '1px solid rgba(0,0,0,0.07)',
         borderRadius: '14px',
         padding: '18px 18px 16px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.14)',
+        boxShadow: '0 2px 12px rgba(120,30,0,0.15)',
       }}
     >
       <div style={{ marginBottom: '10px' }}>
@@ -143,7 +143,7 @@ export default function ResumeTips() {
   const [paused, setPaused] = useState(false)
 
   return (
-    <section style={{ background: '#060d1a', padding: '80px 0 72px' }}>
+    <section style={{ background: 'linear-gradient(135deg, #ec4899 0%, #f97316 50%, #eab308 100%)', padding: '80px 0 72px' }}>
       <style>{`
         @keyframes scrollLeft {
           from { transform: translateX(0); }
@@ -175,17 +175,17 @@ export default function ResumeTips() {
         }
         .tip-card:hover {
           transform: scale(1.04) translateY(-3px);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+          box-shadow: 0 10px 32px rgba(120,40,0,0.22) !important;
         }
       `}</style>
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '48px', padding: '0 32px' }} className="fade-in">
-        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 500, marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(0,0,0,0.45)', fontWeight: 600, marginBottom: '12px' }}>
           写简历的小技巧
         </div>
-        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 34px)', letterSpacing: '-0.5px', color: 'white', margin: 0, fontWeight: 700 }}>
-          让每一行字都<em style={{ fontStyle: 'italic', color: 'var(--theme-blue)' }}>值得</em>
+        <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 34px)', letterSpacing: '-0.5px', color: '#1e1b4b', margin: 0, fontWeight: 700 }}>
+          让每一行字都<em style={{ fontStyle: 'italic', color: '#7c3aed' }}>值得</em>
         </h2>
       </div>
 
@@ -195,16 +195,16 @@ export default function ResumeTips() {
         onMouseLeave={() => setPaused(false)}
         style={{ position: 'relative' }}
       >
-        {/* Left fade mask */}
+        {/* Left fade mask — matches the pink-left edge of the gradient */}
         <div style={{
           position: 'absolute', left: 0, top: 0, bottom: 0, width: '160px',
-          background: 'linear-gradient(to right, #060d1a 0%, transparent 100%)',
+          background: 'linear-gradient(to right, #ec4899 0%, transparent 100%)',
           zIndex: 2, pointerEvents: 'none',
         }} />
-        {/* Right fade mask */}
+        {/* Right fade mask — matches the yellow-right edge of the gradient */}
         <div style={{
           position: 'absolute', right: 0, top: 0, bottom: 0, width: '160px',
-          background: 'linear-gradient(to left, #060d1a 0%, transparent 100%)',
+          background: 'linear-gradient(to left, #eab308 0%, transparent 100%)',
           zIndex: 2, pointerEvents: 'none',
         }} />
 
