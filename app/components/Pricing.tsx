@@ -29,7 +29,7 @@ const SINGLE_FEATURES = [
   '解锁指定 1 套模板',
   '无水印 PDF 下载',
   '永久重新下载',
-  'AI 简历优化 2 次',
+  'AI 简历优化 5 次',
 ]
 
 const SUB_PLANS = [

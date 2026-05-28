@@ -192,7 +192,7 @@ export default function LeftPanel({
                 <UserRound size={13} /> 姓名 / 职位
               </button>
               <button onClick={() => onAddModule('contact')} style={infoBtn}>
-                <Mail size={13} /> 联系方式
+                <Mail size={13} /> 联系方式/基本信息
               </button>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button onClick={() => onAddModule('photo')} style={{ ...infoBtn, flex: 1 }}>
