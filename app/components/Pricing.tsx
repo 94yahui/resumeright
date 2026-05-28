@@ -57,6 +57,16 @@ export default function Pricing() {
     setIsFirst(isFirstPurchase(did))
   }, [])
 
+  // Refresh student status when verified from GradPromo or other components
+  useEffect(() => {
+    function onVerified() {
+      const did = getDeviceId()
+      setIsStudent(isStudentUser(did))
+    }
+    window.addEventListener('rc:studentVerified', onVerified)
+    return () => window.removeEventListener('rc:studentVerified', onVerified)
+  }, [])
+
   const activePlan = SUB_PLANS.find(p => p.key === selPlan)!
   const displayPrice = isStudent ? activePlan.studentPrice : activePlan.price
   const singlePrice = isFirst ? 0.99 : isStudent ? 4.9 : 9.9

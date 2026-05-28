@@ -355,24 +355,42 @@ export default function LandingAnalysisSection() {
                   目标岗位详情{' '}
                   <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: '11px', color: '#94a3b8' }}>（推荐填写，定向优化简历）</span>
                 </label>
-                <textarea
-                  suppressHydrationWarning
-                  value={jobDesc}
-                  onChange={e => setJobDesc(e.target.value)}
-                  placeholder="粘贴目标岗位招聘信息，AI 将定向优化简历内容并估算 Offer 率..."
-                  rows={3}
-                  style={{
-                    width: '100%', padding: '12px 14px', boxSizing: 'border-box',
-                    background: '#f8fafc',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: '10px',
-                    fontFamily: "'Inter','Noto Sans SC',sans-serif",
-                    fontSize: '13px', color: '#0f172a',
-                    outline: 'none', resize: 'none', lineHeight: 1.6,
-                  }}
-                  onFocus={e => { e.target.style.borderColor = 'rgba(109,40,217,0.6)'; e.target.style.background = '#faf5ff' }}
-                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    suppressHydrationWarning
+                    value={jobDesc}
+                    onChange={e => setJobDesc(e.target.value)}
+                    placeholder="粘贴目标岗位招聘信息，AI 将定向优化简历内容并估算 Offer 率..."
+                    rows={3}
+                    style={{
+                      width: '100%', padding: '12px 14px', boxSizing: 'border-box',
+                      paddingRight: jobDesc ? '34px' : '14px',
+                      background: '#f8fafc',
+                      border: '1.5px solid #e2e8f0',
+                      borderRadius: '10px',
+                      fontFamily: "'Inter','Noto Sans SC',sans-serif",
+                      fontSize: '13px', color: '#0f172a',
+                      outline: 'none', resize: 'none', lineHeight: 1.6,
+                    }}
+                    onFocus={e => { e.target.style.borderColor = 'rgba(109,40,217,0.6)'; e.target.style.background = '#faf5ff' }}
+                    onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                  />
+                  {jobDesc && (
+                    <button
+                      onClick={() => setJobDesc('')}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: 'rgba(100,116,139,0.15)', border: 'none',
+                        borderRadius: '50%', width: '18px', height: '18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', color: '#94a3b8', padding: 0,
+                        transition: 'background 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(100,116,139,0.3)'; e.currentTarget.style.color = '#475569' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(100,116,139,0.15)'; e.currentTarget.style.color = '#94a3b8' }}
+                    ><X size={10} /></button>
+                  )}
+                </div>
                 {/* Sample JD chips */}
                 <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '5px' }}>
                   <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>试试：</span>
@@ -456,7 +474,7 @@ export default function LandingAnalysisSection() {
                     AI 分析中...
                   </>
                 ) : jobDesc.trim() ? (
-                  <>✨ 精准定向分析</>
+                  <>精准定向分析</>
                 ) : (
                   <>分析我的简历</>
                 )}
