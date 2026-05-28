@@ -1602,7 +1602,7 @@ ${autoprint ? `<script>
               >✨ 压缩至1页</button>
             )}
             {/* Translate shortcut — shown for all users to prompt upgrade; hidden when already English */}
-            {!noResumeOpen && !aiUploadObjectUrl && !isMobile && !isCurrentEnglish && (
+            {!noResumeOpen && !aiUploadObjectUrl && !isCurrentEnglish && (
               <button
                 onClick={handleTranslate}
                 disabled={translateLoading}
@@ -1618,7 +1618,7 @@ ${autoprint ? `<script>
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '生成英文版'}
+                  <Globe size={11} strokeWidth={2} />{translateLoading ? (isMobile ? '…' : '翻译中…') : (isMobile ? 'EN' : '生成英文版')}
                 </span>
               </button>
             )}
@@ -1631,7 +1631,13 @@ ${autoprint ? `<script>
                   background: 'white', color: '#334155', fontFamily: 'var(--font-sans)',
                 }}>{l}</button>
               ))}
-              <button onClick={() => commitZoom(isMobile ? 55 : 70)} style={{
+              <button onClick={() => {
+                commitZoom(isMobile ? 55 : 70)
+                if (isMobile && canvasRef.current) {
+                  canvasRef.current.scrollTop = 0
+                  canvasRef.current.scrollLeft = 0
+                }
+              }} style={{
                 padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
                 cursor: 'pointer', border: '1px solid #e2e8f0',
                 background: 'white', color: '#64748b', fontFamily: 'var(--font-sans)',
@@ -1832,7 +1838,7 @@ ${autoprint ? `<script>
             }}
             onClick={() => {
               setSelection({ kind: 'none' })
-              if (aiPanelOpen && aiPanelPhase === 'entry') setAiPanelOpen(false)
+              if (aiPanelOpen && (aiPanelPhase === 'entry' || (isMobile && aiPanelPhase === 'result'))) setAiPanelOpen(false)
             }}
           >
             <div ref={scaleWrapperRef} className="print-scale-wrapper" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', willChange: 'transform' }}>

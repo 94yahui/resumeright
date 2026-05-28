@@ -3,6 +3,8 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCode, Smartphone, FilePen, Plus, Target, ChevronDown, ChevronUp, MessageSquare, Lightbulb, GraduationCap, Star } from 'lucide-react'
 import type { AISuggestion } from '../../lib/types'
 import { hasDiffMarkup, parseDiffBullet } from '../../lib/types'
+const STRAY_RE = /\[\[[\+~]|[\+~]\]\]/g
+const stripStray = (s: string) => s.replace(STRAY_RE, '')
 import ImportLoadingBar from '../../components/ImportLoadingBar'
 import LogoSweepLoader from '../../components/LogoSweepLoader'
 import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord, hasRedeemedCode, markCodeRedeemed } from '../../lib/payment'
@@ -267,8 +269,8 @@ export function AIPanel({
   }, [skillChecks])
 
   const CURRENT_STAGES = [
-    { after: 0,     msg: '正在读取简历内容…' },
-    { after: 3500,  msg: '识别工作经历与技能…' },
+    { after: 0,     msg: '正在分析简历结构与亮点…' },
+    { after: 3500,  msg: '评估工作经历与技能水平…' },
     { after: 7000,  msg: '评估岗位匹配度…' },
     { after: 10500, msg: '生成优化建议…' },
     { after: 14000, msg: '生成面试题…' },
@@ -296,9 +298,29 @@ export function AIPanel({
     e.target.value = ''
   }
 
+  // Collapse interview questions whenever new analysis arrives
+  useEffect(() => {
+    setShowInterviewQ(false)
+    setExpandedAnswers(new Set())
+  }, [analysis])
+
   const showOfferRate = analysis?.hasOfferRate === true
   const offerRate = analysis?.offerRate ?? 0
-  const rawSuggestions = useMemo(() => analysis?.suggestions ?? [], [analysis])
+  const rawSuggestions = useMemo(() => {
+    const normalize = (s: string) => s.toLowerCase().trim()
+    const existingSet = new Set((currentSkills ?? []).map(normalize))
+    return (analysis?.suggestions ?? []).filter(s => {
+      // Drop exp/project bullet suggestions where no bullet carries diff markup (nothing changed)
+      if ((s.section === 'exp' || s.section === 'project') && s.field === 'bullets' && Array.isArray(s.optimizedContent)) {
+        return (s.optimizedContent as string[]).some(hasDiffMarkup)
+      }
+      // Drop skills suggestions where every suggested skill already exists
+      if (s.section === 'skills' && Array.isArray(s.optimizedContent)) {
+        return (s.optimizedContent as string[]).some(sk => !existingSet.has(normalize(sk)))
+      }
+      return true
+    })
+  }, [analysis, currentSkills])
   // Summary suggestion always first
   const suggestions = [...rawSuggestions].sort((a, b) =>
     a.section === 'summary' ? -1 : b.section === 'summary' ? 1 : 0
@@ -737,8 +759,8 @@ export function AIPanel({
                         })() : s.section === 'summary' ? (
                           <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: 1.65, padding: '8px 10px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px' }}>
                             {Array.isArray(s.optimizedContent)
-                              ? (s.optimizedContent as string[]).filter(Boolean).join(' ')
-                              : (s.optimizedContent as string).replace(/\n+/g, ' ')}
+                              ? stripStray((s.optimizedContent as string[]).filter(Boolean).join(' '))
+                              : stripStray((s.optimizedContent as string).replace(/\n+/g, ' '))}
                           </p>
                         ) : (s.section === 'exp' || s.section === 'project') && Array.isArray(s.optimizedContent) && (s.optimizedContent as string[]).some(hasDiffMarkup) ? (
                           // Inline diff format: show changeDescription + each bullet with coloured segments
@@ -760,7 +782,7 @@ export function AIPanel({
                                         textDecoration: seg.type === 'del' ? 'line-through' : 'none',
                                         fontWeight: seg.type === 'add' ? 600 : 400,
                                       }}>{seg.text}</span>
-                                    )) : b}
+                                    )) : stripStray(b)}
                                   </li>
                                 )
                               })}
@@ -769,12 +791,12 @@ export function AIPanel({
                         ) : Array.isArray(s.optimizedContent) ? (
                           <ul style={{ margin: 0, paddingLeft: '14px' }}>
                             {(s.optimizedContent as string[]).map((b, bi) => (
-                              <li key={bi} style={{ fontSize: '11px', color: '#475569', lineHeight: 1.6, marginBottom: '2px' }}>{b}</li>
+                              <li key={bi} style={{ fontSize: '11px', color: '#475569', lineHeight: 1.6, marginBottom: '2px' }}>{stripStray(b)}</li>
                             ))}
                           </ul>
                         ) : (
                           <p style={{ margin: 0, fontSize: '11px', color: '#475569', lineHeight: 1.55 }}>
-                            {(s.optimizedContent as string).replace(/\n+/g, ' ')}
+                            {stripStray((s.optimizedContent as string).replace(/\n+/g, ' '))}
                           </p>
                         )}
                         {/* Apply button — skills have their own inline button above */}
