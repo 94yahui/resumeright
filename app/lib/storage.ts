@@ -21,6 +21,7 @@ export interface HistoryEntry {
   templateId: string
   color: string | undefined
   savedAt: number
+  isEnglish?: boolean
 }
 
 export function loadDraft(): DraftState | null {

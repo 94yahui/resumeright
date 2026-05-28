@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Menu, Undo2, Redo2, Globe } from 'lucide-react'
+import { Menu, Undo2, Redo2, Globe, Check } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
@@ -27,6 +27,12 @@ import {
 import type { PlanType } from '../lib/payment'
 
 const HISTORY_LIMIT = 30
+
+const CJK = /[一-鿿　-〿＀-￯]/
+function looksEnglish(d: ResumeData): boolean {
+  const texts = [d.jobtitle, d.summary, ...(d.exp ?? []).flatMap(e => e.bullets ?? []).slice(0, 4)].filter(Boolean)
+  return texts.length > 0 && !texts.some(t => CJK.test(t))
+}
 
 const TRANSLATE_STAGES = [
   { after: 0,     msg: '正在解析简历结构…' },
@@ -218,6 +224,7 @@ function EditorInner() {
           setTemplateId('classic-pro')
           setColor(undefined)
           setHistoryRefreshKey(k => k + 1)
+          setIsCurrentEnglish(looksEnglish(parsed))
 
           if (analysis) {
             // Diagnosis flow: parsed data goes into canvas, AI panel opens with results immediately clickable
@@ -539,6 +546,7 @@ function EditorInner() {
     setDocTitle(pendingDraft.docTitle)
     setPendingDraft(null)
     setNoResumeOpen(false)
+    setIsCurrentEnglish(looksEnglish(pendingDraft.data))
   }, [pendingDraft])
 
   const handleNewResume = useCallback(() => {
@@ -552,6 +560,7 @@ function EditorInner() {
     setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(newName)
+    setIsCurrentEnglish(false)
   }, [])
 
   // ============ History (saved drafts) ============
@@ -978,6 +987,7 @@ ${autoprint ? `<script>
       setAiTemplateApplied(true)
       setAiPanelPhase('result')
       setLeftPanelTab('tpl')
+      if (aiParsedData) setIsCurrentEnglish(looksEnglish(aiParsedData))
     }, 1800)
   }, [data, templateId, color, docTitle, aiUploadFilename, aiParsedData])
 
@@ -1087,6 +1097,7 @@ ${autoprint ? `<script>
       loadedFromHistoryId.current = null
       setDocTitle('')
       setSelection({ kind: 'none' })
+      setIsCurrentEnglish(false)
       clearDraft()
     }
   }, [currentHistoryId])
@@ -1114,6 +1125,7 @@ ${autoprint ? `<script>
     setAiParsedData(null)
     setAiUploadError(undefined)
     aiAnalyzedDataSnapshot.current = null
+    setIsCurrentEnglish(entry.isEnglish === true || looksEnglish(entry.data))
     showToast(`✓ 已加载「${entry.name}」`)
   }, [])
 
@@ -1156,6 +1168,7 @@ ${autoprint ? `<script>
   }, [deviceId, proStatus])
 
   const [translateLoading, setTranslateLoading] = useState(false)
+  const [isCurrentEnglish, setIsCurrentEnglish] = useState(false)
   const [compressPhase, setCompressPhase] = useState<'idle' | 'loading' | 'ai-review'>('idle')
   const [compressBulletDiffs, setCompressBulletDiffs] = useState<Record<string, string[]>>({})
   const [compressSummaryInfo, setCompressSummaryInfo] = useState<{ oldText: string; newText: string } | null>(null)
@@ -1309,7 +1322,7 @@ ${autoprint ? `<script>
       const currentHistory = loadHistory()
       const rawName = json.translatedTitle || `${docTitle} (English)`
       const engName = uniqueHistoryName(rawName, currentHistory)
-      const newId = saveToHistory({ name: engName, data: json.data, templateId, color, savedAt: Date.now() })
+      const newId = saveToHistory({ name: engName, data: json.data, templateId, color, savedAt: Date.now(), isEnglish: true })
       loadedFromHistoryId.current = newId || null
       setCurrentHistoryId(newId || null)
       setHistory([json.data])
@@ -1318,6 +1331,7 @@ ${autoprint ? `<script>
       setSelection({ kind: 'none' })
       setNoResumeOpen(false)
       setHistoryRefreshKey(k => k + 1)
+      setIsCurrentEnglish(true)
       recordUsage(deviceId, 'ai_translate', freshStatus)
       setProStatus(getProStatus(deviceId, newId || undefined))
       const usedToday = getDailyCount(deviceId, 'ai_translate')
@@ -1577,16 +1591,28 @@ ${autoprint ? `<script>
             {/* Translate shortcut in toolbar */}
             {!noResumeOpen && !aiUploadObjectUrl && proStatus.kind === 'subscription' && !isMobile && (
               <button
-                onClick={handleTranslate}
-                disabled={translateLoading}
+                onClick={isCurrentEnglish ? undefined : handleTranslate}
+                disabled={translateLoading || isCurrentEnglish}
                 style={{
-                  padding: '3px 10px', borderRadius: '5px', border: 'none',
-                  background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
-                  color: 'white', fontSize: '11px', fontWeight: 700,
-                  cursor: translateLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
-                  flexShrink: 0, transition: 'opacity 0.15s',
+                  padding: '3px 10px', borderRadius: '5px',
+                  background: isCurrentEnglish
+                    ? 'rgba(16,185,129,0.12)'
+                    : translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
+                  color: isCurrentEnglish ? '#10b981' : 'white',
+                  fontSize: '11px', fontWeight: 700,
+                  cursor: isCurrentEnglish ? 'default' : translateLoading ? 'wait' : 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  flexShrink: 0, transition: 'all 0.2s',
+                  border: isCurrentEnglish ? '1px solid rgba(16,185,129,0.3)' : 'none',
                 }}
-              ><span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</span></button>
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {isCurrentEnglish
+                    ? <><Check size={11} strokeWidth={2.5} />已是英文版</>
+                    : <><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</>
+                  }
+                </span>
+              </button>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
