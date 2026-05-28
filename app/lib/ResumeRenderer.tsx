@@ -557,7 +557,7 @@ export default function ResumeRenderer({
         .map(ci => {
           const isUrl = /^https?:\/\//i.test(ci.value)
           return {
-            icon: <ExternalLink size={10} color={c} strokeWidth={2} />,
+            icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />,
             text: isUrl ? ci.label : `${ci.label}: ${ci.value}`,
             href: isUrl ? ci.value : undefined,
           }

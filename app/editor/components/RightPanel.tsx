@@ -50,7 +50,7 @@ export default function RightPanel({
       : selection.kind === "field" && selection.field === "summary"
         ? "个人简介"
         : selection.kind === "contact"
-          ? "联系方式"
+          ? "联系方式/基本信息"
           : selection.kind === "skills"
             ? "专业技能"
             : selection.kind === "entry"

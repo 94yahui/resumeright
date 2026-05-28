@@ -1827,7 +1827,10 @@ ${autoprint ? `<script>
               backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
             }}
-            onClick={() => setSelection({ kind: 'none' })}
+            onClick={() => {
+              setSelection({ kind: 'none' })
+              if (aiPanelOpen && aiPanelPhase === 'entry') setAiPanelOpen(false)
+            }}
           >
             <div ref={scaleWrapperRef} className="print-scale-wrapper" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', willChange: 'transform' }}>
               <div className="resume-print-area">
@@ -1835,7 +1838,7 @@ ${autoprint ? `<script>
                   data={data}
                   template={template}
                   color={effectiveColor}
-                  interactive={!aiPanelOpen}
+                  interactive={!aiPanelOpen || aiPanelPhase === 'entry'}
                   selection={selection}
                   onSelect={handleCanvasSelect}
                   onPhotoUpload={() => {
