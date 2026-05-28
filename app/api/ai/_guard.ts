@@ -63,10 +63,10 @@ async function getPlanKind(deviceId: string): Promise<PlanKind> {
 // Limits per plan kind. 0 = feature blocked.
 // analyze: single & free use a lifetime total (date key = 'total'); subscriber uses daily.
 const LIMITS: Record<string, { sub: number; single: number; free: number }> = {
-  analyze:          { sub: 20, single: 2, free: 2 },
+  analyze:          { sub: 20, single: 5, free: 2 },
   translate:        { sub: 5,  single: 0, free: 0 },
   compress:         { sub: 20, single: 0, free: 0 },
-  'parse-resume':   { sub: 10, single: 5, free: 2 },
+  'parse-resume':   { sub: 10, single: 2, free: 2 },
 }
 
 // ── MongoDB-backed per-device quota check ─────────────────────────────────────

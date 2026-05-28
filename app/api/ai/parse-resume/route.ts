@@ -117,6 +117,10 @@ export async function POST(req: NextRequest) {
     const quotaGuard = await checkServerQuota(req, 'parse-resume', String(deviceId ?? ''))
     if (quotaGuard) return quotaGuard
 
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: '文件过大，请上传 5 MB 以内的文件。' }, { status: 413 })
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const mime   = file.type || ''
     const name   = file.name.toLowerCase()
@@ -140,6 +144,12 @@ export async function POST(req: NextRequest) {
 
     if (!resumeText || resumeText.length < 30) {
       return NextResponse.json({ error: 'not_resume' }, { status: 422 })
+    }
+
+    // Cap at 12 000 chars — a real resume never exceeds this; beyond it we'd
+    // waste tokens and risk sending a book/contract to the model.
+    if (resumeText.length > 12000) {
+      resumeText = resumeText.slice(0, 12000)
     }
 
     // Send extracted text to qwen3.6-plus

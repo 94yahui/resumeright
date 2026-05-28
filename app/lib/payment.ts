@@ -195,7 +195,7 @@ export function getProStatus(deviceId: string, resumeId?: string): ProStatus {
         orderId: single.orderId,
         resumeId,
         templateId: single.templateId ?? '',  // empty = old purchase without template binding
-        aiAnalyzeLeft: Math.max(0, 2 - (single.aiAnalyzeUsed ?? 0)),
+        aiAnalyzeLeft: Math.max(0, 5 - (single.aiAnalyzeUsed ?? 0)),
       }
     }
   }
@@ -292,7 +292,7 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
     }
     if (status.kind === 'single') {
       const left = status.aiAnalyzeLeft
-      if (left <= 0) return { allowed: false, reason: 'total_limit', used: 2, limit: 2 }
+      if (left <= 0) return { allowed: false, reason: 'total_limit', used: 5, limit: 5 }
       return { allowed: true }
     }
     const used = getDailyCount(deviceId, 'ai_analyze')
