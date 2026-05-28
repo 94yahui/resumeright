@@ -177,6 +177,10 @@ export default function ResumeTips() {
           transform: scale(1.04) translateY(-3px);
           box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
         }
+        .tips-fade-mask { width: 160px; }
+        @media (max-width: 640px) {
+          .tips-fade-mask { width: 60px; }
+        }
       `}</style>
 
       {/* Header */}
@@ -196,14 +200,14 @@ export default function ResumeTips() {
         style={{ position: 'relative' }}
       >
         {/* Left fade mask */}
-        <div style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0, width: '160px',
+        <div className="tips-fade-mask" style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0,
           background: 'linear-gradient(to right, #060d1a 0%, transparent 100%)',
           zIndex: 2, pointerEvents: 'none',
         }} />
         {/* Right fade mask */}
-        <div style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: '160px',
+        <div className="tips-fade-mask" style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0,
           background: 'linear-gradient(to left, #060d1a 0%, transparent 100%)',
           zIndex: 2, pointerEvents: 'none',
         }} />

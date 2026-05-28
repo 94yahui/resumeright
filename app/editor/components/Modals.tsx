@@ -1758,25 +1758,24 @@ export function StudentModal({
         </div>
       </div>
 
-      {/* Code — always visible so user sees the full flow upfront */}
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>验证码</label>
-        <input
-          value={code}
-          onChange={e => { setCode(e.target.value); setError('') }}
-          placeholder={codeSent ? '输入 6 位验证码' : '发送验证码后在此输入'}
-          maxLength={6}
-          disabled={!codeSent}
-          style={{ ...inputStyle, opacity: codeSent ? 1 : 0.5 }}
-          onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
-          onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = codeSent ? '#f8fafc' : '#f1f5f9' }}
-        />
-        {codeSent && (
+      {codeSent && (
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', letterSpacing: '0.5px' }}>验证码</label>
+          <input
+            value={code}
+            onChange={e => { setCode(e.target.value); setError('') }}
+            placeholder="输入 6 位验证码"
+            maxLength={6}
+            autoFocus
+            style={inputStyle}
+            onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+            onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+          />
           <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '6px' }}>
             💡 模拟环境验证码为 <strong style={{ color: '#334155' }}>123456</strong>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '12px', padding: '8px 12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
@@ -1810,7 +1809,7 @@ function ModalWrap({ children, onClose, wide, disableBackdropClose }: { children
         position: 'fixed', inset: 0,
         background: 'rgba(15, 23, 42, 0.55)',
         backdropFilter: 'blur(6px)',
-        zIndex: 200,
+        zIndex: 600,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '20px',
       }}>
