@@ -30,12 +30,8 @@ export default function GradPromo() {
 
   if (dismissed || verified) return null
 
-  // Coupon mask: semicircle bites along the left edge, repeating every 14px
-  const couponMask = 'radial-gradient(circle at 0 7px, transparent 6px, black 0) 0 0 / 100% 14px repeat-y'
-
   return (
     <>
-      {/* Outer wrapper: handles width animation + clips children; own box-shadow is NOT clipped by overflow */}
       <div
         ref={containerRef}
         style={{
@@ -51,13 +47,10 @@ export default function GradPromo() {
           transition: 'width 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {/* Inner panel: teal background + coupon mask on left edge */}
         <div style={{
           background: '#00afb9',
           minHeight: '160px',
           position: 'relative',
-          WebkitMask: couponMask,
-          mask: couponMask,
         }}>
           {/* Expanded content — right margin reserves space for the always-visible tab strip */}
           <div style={{
