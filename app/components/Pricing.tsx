@@ -260,17 +260,20 @@ export default function Pricing() {
               ))}
             </ul>
 
-            <Link href="/#templates" style={{
-              display: 'block', marginTop: '28px', padding: '13px',
-              borderRadius: '10px', textAlign: 'center',
-              fontSize: '14px', fontWeight: 600, textDecoration: 'none',
-              background: 'transparent', color: 'rgba(255,255,255,0.7)',
-              border: '1.5px solid rgba(255,255,255,0.18)',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.color = 'white' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
-            >浏览模板</Link>
+            <button
+              onClick={() => document.getElementById('templates')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{
+                display: 'block', width: '100%', marginTop: '28px', padding: '13px',
+                borderRadius: '10px', textAlign: 'center',
+                fontSize: '14px', fontWeight: 600,
+                background: 'transparent', color: 'rgba(255,255,255,0.7)',
+                border: '1.5px solid rgba(255,255,255,0.18)',
+                transition: 'all 0.2s', cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.color = 'white' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+            >浏览模板</button>
           </div>
         </div>
       </div>
