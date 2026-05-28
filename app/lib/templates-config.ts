@@ -1113,3 +1113,10 @@ export const CATEGORY_MAP: Record<string, string> = {
 export function getTemplate(id: string): TemplateConfig {
   return TEMPLATES.find(t => t.id === id) || TEMPLATES[0]
 }
+
+// Layouts that render as a single content column (no sidebar / no balanced two-col)
+const MULTI_COLUMN_LAYOUTS: LayoutType[] = ['sidebar-left-wide', 'sidebar-left-narrow', 'sidebar-right', 'two-column-balance']
+
+export function isSingleColumn(templateId: string): boolean {
+  return !MULTI_COLUMN_LAYOUTS.includes(getTemplate(templateId).layout)
+}
