@@ -20,29 +20,25 @@ export default function GradPromo() {
         top: '50%',
         transform: 'translateY(-50%)',
         zIndex: 500,
-        display: 'flex',
-        alignItems: 'stretch',
         width: open ? '268px' : '30px',
         overflow: 'hidden',
         borderRadius: '10px 0 0 10px',
         background: 'var(--teal)',
         boxShadow: '-3px 0 20px rgba(13,148,136,0.4)',
         transition: 'width 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: open ? 'default' : 'pointer',
-      }}
-        onClick={!open ? () => setOpen(true) : undefined}
-      >
-        {/* Expanded content — visible when open */}
+        minHeight: '160px',
+      }}>
+        {/* Expanded content — right margin leaves room for the tab strip */}
         <div style={{
-          flex: 1,
-          minWidth: 0,
-          padding: '22px 16px 20px 18px',
+          marginRight: '30px',
+          padding: '22px 14px 20px 18px',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px',
           opacity: open ? 1 : 0,
-          transition: 'opacity 0.25s ease',
-          transitionDelay: open ? '0.15s' : '0s',
+          transition: 'opacity 0.2s ease',
+          transitionDelay: open ? '0.18s' : '0s',
+          pointerEvents: open ? 'auto' : 'none',
         }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -98,20 +94,23 @@ export default function GradPromo() {
           )}
         </div>
 
-        {/* Tab strip — always 30px on the right */}
+        {/* Tab strip — absolutely pinned to the right edge, always visible */}
         <div
-          onClick={open ? () => setOpen(false) : undefined}
+          onClick={() => setOpen(o => !o)}
           style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
             width: '30px',
-            flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '7px',
-            padding: '16px 0',
             cursor: 'pointer',
             userSelect: 'none',
+            padding: '16px 0',
           }}
         >
           <GraduationCap size={14} color="white" />
