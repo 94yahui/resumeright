@@ -116,7 +116,7 @@ export default function ResumeTips() {
           display: flex;
           gap: ${CARD_GAP}px;
           width: max-content;
-          animation: scrollTips 60s linear infinite;
+          animation: scrollTips 140s linear infinite;
         }
         .tips-track.paused {
           animation-play-state: paused;
@@ -127,7 +127,7 @@ export default function ResumeTips() {
         }
         .tip-card:hover {
           transform: scale(1.04) translateY(-3px);
-          box-shadow: 0 12px 36px rgba(0,0,0,0.45) !important;
+          box-shadow: 0 12px 36px rgba(0,0,0,0.22) !important;
         }
       `}</style>
 
@@ -157,11 +157,11 @@ export default function ResumeTips() {
                 style={{
                   width: `${CARD_W}px`,
                   flexShrink: 0,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.09)',
+                  background: 'var(--paper)',
+                  border: '1px solid rgba(0,0,0,0.07)',
                   borderRadius: '14px',
                   padding: '20px 20px 18px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -169,11 +169,11 @@ export default function ResumeTips() {
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
                     padding: '3px 9px', borderRadius: '20px',
                     background: ts.bg, color: ts.color,
-                    border: `1px solid ${ts.color}40`,
+                    border: `1px solid ${ts.color}55`,
                   }}>{tip.tag}</span>
                 </div>
                 <p style={{
-                  fontSize: '13.5px', color: 'rgba(255,255,255,0.8)',
+                  fontSize: '13.5px', color: '#334155',
                   lineHeight: 1.65, margin: 0, fontWeight: 400,
                 }}>
                   {tip.text}

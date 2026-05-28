@@ -1,7 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Menu, Undo2, Redo2 } from 'lucide-react'
+import { Menu, Undo2, Redo2, Globe } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
@@ -1586,7 +1586,7 @@ ${autoprint ? `<script>
                   cursor: translateLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
                   flexShrink: 0, transition: 'opacity 0.15s',
                 }}
-              >{translateLoading ? '翻译中…' : '🌐 英文版'}</button>
+              ><span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</span></button>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
@@ -1714,7 +1714,7 @@ ${autoprint ? `<script>
                     ⚠ 内容超出第 1 页，约 {overflowLines} 行
                   </span>
                   <span style={{ fontSize: '11.5px', color: '#92400e', opacity: 0.75 }}>
-                    一页简历通过率高 40%
+                    一页简历通过率高出 40%
                   </span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {data.fontScale && data.fontScale < 1 && (
