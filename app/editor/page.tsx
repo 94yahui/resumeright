@@ -1588,29 +1588,24 @@ ${autoprint ? `<script>
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 6px rgba(249,115,22,0.35)' }}
               >✨ 压缩至1页</button>
             )}
-            {/* Translate shortcut in toolbar */}
-            {!noResumeOpen && !aiUploadObjectUrl && proStatus.kind === 'subscription' && !isMobile && (
+            {/* Translate shortcut — shown for all users to prompt upgrade; hidden when already English */}
+            {!noResumeOpen && !aiUploadObjectUrl && !isMobile && !isCurrentEnglish && (
               <button
-                onClick={isCurrentEnglish ? undefined : handleTranslate}
-                disabled={translateLoading || isCurrentEnglish}
+                onClick={handleTranslate}
+                disabled={translateLoading}
                 style={{
                   padding: '3px 10px', borderRadius: '5px',
-                  background: isCurrentEnglish
-                    ? 'rgba(16,185,129,0.12)'
-                    : translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
-                  color: isCurrentEnglish ? '#10b981' : 'white',
+                  background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
+                  color: 'white',
                   fontSize: '11px', fontWeight: 700,
-                  cursor: isCurrentEnglish ? 'default' : translateLoading ? 'wait' : 'pointer',
+                  cursor: translateLoading ? 'wait' : 'pointer',
                   fontFamily: 'var(--font-sans)',
                   flexShrink: 0, transition: 'all 0.2s',
-                  border: isCurrentEnglish ? '1px solid rgba(16,185,129,0.3)' : 'none',
+                  border: 'none',
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {isCurrentEnglish
-                    ? <><Check size={11} strokeWidth={2.5} />已是英文版</>
-                    : <><Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '英文版'}</>
-                  }
+                  <Globe size={11} strokeWidth={2} />{translateLoading ? '翻译中…' : '生成英文版'}
                 </span>
               </button>
             )}

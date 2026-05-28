@@ -65,15 +65,25 @@ ${hasJD ? `\n目标职位要求：${jobDesc}` : ''}`.trim()
     // [[~deleted words~]]            →  strikethrough
     // plain text                     →  unchanged
     const diffExample = `
-【行内diff标记规则】
-- 未改动的原文：直接保留，不加任何标记
-- 在句中新增或改写词语：[[+新增内容+]]
-- 删除句中词语：[[~删除内容~]]
-- 整条全新增加的bullet：[[+完整新增bullet内容+]]
-- 整条删除的bullet：[[~完整删除bullet内容~]]
-示例（原bullet："参与外卖App H5核心交互开发，提升用户体验"）
-→ 修改后："[[~参与~]][[+主导+]]外卖App H5核心交互[[~开发，提升用户体验~]][[+开发与优化，重构核心下单流程并缩减操作路径+]]"
-注意：①标记符号内部不能再嵌套 ②严禁凭空添加原文中不存在的具体数字、百分比或量化指标`
+【行内diff标记规则（强制执行）】
+每条bullet必须用diff标记标注实际改动，未改动的文字直接保留、不加任何标记。
+标记用法：
+- 仅替换句中某个词语：[[~原词~]][[+新词+]]（紧挨着写，中间无空格）
+- 仅在句中新增内容：[[+新增内容+]]
+- 仅删除句中某些字：[[~删除内容~]]
+- 整条bullet全部新增：[[+完整内容+]]
+- 整条bullet全部删除：[[~完整内容~]]
+
+⛔ 严禁整句替换：若要改动，必须精确标出变化的词语，每个diff片段通常不超过10个字。
+⛔ 若某条bullet已经清晰有力无需修改，直接原样输出，不加任何标记。
+⛔ 严禁凭空添加原文中不存在的具体数字、百分比或量化指标。
+
+✅ 正确示例（原文："参与外卖App H5核心交互开发，提升用户体验"）
+   → "[[~参与~]][[+主导+]]外卖App H5核心交互开发[[~，提升用户体验~]][[+，优化核心下单流程+]]"
+❌ 错误示例（整句替换，绝对禁止）
+   → "[[~参与外卖App H5核心交互开发，提升用户体验~]][[+主导外卖App H5核心交互开发与优化，重构下单流程+]]"
+
+注意：标记符号内部不能再嵌套。`
 
     const promptSuggestions = hasJD
       ? `你是资深简历顾问，现在处于【岗位定向优化模式】。
@@ -95,14 +105,14 @@ ${diffExample}
       "label": <如"个人简介">,
       "tip": <针对目标职位的改写方向，15字内>,
       "changeDescription": <30字内：改了什么、带来什么核心竞争优势>,
-      "optimizedContent": [<针对目标职位改写的简介，可使用diff标记，1-2句>]
+      "optimizedContent": [<针对目标职位改写的简介，必须使用diff标记标注改动词语，1-2句>]
     },
     {
       "id": "exp_0", "section": "exp", "entryIndex": 0, "field": "bullets",
       "label": <如"工作经历·职位@公司">,
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了哪个模块、具体改动及核心竞争优势>,
-      "optimizedContent": [<完整bullet列表，每条使用diff标记标注改动；未改动bullet原文输出；每条50字内>]
+      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动bullet原样输出；每条50字内>]
     },
     {
       "id": "skills_0", "section": "skills", "entryIndex": 0, "field": "skills",
@@ -132,21 +142,21 @@ ${diffExample}
       "label": "个人简介",
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了什么、带来什么核心竞争优势>,
-      "optimizedContent": [<改写后的简介，可使用diff标记，1-2句>]
+      "optimizedContent": [<改写后的简介，必须使用diff标记标注改动词语，1-2句>]
     },
     {
       "id": "exp_0", "section": "exp", "entryIndex": 0, "field": "bullets",
       "label": <如"工作经历·职位@公司">,
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了哪个模块、具体改动及核心竞争优势>,
-      "optimizedContent": [<完整bullet列表，使用diff标记标注改动；未改动原文输出；每条50字内>]
+      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动原样输出；每条50字内>]
     },
     {
       "id": "exp_1", "section": "exp", "entryIndex": 1, "field": "bullets",
       "label": <第二段工作经历>,
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了什么、带来什么优势>,
-      "optimizedContent": [<完整bullet列表，使用diff标记>]
+      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动原样输出>]
     }
   ]
 }

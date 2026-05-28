@@ -125,16 +125,6 @@ export default function EditorTopbar({
               >
                 导入简历
               </button>
-              <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 6px' }} />
-              <button
-                onClick={() => { setDropOpen(false); onTranslate?.() }}
-                disabled={translateLoading || disabled}
-                style={{ ...dropItem, color: (translateLoading || disabled) ? '#94a3b8' : '#334155', cursor: translateLoading ? 'wait' : disabled ? 'not-allowed' : 'pointer' }}
-                onMouseEnter={e => { if (!translateLoading && !disabled) e.currentTarget.style.background = '#f1f5f9' }}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                {translateLoading ? '翻译中...' : '生成英文版'}
-              </button>
             </div>
           )}
         </div>
