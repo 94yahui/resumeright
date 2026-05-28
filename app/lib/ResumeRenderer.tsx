@@ -552,6 +552,16 @@ export default function ResumeRenderer({
       (!data.hideCity && data.city) && { icon: <MapPin size={10} color={c} strokeWidth={2} />, text: data.city },
       (!data.hideWebsite && data.website) && { icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: data.website, href: toWebHref(data.website) },
       ...(data.extraWebsites || []).filter(Boolean).map(w => ({ icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: w, href: toWebHref(w) })),
+      ...(data.customContacts || [])
+        .filter(ci => !ci.hidden && ci.label && ci.value)
+        .map(ci => {
+          const isUrl = /^https?:\/\//i.test(ci.value)
+          return {
+            icon: <ExternalLink size={10} color={c} strokeWidth={2} />,
+            text: isUrl ? ci.label : `${ci.label}: ${ci.value}`,
+            href: isUrl ? ci.value : undefined,
+          }
+        }),
     ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
 
     return (

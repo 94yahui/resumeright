@@ -24,6 +24,7 @@ export interface ResumeData {
   city: string
   website: string
   extraWebsites?: string[]   // additional website links beyond the first
+  customContacts?: { label: string; value: string; hidden?: boolean }[]
   photo: string  // base64 data URL or empty
   photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number; shape?: 'circle' | 'rounded' }
   summary: string
@@ -147,6 +148,7 @@ export const DEMO_DATA: ResumeData = {
   phone: '138-0000-0000',
   city: '上海',
   website: 'jianliall.com',
+  customContacts: [],
   photo: '/virtual_photo.png',
   summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。在字节跳动、美团等头部互联网公司积累了丰富的大规模产品研发经验。',
   hasSummary: false,

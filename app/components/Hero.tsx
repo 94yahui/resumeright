@@ -94,7 +94,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               fontWeight: 300,
             }}
           >
-            模块化编辑 · AI 优化描述 · 专业模板一键套用
+            模块化编辑 · AI 定向优化 · 专业模板一键套用
             <br />
             几分钟完成一份让你脱颖而出的简历
           </p>

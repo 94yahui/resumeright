@@ -207,6 +207,62 @@ export default function RightPanel({
                 </button>
               </div>
             ))}
+            {/* Custom fields */}
+            <div style={{ height: '1px', background: '#e2e8f0', margin: '6px 0 12px' }} />
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '8px' }}>自定义字段</div>
+            {(data.customContacts || []).map((cc, i) => (
+              <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    value={cc.label}
+                    onChange={(e) => {
+                      const updated = [...(data.customContacts || [])]
+                      updated[i] = { ...updated[i], label: e.target.value }
+                      onUpdate({ customContacts: updated })
+                    }}
+                    placeholder="标题（如：GitHub）"
+                    style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
+                    onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                  />
+                  <button
+                    onClick={() => {
+                      const updated = [...(data.customContacts || [])]
+                      updated[i] = { ...updated[i], hidden: !cc.hidden }
+                      onUpdate({ customContacts: updated })
+                    }}
+                    title={cc.hidden ? '点击在简历中显示' : '点击在简历中隐藏'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: cc.hidden ? '#94a3b8' : 'var(--theme-blue)', display: 'flex', alignItems: 'center', padding: 0, flexShrink: 0 }}
+                  >
+                    {cc.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                  <button
+                    onClick={() => onUpdate({ customContacts: (data.customContacts || []).filter((_, j) => j !== i) })}
+                    style={{ padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                  >
+                    <X size={12} color="#94a3b8" />
+                  </button>
+                </div>
+                <input
+                  value={cc.value}
+                  onChange={(e) => {
+                    const updated = [...(data.customContacts || [])]
+                    updated[i] = { ...updated[i], value: e.target.value }
+                    onUpdate({ customContacts: updated })
+                  }}
+                  placeholder="内容或链接"
+                  style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => onUpdate({ customContacts: [...(data.customContacts || []), { label: '', value: '', hidden: false }] })}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-blue)', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)', marginTop: '4px' }}
+            >
+              <Plus size={12} /> 添加自定义字段
+            </button>
           </>
         )}
 

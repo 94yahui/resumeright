@@ -337,7 +337,7 @@ export function AIPanel({
 
         {/* Analyzing */}
         {phase === 'analyzing' && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '22px' }}>
               {[0, 1, 2].map(i => (
                 <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--theme-blue)', animation: `aipB 1.2s ${i * 0.18}s infinite` }} />
@@ -353,12 +353,12 @@ export function AIPanel({
 
         {/* Applying template */}
         {phase === 'applying' && (
-          <div style={{ textAlign: 'center', padding: '40px 16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', textAlign: 'center' }}>
             <div style={{ position: 'relative', width: '96px', height: '124px', margin: '0 auto 22px', border: '1.5px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#f8fafc' }}>
               {[14, 26, 38, 54, 64, 74, 84, 96, 108].map((top, i) => (
                 <div key={i} style={{ position: 'absolute', left: '10px', top: `${top}px`, width: i === 0 ? '44px' : i % 3 === 0 ? '66px' : i % 3 === 1 ? '54px' : '48px', height: i === 0 ? '5px' : '3px', background: i === 0 ? 'var(--theme-blue)' : '#e2e8f0', borderRadius: '2px', animation: `scanPulse 1.8s ${i * 0.08}s infinite` }} />
               ))}
-              <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent 0%, var(--theme-blue) 30%, #14b8a6 50%, var(--theme-blue) 70%, transparent 100%)', boxShadow: '0 0 8px 3px rgba(13,148,136,0.35)', animation: 'scanLine 1.8s ease-in-out infinite' }} />
+              <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent 0%, var(--highlight) 30%, #ff8c00 50%, var(--highlight) 70%, transparent 100%)', boxShadow: '0 0 8px 3px rgba(255,103,0,0.35)', animation: 'scanLine 1.8s ease-in-out infinite' }} />
             </div>
             <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>AI 扫描识别中...</div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>正在匹配模板并填入简历内容</div>

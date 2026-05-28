@@ -115,6 +115,7 @@ function EditorInner() {
   const [studentModalOpen, setStudentModalOpen] = useState(false)
   const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
   const translateAbortRef = useRef<AbortController | null>(null)
+  const compressAbortRef = useRef<AbortController | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -1160,6 +1161,8 @@ ${autoprint ? `<script>
   const [compressSummaryInfo, setCompressSummaryInfo] = useState<{ oldText: string; newText: string } | null>(null)
   const pendingCompressCleanRef = useRef<ResumeData | null>(null)
   const [compressWarningDismissed, setCompressWarningDismissed] = useState(false)
+  const [postCompressCheck, setPostCompressCheck] = useState(0)
+  const postCompressDataRef = useRef<ResumeData | null>(null)
 
   // ============ One-page compress ============
   const PAGE_H = 1123
@@ -1195,11 +1198,15 @@ ${autoprint ? `<script>
       }
 
       // AI text trim path (overflow >35%)
+      const abortCtrl = new AbortController()
+      compressAbortRef.current = abortCtrl
       const res = await fetch('/api/ai/compress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeData: data, deviceId }),
+        signal: abortCtrl.signal,
       })
+      compressAbortRef.current = null
       if (!res.ok) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
       const json = await res.json()
       if (!json.data) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
@@ -1212,18 +1219,10 @@ ${autoprint ? `<script>
       const hasDiffs = Object.keys(json.bulletDiffs ?? {}).length > 0 || json.summaryChanged
 
       if (!hasDiffs) {
-        // No visible text changes — apply silently, then verify fit
+        postCompressDataRef.current = newData
         setData(newData)
         setCompressPhase('idle')
-        setTimeout(() => {
-          const newTotalH = canvasTotalHeightRef.current
-          if (newTotalH > PAGE_H) {
-            const cs = newData.fontScale ?? 1
-            const adjusted = parseFloat((cs * (PAGE_H - 5) / newTotalH).toFixed(4))
-            if (adjusted < 1) updateData({ fontScale: adjusted })
-          }
-          showToast('✓ AI 已精简并压缩至 1 页（可撤销）')
-        }, 350)
+        setPostCompressCheck(n => n + 1)
       } else {
         // Show diffs for user review before applying
         pendingCompressCleanRef.current = newData
@@ -1231,7 +1230,8 @@ ${autoprint ? `<script>
         setCompressSummaryInfo(json.summaryChanged ? { oldText: json.summaryOld ?? '', newText: json.summaryNew ?? '' } : null)
         setCompressPhase('ai-review')
       }
-    } catch {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') { setCompressPhase('idle'); return }
       showToast('压缩失败，请稍后重试')
       setCompressPhase('idle')
     }
@@ -1245,17 +1245,9 @@ ${autoprint ? `<script>
     setCompressBulletDiffs({})
     setCompressSummaryInfo(null)
     setCompressPhase('idle')
-    // After re-render, do a final font-scale pass in case it still overflows
-    setTimeout(() => {
-      const newTotalH = canvasTotalHeightRef.current
-      if (newTotalH > PAGE_H) {
-        const cs = pending.fontScale ?? 1
-        const adjusted = parseFloat((cs * (PAGE_H - 5) / newTotalH).toFixed(4))
-        if (adjusted < 1) updateData({ fontScale: adjusted })
-      }
-      showToast('✓ AI 精简已应用并压缩至 1 页（可撤销）')
-    }, 350)
-  }, [setData, updateData])
+    postCompressDataRef.current = pending
+    setPostCompressCheck(n => n + 1)
+  }, [setData])
 
   const handleRejectCompressDiffs = useCallback(() => {
     pendingCompressCleanRef.current = null
@@ -1263,6 +1255,22 @@ ${autoprint ? `<script>
     setCompressSummaryInfo(null)
     setCompressPhase('idle')
   }, [])
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const pending = postCompressDataRef.current
+    if (!pending) return
+    postCompressDataRef.current = null
+    const totalH = canvasTotalHeightRef.current
+    if (totalH > PAGE_H) {
+      const cs = pending.fontScale ?? 1
+      const adjusted = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
+      if (adjusted < 1) {
+        updateData({ fontScale: adjusted })
+      }
+    }
+    showToast('✓ 已压缩至 1 页（可撤销）')
+  }, [postCompressCheck])
 
   const handleTranslate = useCallback(async () => {
     // Always read fresh status from storage so post-paywall calls see the new plan
@@ -1566,6 +1574,20 @@ ${autoprint ? `<script>
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 6px rgba(249,115,22,0.35)' }}
               >✨ 压缩至1页</button>
             )}
+            {/* Translate shortcut in toolbar */}
+            {!noResumeOpen && !aiUploadObjectUrl && proStatus.kind === 'subscription' && !isMobile && (
+              <button
+                onClick={handleTranslate}
+                disabled={translateLoading}
+                style={{
+                  padding: '3px 10px', borderRadius: '5px', border: 'none',
+                  background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
+                  color: 'white', fontSize: '11px', fontWeight: 700,
+                  cursor: translateLoading ? 'wait' : 'pointer', fontFamily: 'var(--font-sans)',
+                  flexShrink: 0, transition: 'opacity 0.15s',
+                }}
+              >{translateLoading ? '翻译中…' : '🌐 英文版'}</button>
+            )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
               {([['－', -10], ['＋', 10]] as [string, number][]).map(([l, d]) => (
@@ -1613,6 +1635,20 @@ ${autoprint ? `<script>
                       <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
                         AI 正在分析并精简内容，请稍候…
                       </span>
+                      <button
+                        onClick={() => { compressAbortRef.current?.abort(); setCompressPhase('idle') }}
+                        title="停止 AI 精简"
+                        style={{
+                          marginLeft: 'auto', width: '22px', height: '22px', borderRadius: '50%',
+                          border: '1px solid #bae6fd', background: 'transparent',
+                          color: '#0369a1', fontSize: '13px', lineHeight: 1,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', flexShrink: 0, opacity: 0.8,
+                          transition: 'opacity 0.15s',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8' }}
+                      >×</button>
                     </div>
                   ) : (
                     <>

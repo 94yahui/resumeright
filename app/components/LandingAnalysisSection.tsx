@@ -101,7 +101,7 @@ export default function LandingAnalysisSection() {
     const check = checkUsage(deviceId, 'ai_analyze', proStatus)
     if (!check.allowed) {
       setError(proStatus.kind === 'free'
-        ? `${check.limit} 次免费次数已用完，升级 Pro 每天可用 30 次 →`
+        ? `${check.limit} 次免费次数已用完，升级 Pro 每天可用 20 次 →`
         : `今日分析次数已达上限（${check.limit} 次/天）`
       )
       return
@@ -386,7 +386,7 @@ export default function LandingAnalysisSection() {
 
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
                 {proStatus.kind === 'subscription'
-                  ? `今日已用 ${proUsedToday}/30 次 · 数据不存储`
+                  ? `今日已用 ${proUsedToday}/20 次 · 数据不存储`
                   : proStatus.kind === 'single'
                     ? `今日已用 ${proUsedToday} 次 · 数据不存储`
                     : usedToday === 0
