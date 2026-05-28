@@ -150,13 +150,13 @@ export const DEMO_DATA: ResumeData = {
   website: 'jianliall.com',
   customContacts: [],
   photo: '/virtual_photo.png',
-  summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。在字节跳动、美团等头部互联网公司积累了丰富的大规模产品研发经验。',
-  hasSummary: false,
+  summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。主导字节跳动核心互动模块重构，曾带领 3 人小组完成百万级 DAU 产品的全链路性能治理。',
+  hasSummary: true,
   hasSkills: true,
-  hasProject: false,
-  hasLanguage: false,
-  hasAward: false,
-  hasCert: false,
+  hasProject: true,
+  hasLanguage: true,
+  hasAward: true,
+  hasCert: true,
   hasVolunteer: false,
   hasInterest: false,
   exp: [
@@ -192,13 +192,73 @@ export const DEMO_DATA: ResumeData = {
       bullets: ['GPA 3.8/4.0，校级优秀毕业生'],
     },
   ],
-  skills: ['React', 'TypeScript', 'Vue 3', 'Node.js', 'WebGL', '性能优化', '微前端'],
-  project: [],
-  award: [],
-  cert: [],
+  skills: ['React', 'TypeScript', 'Vue 3', 'Node.js', 'WebGL', '性能优化', '微前端', 'Git'],
+  project: [
+    {
+      id: 'p1',
+      title: '低代码可视化搭建平台',
+      sub: '技术负责人',
+      date: '2023.01 — 至今',
+      bullets: [
+        '设计组件拖拽引擎，支持 200+ 内部团队自助搭建活动页',
+        '接入 AI 生成模块，页面制作效率提升 3 倍，月活用户 5 万+',
+        '通过虚拟滚动与懒加载优化，首屏渲染时间降低 55%',
+      ],
+    },
+    {
+      id: 'p2',
+      title: '直播间互动实时重构',
+      sub: '核心开发',
+      date: '2022.06 — 2022.12',
+      bullets: [
+        '将旧版方案迁移至 WebRTC，首屏速度降低 40%',
+        '引入虚拟列表优化弹幕渲染，帧率从 30fps 提升至 60fps',
+      ],
+    },
+  ],
+  award: [
+    {
+      id: 'aw1',
+      title: '年度技术创新奖',
+      sub: '字节跳动',
+      date: '2023',
+      bullets: [],
+    },
+    {
+      id: 'aw2',
+      title: 'ACM-ICPC 亚洲区域赛铜奖',
+      sub: '国际大学生程序设计竞赛',
+      date: '2019',
+      bullets: [],
+    },
+  ],
+  cert: [
+    {
+      id: 'cr1',
+      title: 'AWS Certified Solutions Architect',
+      sub: 'Amazon Web Services',
+      date: '2022',
+      bullets: [],
+    },
+  ],
   volunteer: [],
   interest: [],
-  language: [],
+  language: [
+    {
+      id: 'ln1',
+      title: '英语',
+      sub: 'CET-6 · 流利读写',
+      date: '',
+      bullets: [],
+    },
+    {
+      id: 'ln2',
+      title: '日语',
+      sub: 'JLPT N2',
+      date: '',
+      bullets: [],
+    },
+  ],
 }
 
 // Maps a raw Gemini-parsed object to a valid ResumeData, filling missing fields with safe defaults.
