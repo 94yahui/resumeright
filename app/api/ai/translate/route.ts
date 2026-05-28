@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { guardAI } from '../_guard'
+import { guardAI, checkServerQuota } from '../_guard'
 
 const QWEN_BASE  = process.env.QWEN_BASE_URL  || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
 const QWEN_MODEL = process.env.QWEN_MODEL     || 'qwen-plus'
@@ -61,6 +61,8 @@ export async function POST(req: NextRequest) {
 
     const guard = guardAI(req, deviceId)
     if (guard) return guard
+    const quotaGuard = await checkServerQuota(req, 'translate', 5)
+    if (quotaGuard) return quotaGuard
 
     if (JSON.stringify(resumeData).length > 30000)
       return NextResponse.json({ error: 'Resume content too large' }, { status: 413 })

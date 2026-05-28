@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getDailyUsageCollection } from '../../lib/mongodb'
 
 const ALLOWED_HOSTS = ['jianliquankai.com', '.vercel.app', 'localhost']
 
@@ -28,6 +29,31 @@ function checkIpRateLimit(ip: string): boolean {
   if (entry.count >= RATE_LIMIT) return false
   entry.count++
   return true
+}
+
+// Async MongoDB-backed daily quota check. Fails open if MongoDB is unavailable.
+export async function checkServerQuota(req: NextRequest, type: string, limit: number): Promise<NextResponse | null> {
+  const ip = getClientIp(req)
+  const date = new Date().toISOString().slice(0, 10)
+  const key = `${ip}_${type}_${date}`
+  try {
+    const col = await getDailyUsageCollection()
+    const doc = await col.findOneAndUpdate(
+      { _id: key },
+      {
+        $inc: { count: 1 },
+        $setOnInsert: { ip, type, date },
+        $set: { updatedAt: Date.now() },
+      },
+      { upsert: true, returnDocument: 'after' },
+    )
+    if ((doc?.count ?? 1) > limit) {
+      return NextResponse.json({ error: 'Daily usage limit reached. Please try again tomorrow.' }, { status: 429 })
+    }
+  } catch (e) {
+    console.warn('checkServerQuota MongoDB error (fail open):', e)
+  }
+  return null
 }
 
 // Returns an error NextResponse if the request should be blocked, null if OK.

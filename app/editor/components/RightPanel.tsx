@@ -228,6 +228,24 @@ export default function RightPanel({
                   <button
                     onClick={() => {
                       const updated = [...(data.customContacts || [])]
+                      updated[i] = { ...updated[i], isInfo: !cc.isInfo }
+                      onUpdate({ customContacts: updated })
+                    }}
+                    title={cc.isInfo ? '当前归类为"基本信息"，点击改为"联系方式"' : '当前归类为"联系方式"，点击改为"基本信息"'}
+                    style={{
+                      padding: '2px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
+                      cursor: 'pointer', flexShrink: 0, lineHeight: '16px',
+                      border: cc.isInfo ? '1px solid #8b5cf6' : '1px solid var(--theme-blue)',
+                      background: cc.isInfo ? '#f5f3ff' : '#eff6ff',
+                      color: cc.isInfo ? '#7c3aed' : 'var(--theme-blue)',
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    {cc.isInfo ? '基本信息' : '联系方式'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = [...(data.customContacts || [])]
                       updated[i] = { ...updated[i], hidden: !cc.hidden }
                       onUpdate({ customContacts: updated })
                     }}

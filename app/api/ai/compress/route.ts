@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { guardAI } from '../_guard'
+import { guardAI, checkServerQuota } from '../_guard'
 
 const QWEN_BASE  = process.env.QWEN_BASE_URL  || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
 const QWEN_MODEL = process.env.QWEN_MODEL     || 'qwen-plus'
@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
 
     const guard = guardAI(req, deviceId)
     if (guard) return guard
+    const quotaGuard = await checkServerQuota(req, 'compress', 10)
+    if (quotaGuard) return quotaGuard
 
     const rd = resumeData as RD
 

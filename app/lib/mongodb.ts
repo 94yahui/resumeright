@@ -48,3 +48,17 @@ export async function getPromoCollection(): Promise<Collection<PromoDoc>> {
 export async function getOrderCollection(): Promise<Collection<OrderDoc>> {
   return (await db()).collection<OrderDoc>('orders')
 }
+
+// ── AI daily usage quota ──────────────────────────────────────────────────────
+export interface DailyUsageDoc {
+  _id: string   // `${ip}_${type}_${date}`
+  ip: string
+  type: string
+  date: string  // YYYY-MM-DD UTC
+  count: number
+  updatedAt: number
+}
+
+export async function getDailyUsageCollection(): Promise<Collection<DailyUsageDoc>> {
+  return (await db()).collection<DailyUsageDoc>('daily_usage')
+}

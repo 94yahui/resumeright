@@ -546,23 +546,44 @@ export default function ResumeRenderer({
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#475569'
     const toWebHref = (url: string) =>
       /^https?:\/\//i.test(url) ? url : `https://${url}`
-    const items = [
+    const makeCustomItem = (ci: { label: string; value: string }) => {
+      const isUrl = /^https?:\/\//i.test(ci.value)
+      return {
+        icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />,
+        text: isUrl ? ci.label : `${ci.label}: ${ci.value}`,
+        href: isUrl ? ci.value : undefined,
+      }
+    }
+    const contactItems = [
       (!data.hideEmail && data.email) && { icon: <Mail size={10} color={c} strokeWidth={2} />, text: data.email, href: `mailto:${data.email}` },
       (!data.hidePhone && data.phone) && { icon: <Phone size={10} color={c} strokeWidth={2} />, text: data.phone, href: `tel:${data.phone.replace(/[\s()\-]/g, '')}` },
       (!data.hideCity && data.city) && { icon: <MapPin size={10} color={c} strokeWidth={2} />, text: data.city },
       (!data.hideWebsite && data.website) && { icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: data.website, href: toWebHref(data.website) },
       ...(data.extraWebsites || []).filter(Boolean).map(w => ({ icon: <ExternalLink size={10} color={c} strokeWidth={2} />, text: w, href: toWebHref(w) })),
       ...(data.customContacts || [])
-        .filter(ci => !ci.hidden && ci.label && ci.value)
-        .map(ci => {
-          const isUrl = /^https?:\/\//i.test(ci.value)
-          return {
-            icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />,
-            text: isUrl ? ci.label : `${ci.label}: ${ci.value}`,
-            href: isUrl ? ci.value : undefined,
-          }
-        }),
+        .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo !== true)
+        .map(makeCustomItem),
     ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
+    const infoItems = (data.customContacts || [])
+      .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo === true)
+      .map(makeCustomItem)
+
+    const renderItem = (it: { icon: React.ReactNode; text: string; href?: string }, key: string | number) => (
+      <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
+        <span style={{ opacity: 0.85, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{it.icon}</span>
+        {it.href ? (
+          <a
+            href={it.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={interactive ? (e) => e.preventDefault() : undefined}
+            style={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            {it.text}
+          </a>
+        ) : it.text}
+      </span>
+    )
 
     return (
       <div onClick={click({ kind: 'contact' })}
@@ -577,23 +598,17 @@ export default function ResumeRenderer({
           padding: interactive ? '4px' : 0,
           margin: interactive ? '-4px' : 0,
         }}>
-        {items.map((it, i) => (
-          <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
-            <span style={{ opacity: 0.85, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{it.icon}</span>
-            {it.href ? (
-              <a
-                href={it.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                // In the editor, prevent navigation — let the click bubble to the contact selector
-                onClick={interactive ? (e) => e.preventDefault() : undefined}
-                style={{ color: 'inherit', textDecoration: 'none' }}
-              >
-                {it.text}
-              </a>
-            ) : it.text}
-          </span>
-        ))}
+        {contactItems.map((it, i) => renderItem(it, i))}
+        {infoItems.length > 0 && <>
+          {contactItems.length > 0 && (vertical
+            ? <div style={{ height: '1px', background: onDark ? 'rgba(255,255,255,0.15)' : '#e2e8f0', margin: '2px 0' }} />
+            : <span style={{ color: onDark ? 'rgba(255,255,255,0.3)' : '#cbd5e1', alignSelf: 'center', lineHeight: 1, fontSize: s(11) }}>|</span>
+          )}
+          {vertical && (
+            <span style={{ fontSize: s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>基本信息</span>
+          )}
+          {infoItems.map((it, i) => renderItem(it, `info_${i}`))}
+        </>}
       </div>
     )
   }

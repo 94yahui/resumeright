@@ -24,7 +24,7 @@ export interface ResumeData {
   city: string
   website: string
   extraWebsites?: string[]   // additional website links beyond the first
-  customContacts?: { label: string; value: string; hidden?: boolean }[]
+  customContacts?: { label: string; value: string; hidden?: boolean; isInfo?: boolean }[]
   photo: string  // base64 data URL or empty
   photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number; shape?: 'circle' | 'rounded' }
   summary: string
