@@ -103,6 +103,7 @@ function EditorInner() {
   const [pendingSkills, setPendingSkills] = useState<string[]>([])
   const [aiParsedData, setAiParsedData] = useState<ResumeData | null>(null)
   const [aiUploadError, setAiUploadError] = useState<string | undefined>(undefined)
+  const [aiUploadIsWord, setAiUploadIsWord] = useState(false)
   const [jobDescPersist, setJobDescPersist] = useState('')
   const [noResumeOpen, setNoResumeOpen] = useState(false)
   const [importModalState, setImportModalState] = useState<'none' | 'ready' | 'loading'>('none')
@@ -843,7 +844,7 @@ ${autoprint ? `<script>
       const res = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: data, jobDesc, deviceId }),
+        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, jobDesc, deviceId }),
         signal: controller.signal,
       })
       if (res.ok) {
@@ -887,14 +888,21 @@ ${autoprint ? `<script>
     }
 
     const filename = file.name.replace(/\.[^.]+$/, '')
+    const isWord = /\.(doc|docx)$/i.test(file.name)
     prevDocTitleRef.current = latestForAutoSave.current.docTitle
     setAiUploadFilename(filename)
     setDocTitle(filename)
     setAiPanelFlow('upload')
-    setAiUploadObjectUrl(prev => {
-      if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
-    })
+    setAiUploadIsWord(isWord)
+    if (isWord) {
+      // Word files can't be previewed in an iframe — skip object URL to avoid auto-download
+      setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    } else {
+      setAiUploadObjectUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(file)
+      })
+    }
     setAiPanelPhase('analyzing')
     setAiAnalysis(null)
     setAiParsedData(null)
@@ -984,6 +992,7 @@ ${autoprint ? `<script>
         setHistoryIdx(0)
       }
       setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+      setAiUploadIsWord(false)
       setAiTemplateApplied(true)
       setAiPanelPhase('result')
       setLeftPanelTab('tpl')
@@ -1006,6 +1015,7 @@ ${autoprint ? `<script>
     }
     setAiPanelOpen(false)
     setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setAiUploadIsWord(false)
     setAiPanelPhase('entry')
     setAiPanelFlow('current')
     setAiUploadFilename('')
@@ -1185,6 +1195,9 @@ ${autoprint ? `<script>
   // Auto-show banner again when content starts overflowing again after being fixed
   useEffect(() => { if (pageCount <= 1) setCompressWarningDismissed(false) }, [pageCount])
 
+  // When template is applied from upload flow, skip overflow banner and show compact toolbar button instead
+  useEffect(() => { if (aiTemplateApplied) setCompressWarningDismissed(true) }, [aiTemplateApplied])
+
   const handleCompress = useCallback(async () => {
     const freshStatus = getProStatus(deviceId, currentHistoryId || undefined)
     if (freshStatus.kind !== 'subscription') {
@@ -1216,7 +1229,7 @@ ${autoprint ? `<script>
       const res = await fetch('/api/ai/compress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: data, deviceId }),
+        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, deviceId }),
         signal: abortCtrl.signal,
       })
       compressAbortRef.current = null
@@ -1307,7 +1320,7 @@ ${autoprint ? `<script>
       const res = await fetch('/api/ai/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: data, deviceId, docTitle }),
+        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, deviceId, docTitle }),
         signal: controller.signal,
       })
       if (!res.ok) { showToast('翻译失败，请稍后重试'); return }
@@ -1322,7 +1335,7 @@ ${autoprint ? `<script>
       const currentHistory = loadHistory()
       const rawName = json.translatedTitle || `${docTitle} (English)`
       const engName = uniqueHistoryName(rawName, currentHistory)
-      const newId = saveToHistory({ name: engName, data: json.data, templateId, color, savedAt: Date.now(), isEnglish: true })
+      const newId = saveToHistory({ name: engName, data: { ...json.data, photo: data.photo, photoMeta: data.photoMeta }, templateId, color, savedAt: Date.now(), isEnglish: true })
       loadedFromHistoryId.current = newId || null
       setCurrentHistoryId(newId || null)
       setHistory([json.data])
@@ -1804,12 +1817,12 @@ ${autoprint ? `<script>
             </div>
           )}
 
-          {/* Canvas — hidden when showing uploaded PDF or empty state */}
+          {/* Canvas — hidden when showing uploaded file or empty state */}
           <div
             ref={canvasRef}
             className="print-canvas"
             style={{
-              flex: 1, overflow: 'auto', display: (aiUploadObjectUrl || noResumeOpen) ? 'none' : 'flex',
+              flex: 1, overflow: 'auto', display: (aiUploadObjectUrl || aiUploadIsWord || noResumeOpen) ? 'none' : 'flex',
               justifyContent: 'center', alignItems: 'flex-start', padding: '32px 24px',
               backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
@@ -1841,7 +1854,7 @@ ${autoprint ? `<script>
             </div>
           </div>
 
-          {/* PDF viewer — shown when an uploaded resume is being analyzed */}
+          {/* PDF viewer — shown when an uploaded PDF is being analyzed */}
           {aiUploadObjectUrl && (
             <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '32px 24px' }}>
               <iframe
@@ -1849,6 +1862,39 @@ ${autoprint ? `<script>
                 title="上传简历预览"
                 style={{ width: '794px', height: '1123px', border: 'none', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', flexShrink: 0 }}
               />
+            </div>
+          )}
+
+          {/* Word file placeholder — shown when an uploaded Word doc can't be previewed */}
+          {aiUploadIsWord && !aiUploadObjectUrl && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', padding: '32px 24px', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+              <style>{`@keyframes wordSpin{to{transform:rotate(360deg)}}`}</style>
+              <div style={{ fontSize: '48px', lineHeight: 1 }}>📄</div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#334155' }}>Word 文档无法直接预览</div>
+              <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', lineHeight: 1.7, maxWidth: '260px' }}>
+                AI 正在解析您的简历内容<br />解析完成后可使用当前模板填入简历
+              </div>
+              {aiPanelPhase === 'result' && !aiTemplateApplied && (
+                <button
+                  onClick={handleAIApplyTemplate}
+                  style={{
+                    marginTop: '8px', padding: '13px 28px',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
+                    color: 'white', border: 'none', borderRadius: '12px',
+                    fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 4px 20px rgba(15,23,42,0.35)',
+                  }}
+                >
+                  使用当前模板
+                </button>
+              )}
+              {aiPanelPhase === 'analyzing' && (
+                <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(7,137,236,0.22)', borderTopColor: 'var(--theme-blue)', flexShrink: 0, animation: 'wordSpin 0.75s linear infinite' }} />
+                  AI 解析中，请稍候…
+                </div>
+              )}
             </div>
           )}
         </div>

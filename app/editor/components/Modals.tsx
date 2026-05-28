@@ -4,6 +4,7 @@ import { FileDown, FileType, ImageIcon, FileUp, CheckCircle2, Sparkles, X, QrCod
 import type { AISuggestion } from '../../lib/types'
 import { hasDiffMarkup, parseDiffBullet } from '../../lib/types'
 import ImportLoadingBar from '../../components/ImportLoadingBar'
+import LogoSweepLoader from '../../components/LogoSweepLoader'
 import { addPayment, generateOrderId, PRICES, PLAN_DURATION_MS, setStudentRecord, hasRedeemedCode, markCodeRedeemed } from '../../lib/payment'
 import type { PlanType, PayMethod } from '../../lib/payment'
 
@@ -265,15 +266,20 @@ export function AIPanel({
     onSkillChecksChangeRef.current?.(checked)
   }, [skillChecks])
 
-  const PROGRESS_MSGS = ['正在读取简历内容…', '识别工作经历与技能…', '评估岗位匹配度…', '生成优化建议…', '生成面试题…']
-  const [progressIdx, setProgressIdx] = useState(0)
-
-  useEffect(() => {
-    if (phase !== 'analyzing') { setProgressIdx(0); return }
-    const delays = [0, 3500, 7000, 10500, 14000]
-    const timers = delays.map((d, i) => setTimeout(() => setProgressIdx(i), d))
-    return () => timers.forEach(clearTimeout)
-  }, [phase])
+  const CURRENT_STAGES = [
+    { after: 0,     msg: '正在读取简历内容…' },
+    { after: 3500,  msg: '识别工作经历与技能…' },
+    { after: 7000,  msg: '评估岗位匹配度…' },
+    { after: 10500, msg: '生成优化建议…' },
+    { after: 14000, msg: '生成面试题…' },
+  ]
+  const UPLOAD_STAGES = [
+    { after: 0,     msg: '正在识别上传文档…' },
+    { after: 4000,  msg: '解析简历结构与内容…' },
+    { after: 8000,  msg: 'AI 深度评估内容质量…' },
+    { after: 12000, msg: '生成优化建议…' },
+    { after: 16000, msg: '即将完成，请稍候…' },
+  ]
 
   const toggleAnswer = (i: number) => {
     setExpandedAnswers(prev => {
@@ -346,7 +352,37 @@ export function AIPanel({
         >×</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', position: 'relative' }}>
+
+        {/* Analyzing — dark overlay with LogoSweepLoader */}
+        {phase === 'analyzing' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: '#0a0a0f',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1,
+          }}>
+            <LogoSweepLoader stages={flow === 'upload' ? UPLOAD_STAGES : CURRENT_STAGES} />
+          </div>
+        )}
+
+        {/* Applying template — dark-bg centered overlay */}
+        {phase === 'applying' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'white',
+          }}>
+            <div style={{ position: 'relative', width: '96px', height: '124px', margin: '0 auto 22px', border: '1.5px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#f8fafc' }}>
+              {[14, 26, 38, 54, 64, 74, 84, 96, 108].map((top, i) => (
+                <div key={i} style={{ position: 'absolute', left: '10px', top: `${top}px`, width: i === 0 ? '44px' : i % 3 === 0 ? '66px' : i % 3 === 1 ? '54px' : '48px', height: i === 0 ? '5px' : '3px', background: i === 0 ? 'var(--theme-blue)' : '#e2e8f0', borderRadius: '2px', animation: `scanPulse 1.8s ${i * 0.08}s infinite` }} />
+              ))}
+              <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent 0%, var(--theme-blue) 30%, var(--theme-blue) 50%, var(--theme-blue) 70%, transparent 100%)', boxShadow: '0 0 8px 3px rgba(7,137,236,0.35)', animation: 'scanLine 1.8s ease-in-out infinite' }} />
+            </div>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>AI 扫描识别中...</div>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>正在匹配模板并填入简历内容</div>
+          </div>
+        )}
 
         {/* Entry */}
         {phase === 'entry' && (
@@ -447,40 +483,11 @@ export function AIPanel({
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white' }}
             >
-              <FileUp size={14} /> 上传简历解析
+              <FileUp size={14} /> 上传简历优化
             </button>
           </div>
         )}
 
-        {/* Analyzing */}
-        {phase === 'analyzing' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '22px' }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--theme-blue)', animation: `aipB 1.2s ${i * 0.18}s infinite` }} />
-              ))}
-            </div>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>AI 分析中...</div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>正在生成专属分析报告</div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', transition: 'opacity 0.4s', minHeight: '16px' }}>
-              {PROGRESS_MSGS[progressIdx]}
-            </div>
-          </div>
-        )}
-
-        {/* Applying template */}
-        {phase === 'applying' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', textAlign: 'center' }}>
-            <div style={{ position: 'relative', width: '96px', height: '124px', margin: '0 auto 22px', border: '1.5px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', background: '#f8fafc' }}>
-              {[14, 26, 38, 54, 64, 74, 84, 96, 108].map((top, i) => (
-                <div key={i} style={{ position: 'absolute', left: '10px', top: `${top}px`, width: i === 0 ? '44px' : i % 3 === 0 ? '66px' : i % 3 === 1 ? '54px' : '48px', height: i === 0 ? '5px' : '3px', background: i === 0 ? 'var(--theme-blue)' : '#e2e8f0', borderRadius: '2px', animation: `scanPulse 1.8s ${i * 0.08}s infinite` }} />
-              ))}
-              <div style={{ position: 'absolute', left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent 0%, var(--highlight) 30%, #ff8c00 50%, var(--highlight) 70%, transparent 100%)', boxShadow: '0 0 8px 3px rgba(255,103,0,0.35)', animation: 'scanLine 1.8s ease-in-out infinite' }} />
-            </div>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>AI 扫描识别中...</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>正在匹配模板并填入简历内容</div>
-          </div>
-        )}
 
         {/* Result — non-resume error */}
         {phase === 'result' && uploadError === 'not_resume' && (

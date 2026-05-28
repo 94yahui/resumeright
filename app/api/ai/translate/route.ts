@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const guard = guardAI(req, deviceId)
     if (guard) return guard
 
-    if (JSON.stringify(resumeData).length > 12000)
+    if (JSON.stringify(resumeData).length > 30000)
       return NextResponse.json({ error: 'Resume content too large' }, { status: 413 })
 
     // Build a stripped payload with only text fields that need translation

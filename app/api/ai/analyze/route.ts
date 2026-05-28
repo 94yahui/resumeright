@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const guard = guardAI(req, deviceId)
     if (guard) return guard
 
-    if (JSON.stringify(resumeData).length > 10000)
+    if (JSON.stringify(resumeData).length > 30000)
       return NextResponse.json({ error: 'Resume content too large' }, { status: 413 })
     if (typeof jobDesc === 'string' && jobDesc.length > 3000)
       return NextResponse.json({ error: 'Job description too large' }, { status: 413 })
@@ -168,9 +168,9 @@ ${resumeSnippet}`
     const promptInterview = `你是资深面试教练。根据简历生成10道高质量面试题和详细回答建议，返回JSON（仅JSON）：
 {
   "interviewQuestions": ["题1？", "题2？", ..., "题10？"],
-  "interviewAnswers": ["回答建议1（3-4句，含STAR框架提示或关键词）", ..., "回答建议10"]
+  "interviewAnswers": ["回答建议1（3-4句，用自然流畅的口语直接回答，不使用情境-行动-结果等任何框架标签）", ..., "回答建议10"]
 }
-规则：问题结合简历具体项目/技术/经历${hasJD ? '/目标职位' : ''}，覆盖技术深度(3)+项目细节(2)+行为情景(2)+职业规划(2)+${hasJD ? '岗位匹配(1)' : '综合能力(1)'}，每题50字内，回答3-4句具体实用。
+规则：问题结合简历具体项目/技术/经历${hasJD ? '/目标职位' : ''}，覆盖技术深度(3)+项目细节(2)+行为情景(2)+职业规划(2)+${hasJD ? '岗位匹配(1)' : '综合能力(1)'}，每题50字内，回答建议3-4句，像真实作答时说的话，语句自然连贯，不分点列举，不加标签。
 
 简历信息：
 ${resumeSnippet}`
