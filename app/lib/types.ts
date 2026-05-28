@@ -219,16 +219,9 @@ export const DEMO_DATA: ResumeData = {
   award: [
     {
       id: 'aw1',
-      title: '年度技术创新奖',
-      sub: '字节跳动',
-      date: '2023',
-      bullets: [],
-    },
-    {
-      id: 'aw2',
-      title: 'ACM-ICPC 亚洲区域赛铜奖',
-      sub: '国际大学生程序设计竞赛',
-      date: '2019',
+      title: '奖项名称',
+      sub: '颁奖机构',
+      date: '',
       bullets: [],
     },
   ],
