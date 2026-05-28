@@ -179,7 +179,7 @@ export default function ResumeTips() {
         }
         .tips-fade-mask { width: 160px; }
         @media (max-width: 640px) {
-          .tips-fade-mask { width: 60px; }
+          .tips-fade-mask { display: none; }
         }
       `}</style>
 
