@@ -826,9 +826,6 @@ ${autoprint ? `<script>
       }
       return
     }
-    recordUsage(deviceId, 'ai_analyze', proStatus)
-    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
-
     const dataSnapshot = JSON.stringify(data)  // snapshot before async gap
     setAiPanelFlow('current')
     setAiPanelPhase('analyzing')
@@ -849,6 +846,8 @@ ${autoprint ? `<script>
       })
       if (res.ok) {
         const result = await res.json()
+        recordUsage(deviceId, 'ai_analyze', proStatus)
+        setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
         setAiAnalysis(result)
         aiAnalyzedDataSnapshot.current = dataSnapshot
         setAiPanelPhase('result')

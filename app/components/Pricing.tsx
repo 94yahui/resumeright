@@ -261,7 +261,10 @@ export default function Pricing() {
             </ul>
 
             <button
-              onClick={() => document.getElementById('templates')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => {
+                const el = document.getElementById('templates')
+                if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' })
+              }}
               style={{
                 display: 'block', width: '100%', marginTop: '28px', padding: '13px',
                 borderRadius: '10px', textAlign: 'center',

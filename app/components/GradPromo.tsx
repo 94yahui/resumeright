@@ -68,17 +68,6 @@ export default function GradPromo() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <GraduationCap size={16} color="rgba(255,255,255,0.9)" />
               <span style={{ color: 'white', fontWeight: 700, fontSize: '13px', whiteSpace: 'nowrap' }}>毕业季特惠</span>
-              <button
-                onClick={() => setDismissed(true)}
-                style={{
-                  marginLeft: 'auto', background: 'none', border: 'none',
-                  cursor: 'pointer', color: 'rgba(255,255,255,0.45)',
-                  display: 'flex', alignItems: 'center', padding: '2px',
-                  transition: 'color 0.15s', flexShrink: 0,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.9)' }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
-              ><X size={13} /></button>
             </div>
 
             {/* Offer box */}
@@ -114,7 +103,6 @@ export default function GradPromo() {
 
           {/* Tab strip — absolutely pinned to right edge, always visible regardless of panel width */}
           <div
-            onClick={() => setOpen(o => !o)}
             style={{
               position: 'absolute',
               right: 0,
@@ -124,21 +112,42 @@ export default function GradPromo() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '7px',
-              cursor: 'pointer',
-              userSelect: 'none',
-              padding: '16px 0',
             }}
           >
-            <GraduationCap size={14} color="white" />
-            <span style={{
-              fontSize: '10px', fontWeight: 700, color: 'white',
-              writingMode: 'vertical-rl', textOrientation: 'mixed',
-              letterSpacing: '1.5px', lineHeight: 1,
-            }}>学生优惠</span>
-            <div style={{ color: 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center' }}>
-              {open ? <ChevronRight size={10} /> : <ChevronLeft size={10} />}
+            {/* Close button — always at top of strip */}
+            <button
+              onClick={() => setDismissed(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.5)', padding: '8px 0 4px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '100%', flexShrink: 0,
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'white' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+              title="关闭"
+            ><X size={12} /></button>
+            {/* Toggle area */}
+            <div
+              onClick={() => setOpen(o => !o)}
+              style={{
+                flex: 1, width: '100%',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                gap: '7px', cursor: 'pointer', userSelect: 'none',
+                padding: '8px 0 16px',
+              }}
+            >
+              <GraduationCap size={14} color="white" />
+              <span style={{
+                fontSize: '10px', fontWeight: 700, color: 'white',
+                writingMode: 'vertical-rl', textOrientation: 'mixed',
+                letterSpacing: '1.5px', lineHeight: 1,
+              }}>学生优惠</span>
+              <div style={{ color: 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center' }}>
+                {open ? <ChevronRight size={10} /> : <ChevronLeft size={10} />}
+              </div>
             </div>
           </div>
         </div>
