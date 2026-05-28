@@ -44,6 +44,8 @@ export default function RightPanel({
   onMoveEntry,
 }: Props) {
 
+  const [showCustomHelp, setShowCustomHelp] = useState(false)
+
   const headerTitle =
     selection.kind === "field" && selection.field === "name"
       ? "个人信息"
@@ -209,7 +211,44 @@ export default function RightPanel({
             ))}
             {/* Custom fields */}
             <div style={{ height: '1px', background: '#e2e8f0', margin: '6px 0 12px' }} />
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '8px' }}>自定义字段</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: showCustomHelp ? '8px' : '8px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>自定义字段</span>
+              <button
+                onClick={() => setShowCustomHelp(v => !v)}
+                title="点击了解如何使用自定义字段"
+                style={{
+                  width: '16px', height: '16px', borderRadius: '50%',
+                  border: showCustomHelp ? '1.5px solid var(--theme-blue)' : '1.5px solid #cbd5e1',
+                  background: showCustomHelp ? 'var(--theme-blue)' : 'transparent',
+                  color: showCustomHelp ? 'white' : '#94a3b8',
+                  fontSize: '10px', fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, lineHeight: 1, fontFamily: 'var(--font-sans)',
+                  transition: 'all 0.15s',
+                }}
+              >?</button>
+            </div>
+            {showCustomHelp && (
+              <div style={{
+                background: '#f0f7ff', border: '1px solid #bfdbfe',
+                borderRadius: '8px', padding: '10px 12px', marginBottom: '10px',
+                fontSize: '12px', color: '#334155', lineHeight: 1.6,
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: '6px', color: '#1e40af' }}>如何使用自定义字段</div>
+                <div style={{ marginBottom: '5px' }}>自定义字段会显示在简历的联系信息区域，可分为两种类型：</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ padding: '1px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700, background: '#eff6ff', color: 'var(--theme-blue)', border: '1px solid var(--theme-blue)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>联系方式</span>
+                    <span>与邮箱、电话等并排显示，适合 GitHub、个人网站等链接。</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{ padding: '1px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700, background: '#f5f3ff', color: '#7c3aed', border: '1px solid #8b5cf6', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>基本信息</span>
+                    <span>单独成组显示，适合年龄、性别、政治面貌等个人信息（部分模板会在此处显示"基本信息"小标题）。</span>
+                  </div>
+                </div>
+                <div style={{ color: '#64748b', fontSize: '11px' }}>点击字段旁的分类标签即可切换类型。</div>
+              </div>
+            )}
             {(data.customContacts || []).map((cc, i) => (
               <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
