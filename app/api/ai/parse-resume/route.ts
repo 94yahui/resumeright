@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
-import { guardAI } from '../_guard'
+import { guardAI, checkServerQuota } from '../_guard'
 
 const inflateRawAsync = promisify(inflateRaw)
 
@@ -114,6 +114,8 @@ export async function POST(req: NextRequest) {
     const deviceId = formData.get('deviceId')
     const guard = guardAI(req, deviceId)
     if (guard) return guard
+    const quotaGuard = await checkServerQuota(req, 'parse-resume', String(deviceId ?? ''))
+    if (quotaGuard) return quotaGuard
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const mime   = file.type || ''

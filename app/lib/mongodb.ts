@@ -51,10 +51,11 @@ export async function getOrderCollection(): Promise<Collection<OrderDoc>> {
 
 // ── AI daily usage quota ──────────────────────────────────────────────────────
 export interface DailyUsageDoc {
-  _id: string   // `${ip}_${type}_${date}`
-  ip: string
+  _id: string       // `${deviceId}_${type}_${date|'total'}`
+  deviceId: string
+  ip: string        // for fraud reference only
   type: string
-  date: string  // YYYY-MM-DD UTC
+  date: string      // YYYY-MM-DD UTC, or 'total' for lifetime counters
   count: number
   updatedAt: number
 }

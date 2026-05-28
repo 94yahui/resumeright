@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const guard = guardAI(req, deviceId)
     if (guard) return guard
-    const quotaGuard = await checkServerQuota(req, 'analyze', 10)
+    const quotaGuard = await checkServerQuota(req, 'analyze', deviceId)
     if (quotaGuard) return quotaGuard
 
     if (JSON.stringify(resumeData).length > 30000)

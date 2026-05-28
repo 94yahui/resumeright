@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     const guard = guardAI(req, deviceId)
     if (guard) return guard
-    const quotaGuard = await checkServerQuota(req, 'compress', 10)
+    const quotaGuard = await checkServerQuota(req, 'compress', deviceId)
     if (quotaGuard) return quotaGuard
 
     const rd = resumeData as RD
