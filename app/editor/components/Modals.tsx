@@ -389,28 +389,36 @@ export function AIPanel({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {/* JD textarea */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
-                <label style={aiPanelLabel}>
-                  目标职位描述{' '}
-                  <span style={{ fontWeight: 400, fontSize: '11px', letterSpacing: 0, textTransform: 'none', color: '#94a3b8' }}>（可选，但强烈推荐）</span>
-                </label>
+              <label style={{ ...aiPanelLabel, marginBottom: '7px', display: 'block' }}>
+                目标职位描述{' '}
+                <span style={{ fontWeight: 400, fontSize: '11px', letterSpacing: 0, textTransform: 'none', color: '#94a3b8' }}>（可选，但强烈推荐）</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  value={jobDesc}
+                  onChange={e => onJobDescChange(e.target.value)}
+                  placeholder="粘贴目标岗位详情，AI 将精准命中岗位关键词..."
+                  rows={4}
+                  style={{ width: '100%', padding: '10px 12px', paddingRight: jobDesc ? '32px' : '12px', boxSizing: 'border-box', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#0f172a', background: '#f8fafc', outline: 'none', resize: 'none', lineHeight: 1.6 }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
+                  onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                />
                 {jobDesc && (
-                  <button onClick={() => onJobDescChange('')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#475569' }}
-                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8' }}
-                  ><X size={13} /></button>
+                  <button
+                    onClick={() => onJobDescChange('')}
+                    style={{
+                      position: 'absolute', top: '8px', right: '8px',
+                      background: 'rgba(100,116,139,0.15)', border: 'none',
+                      borderRadius: '50%', width: '18px', height: '18px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: '#94a3b8', padding: 0,
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(100,116,139,0.3)'; e.currentTarget.style.color = '#475569' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(100,116,139,0.15)'; e.currentTarget.style.color = '#94a3b8' }}
+                  ><X size={10} /></button>
                 )}
               </div>
-              <textarea
-                value={jobDesc}
-                onChange={e => onJobDescChange(e.target.value)}
-                placeholder="粘贴目标岗位详情，AI 将精准命中岗位关键词..."
-                rows={4}
-                style={{ width: '100%', padding: '10px 12px', boxSizing: 'border-box', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#0f172a', background: '#f8fafc', outline: 'none', resize: 'none', lineHeight: 1.6 }}
-                onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
-                onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
-              />
               {/* Sample JD chips */}
               <div style={{ marginTop: '8px' }}>
                 <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 500, marginRight: '6px' }}>试试：</span>
