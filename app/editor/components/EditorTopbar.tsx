@@ -176,7 +176,7 @@ export default function EditorTopbar({
         )}
         <button onClick={disabled ? undefined : onAIAnalyze} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', borderColor: 'var(--paper)', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>✦ {isMobile ? 'AI' : 'AI 优化'}</button>
         <button onClick={disabled ? undefined : onDownload} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'var(--theme-blue)', borderColor: disabled ? 'rgba(255,255,255,0.15)' : 'var(--theme-blue)', color: disabled ? 'rgba(255,255,255,0.3)' : 'var(--paper)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-          <Download size={13} /> {isMobile ? 'PDF' : '下载 PDF'}
+          <Download size={13} /> {isMobile ? '下载' : '下载 PDF'}
         </button>
       </div>
     </div>
