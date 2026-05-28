@@ -1731,26 +1731,29 @@ ${autoprint ? `<script>
             return (
               <div style={{
                 overflow: 'hidden',
-                maxHeight: shown ? '68px' : '0',
+                maxHeight: shown ? '80px' : '0',
                 flexShrink: 0,
                 pointerEvents: shown ? 'auto' : 'none',
                 transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
               }}>
+                <style>{`@media(max-width:640px){.compress-text-group{flex-direction:column!important;align-items:flex-start!important;gap:1px!important}}`}</style>
                 <div className="no-print" style={{
                   background: '#fff7ed', borderBottom: '1px solid #fed7aa',
                   padding: '7px 16px', display: 'flex', alignItems: 'center',
-                  gap: '10px', flexWrap: 'wrap',
+                  gap: '10px',
                   opacity: shown ? 1 : 0,
                   transform: shown ? 'translateY(0)' : 'translateY(-8px)',
                   transition: 'opacity 0.22s ease, transform 0.26s ease',
                 }}>
-                  <span style={{ fontSize: '12.5px', color: '#c2410c', fontWeight: 600, flexShrink: 0 }}>
-                    ⚠ 内容超出第 1 页，约 {overflowLines} 行
-                  </span>
-                  <span style={{ fontSize: '11.5px', color: '#92400e', opacity: 0.75 }}>
-                    一页简历通过率高出 40%
-                  </span>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div className="compress-text-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '12.5px', color: '#c2410c', fontWeight: 600, flexShrink: 0 }}>
+                      ⚠ 内容超出第 1 页，约 {overflowLines} 行
+                    </span>
+                    <span style={{ fontSize: '11.5px', color: '#92400e', opacity: 0.75 }}>
+                      一页简历通过率高出 40%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                     {data.fontScale && data.fontScale < 1 && (
                       <button
                         onClick={() => updateData({ fontScale: undefined })}
