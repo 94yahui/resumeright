@@ -197,6 +197,57 @@ interface AIPanelProps {
   onSkillChecksChange?: (skills: string[]) => void
 }
 
+const SAMPLE_JDS = [
+  {
+    label: '高级前端工程师',
+    text: `岗位职责：
+1. 负责核心产品前端架构设计与开发，推动工程化体系建设
+2. 与产品/设计/后端协作，推动功能高质量落地
+3. 持续优化页面性能，关注核心 Web 指标（LCP/FID/CLS）
+
+任职要求：
+- 3年以上前端经验，精通 React/Vue3，熟练 TypeScript
+- 熟悉 Webpack/Vite，有性能调优经验
+- 了解 Node.js，有微前端、移动端 H5/小程序开发经验优先`,
+  },
+  {
+    label: '产品经理',
+    text: `岗位职责：
+1. 负责产品从 0 到 1 规划与迭代，驱动业务目标达成
+2. 深入业务场景，洞察用户需求，输出 PRD 和原型
+3. 跨部门推动项目落地，跟踪数据并持续优化
+
+任职要求：
+- 3年以上互联网产品经验，有完整 C 端或 B 端产品经历
+- 熟练使用 Figma/Axure，具备数据分析能力
+- 有 AI 产品、SaaS 或电商平台经验者优先`,
+  },
+  {
+    label: '全栈工程师',
+    text: `岗位职责：
+1. 独立完成 Web 应用前后端开发，快速验证业务需求
+2. 设计 RESTful API，参与数据库建模与性能优化
+3. 参与技术选型，推动工程规范落地
+
+任职要求：
+- 掌握 React/Vue 前端框架，熟悉 Node.js/Python 后端
+- 熟悉 MySQL/PostgreSQL，了解 Redis 缓存机制
+- 有 Docker/云服务使用经验，有独立产品者加分`,
+  },
+  {
+    label: 'UI/UX 设计师',
+    text: `岗位职责：
+1. 负责 App/Web 端交互设计与视觉输出，参与设计系统建设
+2. 深入理解用户需求，通过研究和测试持续迭代产品体验
+3. 与研发协作，确保设计还原度和交互一致性
+
+任职要求：
+- 3年以上互联网 UI/UX 设计经验
+- 熟练使用 Figma，能输出完整设计规范和组件库
+- 作品集需包含完整设计项目，从研究到交付`,
+  },
+]
+
 export function AIPanel({
   flow, phase, uploadFilename, templateApplied, optimizeEnabled,
   analysis, appliedSuggestionIds, uploadError, jobDesc, currentSkills, onJobDescChange,
@@ -299,12 +350,13 @@ export function AIPanel({
 
         {/* Entry */}
         {phase === 'entry' && (
-          <>
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* JD textarea */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
                 <label style={aiPanelLabel}>
                   目标职位描述{' '}
-                  <span style={{ fontWeight: 400, fontSize: '11px', letterSpacing: 0, textTransform: 'none' }}>（可选）</span>
+                  <span style={{ fontWeight: 400, fontSize: '11px', letterSpacing: 0, textTransform: 'none', color: '#94a3b8' }}>（可选，但强烈推荐）</span>
                 </label>
                 {jobDesc && (
                   <button onClick={() => onJobDescChange('')}
@@ -317,22 +369,87 @@ export function AIPanel({
               <textarea
                 value={jobDesc}
                 onChange={e => onJobDescChange(e.target.value)}
-                placeholder="粘贴目标岗位详情或描述职位要求..."
+                placeholder="粘贴目标岗位 JD，AI 将精准命中岗位关键词..."
                 rows={4}
                 style={{ width: '100%', padding: '10px 12px', boxSizing: 'border-box', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontFamily: 'var(--font-sans)', fontSize: '12.5px', color: '#0f172a', background: '#f8fafc', outline: 'none', resize: 'none', lineHeight: 1.6 }}
                 onFocus={e => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
                 onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
               />
+              {/* Sample JD chips */}
+              <div style={{ marginTop: '8px' }}>
+                <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 500, marginRight: '6px' }}>试试：</span>
+                <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '5px', verticalAlign: 'middle' }}>
+                  {SAMPLE_JDS.map(jd => (
+                    <button
+                      key={jd.label}
+                      onClick={() => onJobDescChange(jd.text)}
+                      style={{
+                        padding: '3px 9px', borderRadius: '20px', border: '1px solid #e2e8f0',
+                        background: jobDesc === jd.text ? 'linear-gradient(135deg, #ede9fe, #fce7f3)' : '#f8fafc',
+                        color: jobDesc === jd.text ? '#7c3aed' : '#475569',
+                        fontSize: '10.5px', fontWeight: 600, cursor: 'pointer',
+                        fontFamily: 'var(--font-sans)',
+                        transition: 'all 0.15s',
+                        borderColor: jobDesc === jd.text ? '#c4b5fd' : '#e2e8f0',
+                      }}
+                      onMouseEnter={e => { if (jobDesc !== jd.text) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#cbd5e1' } }}
+                      onMouseLeave={e => { if (jobDesc !== jd.text) { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' } }}
+                    >{jd.label}</button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button onClick={() => onAnalyzeCurrent(jobDesc)} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', color: 'white', border: 'none', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              解析当前简历
-              </button>
-              <button onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '12px', border: '1.5px solid #e2e8f0', background: 'white', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <FileUp size={14} /> 上传简历解析
-              </button>
+
+            {/* Value proposition card */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 100%)',
+              border: '1px solid #ede9fe',
+              borderRadius: '10px',
+              padding: '11px 13px',
+            }}>
+              <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#6d28d9', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Sparkles size={11} color="#8b5cf6" />
+                为什么强烈建议添加目标职位？
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#475569', lineHeight: 1.65 }}>
+                AI 将根据目标岗位的硬核技术栈与关键词进行<strong style={{ color: '#6d28d9' }}>精准定向微调</strong>，直击 HR 痛点，匹配率暴增。
+              </div>
             </div>
-          </>
+
+            {/* Main CTA button — dynamic based on jobDesc */}
+            <button
+              onClick={() => onAnalyzeCurrent(jobDesc)}
+              style={{
+                width: '100%', padding: '13px',
+                background: jobDesc.trim()
+                  ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)'
+                  : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
+                color: 'white', border: 'none', borderRadius: '10px',
+                fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 700,
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '7px',
+                boxShadow: jobDesc.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : '0 2px 8px rgba(0,0,0,0.12)',
+                transition: 'background 0.3s, box-shadow 0.3s',
+              }}
+            >
+              {jobDesc.trim() ? <><Sparkles size={14} />✨ 开始精准定向优化</> : '开始常规智能解析'}
+            </button>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#f1f5f9' }} />
+              <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>或</span>
+              <div style={{ flex: 1, height: '1px', background: '#f1f5f9' }} />
+            </div>
+
+            {/* Upload button */}
+            <button onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '11px', border: '1.5px solid #e2e8f0', background: 'white', borderRadius: '10px', fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 500, color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'border-color 0.15s, background 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white' }}
+            >
+              <FileUp size={14} /> 上传简历解析
+            </button>
+          </div>
         )}
 
         {/* Analyzing */}
