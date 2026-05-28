@@ -1,5 +1,5 @@
 'use client'
-import { Sparkles, FileText, Target, MessageCircle } from 'lucide-react'
+import { Sparkles, FileText, Target, MessageCircle, Globe2, Minimize2 } from 'lucide-react'
 
 const features = [
   {
@@ -9,8 +9,8 @@ const features = [
     iconBg: 'rgba(56,189,248,0.15)',
     cardBg: 'rgba(56,189,248,0.06)',
     borderColor: 'rgba(56,189,248,0.3)',
-    title: '智能内容优化',
-    desc: '选中任意文字模块，一键让 AI 帮你改写成更专业、更有力的表达。数字化成果、量化描述、行业术语——AI 全部帮你处理。',
+    title: 'AI 简历优化',
+    desc: '选中工作经历或项目，AI 精读每条描述，用高亮和删除线直接在简历上标注改写建议。强化动词、理清逻辑、补充行为结果——完全基于你已有的经历，不编造任何数字。',
     tag: '内容优化',
     num: '1',
   },
@@ -21,8 +21,8 @@ const features = [
     iconBg: 'rgba(251,191,36,0.15)',
     cardBg: 'rgba(251,191,36,0.05)',
     borderColor: 'rgba(251,191,36,0.3)',
-    title: '简历智能解析',
-    desc: '上传你的旧简历（PDF / Word），AI 自动识别所有内容，并按照你选择的新模板重新排版填充，秒级完成迁移。',
+    title: '简历智能导入',
+    desc: '上传旧简历（PDF / Word），AI 自动识别所有内容，按你选择的模板重新排版填充；同步生成整体诊断和改进建议，省去手动录入，秒级完成迁移。',
     tag: '文档解析',
     num: '2',
   },
@@ -34,7 +34,7 @@ const features = [
     cardBg: 'rgba(248,113,113,0.05)',
     borderColor: 'rgba(248,113,113,0.3)',
     title: '岗位匹配分析',
-    desc: '粘贴目标职位详情，AI 分析你的简历与岗位要求的匹配度，并给出具体的优化建议和关键词补充。',
+    desc: '粘贴目标职位 JD，AI 即时给出匹配度评分和各维度拆解，标出简历与岗位的差距，并列出缺失的关键技能，帮你有的放矢地补强。',
     tag: 'Pro 功能',
     num: '3',
   },
@@ -45,10 +45,34 @@ const features = [
     iconBg: 'rgba(167,139,250,0.15)',
     cardBg: 'rgba(167,139,250,0.05)',
     borderColor: 'rgba(167,139,250,0.3)',
-    title: '面试问题预测',
-    desc: '基于你的简历内容，AI 预测面试官可能提问的问题，并帮你准备 STAR 法则结构的参考回答。',
+    title: '面试题预测',
+    desc: '基于简历内容与目标岗位，AI 生成 10 道定制面试题，覆盖技术深度、项目细节、行为情景与职业规划，并附 STAR 结构回答建议，帮你提前备战。',
     tag: 'Pro 功能',
     num: '4',
+  },
+  {
+    icon: Globe2,
+    rgb: '52,211,153',
+    solidColor: '#34d399',
+    iconBg: 'rgba(52,211,153,0.15)',
+    cardBg: 'rgba(52,211,153,0.05)',
+    borderColor: 'rgba(52,211,153,0.3)',
+    title: '一键生成英文简历',
+    desc: '点击即可将中文简历翻译为地道英文版本，自动存为独立记录方便随时调用。投递外资、港澳台或海外岗位，不再需要手动逐条翻译。',
+    tag: 'Pro 功能',
+    num: '5',
+  },
+  {
+    icon: Minimize2,
+    rgb: '251,146,60',
+    solidColor: '#fb923c',
+    iconBg: 'rgba(251,146,60,0.15)',
+    cardBg: 'rgba(251,146,60,0.05)',
+    borderColor: 'rgba(251,146,60,0.3)',
+    title: '一键压缩至 1 页',
+    desc: '简历超出一页时自动提示。轻微溢出直接微调字号；大幅超出则 AI 精简冗余描述，用高亮和删除线标注每处改动，确认后一键压缩完成，全程可撤销。',
+    tag: 'Pro 功能',
+    num: '6',
   },
 ]
 
@@ -113,21 +137,26 @@ export default function AISection() {
 
           <p style={{
             fontSize: '16px', color: 'rgba(255,255,255,0.72)',
-            maxWidth: '480px', margin: '0 auto', lineHeight: 1.8, fontWeight: 400,
+            maxWidth: '540px', margin: '0 auto', lineHeight: 1.8, fontWeight: 400,
           }}>
-            从内容优化到岗位匹配，AI 贯穿简历创作的每一个环节
+            从内容优化到岗位匹配，从智能导入到一键压缩，AI 贯穿简历创作的每一个环节
           </p>
         </div>
 
         {/* Cards grid */}
         <div className="ai-grid" style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: '20px', marginTop: '60px',
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '18px', marginTop: '60px',
         }}>
           {features.map((f, i) => (
-            <AICard key={f.title} feature={f} delay={i * 0.1} />
+            <AICard key={f.title} feature={f} delay={i * 0.08} />
           ))}
         </div>
+
+        <style>{`
+          @media (max-width: 900px) { .ai-grid { grid-template-columns: 1fr 1fr !important; } }
+          @media (max-width: 520px) { .ai-grid { grid-template-columns: 1fr !important; } }
+        `}</style>
       </div>
     </section>
   )
