@@ -54,71 +54,119 @@ const tips = [
   { tag: '长度', text: '超过 5 年经验也保持 1–2 页，删掉早期不相关的经历' },
 ]
 
-const CARD_W = 280
-const CARD_GAP = 16
+const CARD_W = 268
+const CARD_GAP = 14
 
 const tagColors: Record<string, { bg: string; color: string }> = {
-  格式: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  措辞: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
-  技能: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  简介: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
-  量化: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  学历: { bg: 'rgba(129,140,248,0.12)', color: '#818cf8' },
-  排序: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  定制: { bg: 'rgba(251,146,60,0.12)', color: '#fb923c' },
-  项目: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  投递: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
-  关键词: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  实习: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
-  链接: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  空白期: { bg: 'rgba(129,140,248,0.12)', color: '#818cf8' },
-  成果: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  应届: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  内推: { bg: 'rgba(251,146,60,0.12)', color: '#fb923c' },
-  一致性: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
-  细节: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  规模: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  管理: { bg: 'rgba(129,140,248,0.12)', color: '#818cf8' },
-  离职: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
-  语言: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  复查: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
-  奖项: { bg: 'rgba(251,146,60,0.12)', color: '#fb923c' },
-  技术: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  专注: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  调研: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  跳槽: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
-  外企: { bg: 'rgba(129,140,248,0.12)', color: '#818cf8' },
-  隐私: { bg: 'rgba(167,139,250,0.12)', color: '#a78bfa' },
-  求职信: { bg: 'rgba(251,146,60,0.12)', color: '#fb923c' },
-  头像: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
-  长度: { bg: 'rgba(56,189,248,0.12)', color: '#38bdf8' },
-  内容: { bg: 'rgba(52,211,153,0.12)', color: '#34d399' },
-  邮箱: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
-  成就: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
+  格式: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  措辞: { bg: 'rgba(167,139,250,0.12)', color: '#8b5cf6' },
+  技能: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  简介: { bg: 'rgba(251,191,36,0.12)', color: '#d97706' },
+  量化: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  学历: { bg: 'rgba(129,140,248,0.12)', color: '#6366f1' },
+  排序: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  定制: { bg: 'rgba(251,146,60,0.12)', color: '#ea580c' },
+  项目: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  投递: { bg: 'rgba(167,139,250,0.12)', color: '#8b5cf6' },
+  关键词: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  实习: { bg: 'rgba(251,191,36,0.12)', color: '#d97706' },
+  链接: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  空白期: { bg: 'rgba(129,140,248,0.12)', color: '#6366f1' },
+  成果: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  应届: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  内推: { bg: 'rgba(251,146,60,0.12)', color: '#ea580c' },
+  一致性: { bg: 'rgba(167,139,250,0.12)', color: '#8b5cf6' },
+  细节: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  规模: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  管理: { bg: 'rgba(129,140,248,0.12)', color: '#6366f1' },
+  离职: { bg: 'rgba(251,191,36,0.12)', color: '#d97706' },
+  语言: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  复查: { bg: 'rgba(167,139,250,0.12)', color: '#8b5cf6' },
+  奖项: { bg: 'rgba(251,146,60,0.12)', color: '#ea580c' },
+  技术: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  专注: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  调研: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  跳槽: { bg: 'rgba(251,191,36,0.12)', color: '#d97706' },
+  外企: { bg: 'rgba(129,140,248,0.12)', color: '#6366f1' },
+  隐私: { bg: 'rgba(167,139,250,0.12)', color: '#8b5cf6' },
+  求职信: { bg: 'rgba(251,146,60,0.12)', color: '#ea580c' },
+  头像: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
+  长度: { bg: 'rgba(56,189,248,0.12)', color: '#0ea5e9' },
+  内容: { bg: 'rgba(52,211,153,0.12)', color: '#10b981' },
+  邮箱: { bg: 'rgba(251,191,36,0.12)', color: '#d97706' },
+  成就: { bg: 'rgba(248,113,113,0.12)', color: '#ef4444' },
 }
 
 function getTagStyle(tag: string) {
-  return tagColors[tag] ?? { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' }
+  return tagColors[tag] ?? { bg: 'rgba(100,116,139,0.12)', color: '#475569' }
 }
+
+function TipCard({ tip }: { tip: typeof tips[0] }) {
+  const ts = getTagStyle(tip.tag)
+  return (
+    <div
+      className="tip-card"
+      style={{
+        width: `${CARD_W}px`,
+        flexShrink: 0,
+        background: 'var(--paper)',
+        border: '1px solid rgba(0,0,0,0.07)',
+        borderRadius: '14px',
+        padding: '18px 18px 16px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.14)',
+      }}
+    >
+      <div style={{ marginBottom: '10px' }}>
+        <span style={{
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.4px',
+          padding: '3px 9px', borderRadius: '20px',
+          background: ts.bg, color: ts.color,
+          border: `1px solid ${ts.color}44`,
+        }}>{tip.tag}</span>
+      </div>
+      <p style={{
+        fontSize: '13px', color: '#334155',
+        lineHeight: 1.65, margin: 0, fontWeight: 400,
+      }}>
+        {tip.text}
+      </p>
+    </div>
+  )
+}
+
+const row1 = tips.slice(0, 25)
+const row2 = tips.slice(25)
+const doubled1 = [...row1, ...row1]
+const doubled2 = [...row2, ...row2]
 
 export default function ResumeTips() {
   const [paused, setPaused] = useState(false)
-  const doubled = [...tips, ...tips]  // duplicate for seamless loop
 
   return (
-    <section style={{ background: '#060d1a', padding: '80px 0 72px', overflow: 'hidden' }}>
+    <section style={{ background: '#060d1a', padding: '80px 0 72px' }}>
       <style>{`
-        @keyframes scrollTips {
+        @keyframes scrollLeft {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
         }
-        .tips-track {
+        @keyframes scrollRight {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0); }
+        }
+        .tips-row-left {
           display: flex;
           gap: ${CARD_GAP}px;
           width: max-content;
-          animation: scrollTips 140s linear infinite;
+          animation: scrollLeft 130s linear infinite;
         }
-        .tips-track.paused {
+        .tips-row-right {
+          display: flex;
+          gap: ${CARD_GAP}px;
+          width: max-content;
+          animation: scrollRight 110s linear infinite;
+        }
+        .tips-row-left.paused,
+        .tips-row-right.paused {
           animation-play-state: paused;
         }
         .tip-card {
@@ -127,7 +175,7 @@ export default function ResumeTips() {
         }
         .tip-card:hover {
           transform: scale(1.04) translateY(-3px);
-          box-shadow: 0 12px 36px rgba(0,0,0,0.22) !important;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
         }
       `}</style>
 
@@ -141,46 +189,37 @@ export default function ResumeTips() {
         </h2>
       </div>
 
-      {/* Scrolling track */}
+      {/* Two-row scrolling area */}
       <div
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
-        style={{ padding: '8px 0' }}
+        style={{ position: 'relative' }}
       >
-        <div className={`tips-track${paused ? ' paused' : ''}`}>
-          {doubled.map((tip, i) => {
-            const ts = getTagStyle(tip.tag)
-            return (
-              <div
-                key={i}
-                className="tip-card"
-                style={{
-                  width: `${CARD_W}px`,
-                  flexShrink: 0,
-                  background: 'var(--paper)',
-                  border: '1px solid rgba(0,0,0,0.07)',
-                  borderRadius: '14px',
-                  padding: '20px 20px 18px',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
-                    padding: '3px 9px', borderRadius: '20px',
-                    background: ts.bg, color: ts.color,
-                    border: `1px solid ${ts.color}55`,
-                  }}>{tip.tag}</span>
-                </div>
-                <p style={{
-                  fontSize: '13.5px', color: '#334155',
-                  lineHeight: 1.65, margin: 0, fontWeight: 400,
-                }}>
-                  {tip.text}
-                </p>
-              </div>
-            )
-          })}
+        {/* Left fade mask */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: '160px',
+          background: 'linear-gradient(to right, #060d1a 0%, transparent 100%)',
+          zIndex: 2, pointerEvents: 'none',
+        }} />
+        {/* Right fade mask */}
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: '160px',
+          background: 'linear-gradient(to left, #060d1a 0%, transparent 100%)',
+          zIndex: 2, pointerEvents: 'none',
+        }} />
+
+        {/* Row 1 — scrolls left */}
+        <div style={{ overflow: 'hidden', padding: '8px 0' }}>
+          <div className={`tips-row-left${paused ? ' paused' : ''}`}>
+            {doubled1.map((tip, i) => <TipCard key={i} tip={tip} />)}
+          </div>
+        </div>
+
+        {/* Row 2 — scrolls right */}
+        <div style={{ overflow: 'hidden', padding: '8px 0' }}>
+          <div className={`tips-row-right${paused ? ' paused' : ''}`}>
+            {doubled2.map((tip, i) => <TipCard key={i} tip={tip} />)}
+          </div>
         </div>
       </div>
     </section>
