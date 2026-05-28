@@ -1527,10 +1527,7 @@ ${autoprint ? `<script>
           {/* Toolbar */}
           <div className="no-print" style={{
             height: '44px', background: 'white', borderBottom: '1px solid #e2e8f0',
-            display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
-            paddingLeft: '14px',
-            paddingRight: !isMobile && (selection.kind !== 'none' || aiPanelOpen) ? '302px' : '14px',
-            transition: 'padding-right 0.3s cubic-bezier(0.4,0,0.2,1)',
+            display: 'flex', alignItems: 'center', padding: '0 14px', gap: '6px', flexShrink: 0,
           }}>
             {/* Menu / left panel toggle */}
             <button
@@ -1856,16 +1853,14 @@ ${autoprint ? `<script>
           )}
         </div>
 
-        {/* Desktop: right panel — fixed overlay so it never pushes the canvas (prevents resume text reflow) */}
+        {/* Desktop: right panel slot — flex child that pushes the canvas */}
         {!isMobile && (
           <div className="no-print" style={{
-            position: 'fixed', right: 0, top: 52, bottom: 0,
-            width: '288px',
-            transform: `translateX(${(selection.kind !== 'none' || aiPanelOpen) ? '0' : '100%'})`,
-            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-            zIndex: 50,
-            boxShadow: (selection.kind !== 'none' || aiPanelOpen) ? '-4px 0 24px rgba(0,0,0,0.15)' : 'none',
-            willChange: 'transform',
+            width: (selection.kind !== 'none' || aiPanelOpen) ? '288px' : '0',
+            transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
+            overflow: 'hidden',
+            flexShrink: 0,
+            position: 'relative',
           }}>
             <div style={{ width: '288px', height: '100%', position: 'relative', overflow: 'hidden' }}>
               {/* AI Panel — slides in from right */}
