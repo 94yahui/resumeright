@@ -155,7 +155,7 @@ export const DEMO_DATA: ResumeData = {
   hasSkills: true,
   hasProject: true,
   hasLanguage: true,
-  hasAward: true,
+  hasAward: false,
   hasCert: true,
   hasVolunteer: false,
   hasInterest: false,
