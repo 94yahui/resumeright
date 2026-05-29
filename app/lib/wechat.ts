@@ -29,14 +29,3 @@ export function buildTextReply(toOpenId: string, fromAppId: string, content: str
 </xml>`
 }
 
-// ── WeChat access token (expires 7200s, call only when needed) ───────────────
-export async function getAccessToken(): Promise<string> {
-  const appid  = process.env.WECHAT_APPID     ?? ''
-  const secret = process.env.WECHAT_APPSECRET ?? ''
-  const res  = await fetch(
-    `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
-  )
-  const data = await res.json() as { access_token?: string; errmsg?: string }
-  if (!data.access_token) throw new Error(`getAccessToken failed: ${data.errmsg}`)
-  return data.access_token
-}
