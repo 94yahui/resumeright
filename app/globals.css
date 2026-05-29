@@ -95,8 +95,9 @@ html.page-scrolling::-webkit-scrollbar-thumb:hover { background: rgba(100,116,13
 @media (max-width: 768px) {
 
   /* ── Navbar ── */
-  .nav-links      { display: none !important; }
-  .nav-mobile-cta { display: flex !important; }
+  .nav-links        { display: none !important; }
+  .nav-mobile-cta   { display: flex !important; }
+  .login-qr-hint    { display: none !important; }
 
   /* ── Landing Hero ── */
   .hero-section {
