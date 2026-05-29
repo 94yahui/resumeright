@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyWechatSignature, parseWechatXml, buildTextReply } from '../../../lib/wechat'
 import { getLoginCodeCollection, getUserCollection } from '../../../lib/mongodb'
 
-const APPID = process.env.WECHAT_APPID ?? ''
-const CODE_TTL_MS = 5 * 60 * 1000  // 5 分钟
+const APPID      = process.env.WECHAT_APPID ?? ''
+const CODE_TTL   = 5 * 60 * 1000  // 5 分钟
 
 // ── GET: 微信服务器验证 ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -35,18 +35,33 @@ export async function POST(req: NextRequest) {
   const openid  = msg.FromUserName
   const msgType = msg.MsgType
 
-  // ── 事件：用户关注 ──────────────────────────────────────────────────────────
+  // ── 事件：用户关注（新用户 or 重新关注） ───────────────────────────────────
   if (msgType === 'event' && msg.Event === 'subscribe') {
+    // 先查是否已有记录，再 upsert
+    const users    = await getUserCollection()
+    const existing = await users.findOne({ openid })
     await ensureUser(openid)
-    const reply = buildTextReply(openid, APPID,
-      '欢迎关注简力全开！\n\n发送「登录」即可获取网页登录码。'
-    )
-    return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
+    const code = await issueLoginCode(openid)
+
+    const text = existing
+      ? `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
+      : `🎉 欢迎关注简力全开！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。\n\n之后登录可点击底部「获取登录码」，或直接发送「登录」。`
+
+    return xml_reply(buildTextReply(openid, APPID, text))
   }
 
-  // ── 事件：用户取消关注 ──────────────────────────────────────────────────────
+  // ── 事件：取消关注 ──────────────────────────────────────────────────────────
   if (msgType === 'event' && msg.Event === 'unsubscribe') {
     return new NextResponse('success')
+  }
+
+  // ── 事件：菜单点击「获取登录码」──────────────────────────────────────────────
+  if (msgType === 'event' && msg.Event === 'CLICK' && msg.EventKey === 'GET_LOGIN_CODE') {
+    await ensureUser(openid)
+    const code = await issueLoginCode(openid)
+    return xml_reply(buildTextReply(openid, APPID,
+      `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
+    ))
   }
 
   // ── 文本消息 ────────────────────────────────────────────────────────────────
@@ -56,39 +71,40 @@ export async function POST(req: NextRequest) {
     if (content === '登录') {
       await ensureUser(openid)
       const code = await issueLoginCode(openid)
-      const reply = buildTextReply(openid, APPID,
-        `您的登录码是：${code}\n\n请在网页登录框中输入此码，5分钟内有效。`
-      )
-      return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
+      return xml_reply(buildTextReply(openid, APPID,
+        `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
+      ))
     }
 
-    // 其他文字消息
-    const reply = buildTextReply(openid, APPID,
-      '发送「登录」即可获取网页登录码。'
-    )
-    return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
+    return xml_reply(buildTextReply(openid, APPID,
+      '发送「登录」或点击底部「获取登录码」即可登录网页。'
+    ))
   }
 
   return new NextResponse('success')
 }
 
-// ── 生成并存储登录码（openid 为主键，同时只有一个有效码） ─────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function xml_reply(xml: string) {
+  return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } })
+}
+
 async function issueLoginCode(openid: string): Promise<string> {
   const codes = await getLoginCodeCollection()
-  const now = Date.now()
-  const code = String(Math.floor(100000 + Math.random() * 900000))  // 6位数字
+  const now   = Date.now()
+  const code  = String(Math.floor(100000 + Math.random() * 900000))
   await codes.updateOne(
     { _id: openid },
-    { $set: { code, created_at: now, expires_at: now + CODE_TTL_MS } },
+    { $set: { code, created_at: now, expires_at: now + CODE_TTL } },
     { upsert: true }
   )
   return code
 }
 
-// ── 首次见到该 openid 时自动建用户记录 ───────────────────────────────────────
 async function ensureUser(openid: string) {
   const users = await getUserCollection()
-  const now = Date.now()
+  const now   = Date.now()
   await users.updateOne(
     { openid },
     { $setOnInsert: { openid, device_ids: [], created_at: now, updated_at: now } },

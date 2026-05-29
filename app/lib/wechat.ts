@@ -29,14 +29,14 @@ export function buildTextReply(toOpenId: string, fromAppId: string, content: str
 </xml>`
 }
 
-// ── Generate login code ───────────────────────────────────────────────────────
-// e.g. "RC-A1B2C3" — 6 chars, uppercase alphanumeric, excludes confusable chars
-const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-export function generateLoginCode(): string {
-  let code = ''
-  const arr = new Uint8Array(6)
-  // Node crypto fallback for server context
-  for (let i = 0; i < 6; i++) arr[i] = Math.floor(Math.random() * CHARS.length)
-  for (const b of arr) code += CHARS[b % CHARS.length]
-  return `RC-${code}`
+// ── WeChat access token (expires 7200s, call only when needed) ───────────────
+export async function getAccessToken(): Promise<string> {
+  const appid  = process.env.WECHAT_APPID     ?? ''
+  const secret = process.env.WECHAT_APPSECRET ?? ''
+  const res  = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
+  )
+  const data = await res.json() as { access_token?: string; errmsg?: string }
+  if (!data.access_token) throw new Error(`getAccessToken failed: ${data.errmsg}`)
+  return data.access_token
 }
