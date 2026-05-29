@@ -37,17 +37,10 @@ export async function POST(req: NextRequest) {
 
   // ── 事件：用户关注（新用户 or 重新关注） ───────────────────────────────────
   if (msgType === 'event' && msg.Event === 'subscribe') {
-    // 先查是否已有记录，再 upsert
-    const users    = await getUserCollection()
-    const existing = await users.findOne({ openid })
-    await ensureUser(openid)
-    const code = await issueLoginCode(openid)
-
-    const text = existing
-      ? `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
-      : `🎉 欢迎关注简力全开！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。\n\n之后登录可点击底部「获取登录码」，或直接发送「登录」。`
-
-    return xml_reply(buildTextReply(openid, ghid, text))
+    const [code] = await Promise.all([issueLoginCode(openid), ensureUser(openid)])
+    return xml_reply(buildTextReply(openid, ghid,
+      `🎉 欢迎关注简力全开！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。\n\n之后需要登录，发送「登录」即可获取新验证码。`
+    ))
   }
 
   // ── 事件：取消关注 ──────────────────────────────────────────────────────────
@@ -69,8 +62,7 @@ export async function POST(req: NextRequest) {
     const content = (msg.Content ?? '').trim()
 
     if (content === '登录') {
-      await ensureUser(openid)
-      const code = await issueLoginCode(openid)
+      const [code] = await Promise.all([issueLoginCode(openid), ensureUser(openid)])
       return xml_reply(buildTextReply(openid, ghid,
         `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
       ))
