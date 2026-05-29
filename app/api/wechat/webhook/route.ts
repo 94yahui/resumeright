@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
   const openid   = msg.FromUserName  // 用户 openid
   const msgType  = msg.MsgType
 
+  console.log('[wx] parsed:', { ghid, openid, msgType, event: msg.Event, content: msg.Content })
+
   // ── 事件：用户关注（新用户 or 重新关注） ───────────────────────────────────
   if (msgType === 'event' && msg.Event === 'subscribe') {
     const [code] = await Promise.all([issueLoginCode(openid), ensureUser(openid)])
@@ -79,7 +81,8 @@ export async function POST(req: NextRequest) {
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function xml_reply(xml: string) {
-  return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml' } })
+  console.log('[wx] reply XML:', xml)
+  return new NextResponse(xml, { headers: { 'Content-Type': 'text/xml; charset=utf-8' } })
 }
 
 async function issueLoginCode(openid: string): Promise<string> {
