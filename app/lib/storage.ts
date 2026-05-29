@@ -4,6 +4,7 @@ const HISTORY_KEY = 'resumecraft_history'
 const PAID_KEY = 'resumecraft_paid'
 
 import type { ResumeData } from './types'
+import { getFreeAnalyzeUsed, setFreeAnalyzeUsed, getPayments, setPayments, PLAN_DURATION_MS, type PaymentRecord } from './payment'
 
 export interface DraftState {
   data: ResumeData
@@ -124,4 +125,150 @@ export function addPaidTemplate(templateId: string): void {
 
 export function isTemplatePaid(templateId: string): boolean {
   return loadPaidTemplates().includes(templateId)
+}
+
+// ── Cloud resume sync ──────────────────────────────────────────────────────────
+
+export async function fetchCloudResumes(): Promise<HistoryEntry[]> {
+  try {
+    const res = await fetch('/api/resumes')
+    if (!res.ok) return []
+    const docs = await res.json()
+    if (!Array.isArray(docs)) return []
+    return docs as HistoryEntry[]
+  } catch {
+    return []
+  }
+}
+
+export async function upsertCloudResume(entry: HistoryEntry): Promise<void> {
+  try {
+    await fetch('/api/resumes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: entry.id,
+        name: entry.name,
+        data: entry.data,
+        templateId: entry.templateId,
+        color: entry.color,
+        savedAt: entry.savedAt,
+        isEnglish: entry.isEnglish,
+      }),
+    })
+  } catch {
+    // silently fail — local copy is the source of truth
+  }
+}
+
+export async function deleteCloudResume(id: string): Promise<void> {
+  try {
+    await fetch(`/api/resumes?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  } catch {
+    // silently fail
+  }
+}
+
+/**
+ * Bidirectional sync: merges local history with cloud.
+ * For each resume ID, the version with the higher savedAt wins.
+ * Local-only or locally-newer entries are uploaded to cloud.
+ * Cloud-only or cloud-newer entries are persisted to localStorage.
+ * Returns true if the local list changed (caller should refresh UI).
+ */
+export async function syncResumesWithCloud(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  const cloud = await fetchCloudResumes()
+  const local = loadHistory()
+
+  const merged = new Map<string, HistoryEntry>()
+  for (const e of local) merged.set(e.id, e)
+  for (const c of cloud) {
+    const existing = merged.get(c.id)
+    if (!existing || c.savedAt > existing.savedAt) merged.set(c.id, c)
+  }
+
+  const sorted = Array.from(merged.values())
+    .sort((a, b) => b.savedAt - a.savedAt)
+    .slice(0, 20)
+
+  // Determine whether local list actually changed
+  const localChanged = sorted.length !== local.length ||
+    sorted.some((e, i) => e.id !== local[i]?.id || e.savedAt !== local[i]?.savedAt)
+
+  if (localChanged) {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(sorted)) } catch {}
+  }
+
+  // Upload local-only or locally-newer entries to cloud
+  const cloudMap = new Map(cloud.map(c => [c.id, c]))
+  const uploads = sorted.filter(e => {
+    const cv = cloudMap.get(e.id)
+    return !cv || e.savedAt > cv.savedAt
+  })
+  await Promise.all(uploads.map(upsertCloudResume))
+
+  return localChanged
+}
+
+// ── Free AI-analyze count sync ─────────────────────────────────────────────────
+
+/**
+ * On login: set localStorage to max(local, server) so the stricter limit wins.
+ */
+export function syncFreeAnalyzeOnLogin(serverCount: number): void {
+  if (typeof window === 'undefined') return
+  const local = getFreeAnalyzeUsed()
+  if (serverCount > local) setFreeAnalyzeUsed(serverCount)
+}
+
+/** Fire-and-forget: tell the server the user just used one free AI analyze. */
+export function incrementFreeAnalyzeOnServer(): void {
+  fetch('/api/auth/free-analyze', { method: 'POST' }).catch(() => {})
+}
+
+// ── Order / payment sync ───────────────────────────────────────────────────────
+
+/**
+ * On login: fetch paid orders linked to this account, convert to PaymentRecord,
+ * and merge into localStorage rc_payments (skipping IDs already present).
+ */
+export async function syncOrdersFromServer(): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const res = await fetch('/api/orders')
+    if (!res.ok) return
+    const orders: Array<{
+      _id: string; planType: string; amountFen: number; isStudent: boolean
+      resumeId?: string; templateId?: string; paidAt?: number; deviceId: string
+    }> = await res.json()
+
+    const local = getPayments()
+    const localIds = new Set(local.map(p => p.orderId))
+    const now = Date.now()
+
+    const toAdd: PaymentRecord[] = orders
+      .filter(o => o.paidAt && !localIds.has(o._id))
+      .map(o => ({
+        orderId: o._id,
+        deviceId: o.deviceId || '',
+        planType: o.planType as PaymentRecord['planType'],
+        amount: o.amountFen,
+        isStudent: o.isStudent,
+        resumeId: o.resumeId,
+        templateId: o.templateId,
+        paidAt: o.paidAt!,
+        expiresAt: o.planType !== 'single' && PLAN_DURATION_MS[o.planType]
+          ? o.paidAt! + PLAN_DURATION_MS[o.planType]
+          : undefined,
+        payMethod: 'wechat' as const,
+        aiAnalyzeUsed: 0,
+      }))
+      // Drop expired subscriptions — no point restoring them
+      .filter(p => p.expiresAt === undefined || p.expiresAt > now)
+
+    if (toAdd.length > 0) setPayments([...local, ...toAdd])
+  } catch {
+    // silently fail
+  }
 }

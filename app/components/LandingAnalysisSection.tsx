@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
 import { getDeviceId, getProStatus, checkUsage, recordUsage, getFreeAnalyzeUsed, getDailyCount, FREE_ANALYZE_LIMIT, type ProStatus } from '../lib/payment'
+import { incrementFreeAnalyzeOnServer } from '../lib/storage'
 import LogoSweepLoader from './LogoSweepLoader'
 
 interface AnalysisResult {
@@ -200,6 +201,7 @@ export default function LandingAnalysisSection() {
       if (controller.signal.aborted) return
       // Record usage only after both calls succeed
       recordUsage(deviceId, 'ai_analyze', proStatus)
+      if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
       setUsedToday(getFreeAnalyzeUsed())
       setProUsedToday(getDailyCount(deviceId, 'ai_analyze'))
       setResult(analysisResult)

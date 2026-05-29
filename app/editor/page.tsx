@@ -16,6 +16,8 @@ import {
   loadDraft, saveDraft, clearDraft,
   loadHistory, saveToHistory, deleteHistory, updateHistoryEntry, sortAndSaveHistory,
   loadPaidTemplates, addPaidTemplate, uniqueHistoryName,
+  upsertCloudResume, deleteCloudResume, syncResumesWithCloud,
+  syncFreeAnalyzeOnLogin, incrementFreeAnalyzeOnServer, syncOrdersFromServer,
   type HistoryEntry, type DraftState,
 } from '../lib/storage'
 import { generateWordBlob } from '../lib/exportWord'
@@ -25,6 +27,7 @@ import {
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
+import { useAuth } from '../hooks/useAuth'
 
 const HISTORY_LIMIT = 30
 
@@ -62,6 +65,7 @@ function cleanDataForPrint(d: ResumeData): ResumeData {
 function EditorInner() {
   const searchParams = useSearchParams()
   const initTemplate = searchParams.get('template') || 'classic-pro'
+  const auth = useAuth()
 
   // ============ Undo/Redo history stack ============
   const [history, setHistory] = useState<ResumeData[]>([DEMO_DATA])
@@ -143,6 +147,8 @@ function EditorInner() {
   const zoomDisplayRef = useRef<HTMLSpanElement>(null)
   const zoomCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const initialized = useRef(false)
+  const cloudSyncDone = useRef(false)
+  const cloudPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Immediately apply a zoom value: cancels any pending gesture debounce, syncs
   // the ref, updates the DOM directly, and commits to React state in one shot.
@@ -192,12 +198,43 @@ function EditorInner() {
     cleanOldUsage()
   }, [])
 
-  // Recompute pro status when device or active resume changes
+  // Recompute pro status when device, active resume, or server membership changes.
+  // For logged-in subscription users the server membership takes precedence over
+  // localStorage payment records so status syncs across devices instantly.
   useEffect(() => {
     if (!deviceId) return
-    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
-    setIsStudentVerified(isStudentUser(deviceId))
-  }, [deviceId, currentHistoryId])
+    const m = auth.membership
+    const now = Date.now()
+    if (!auth.loading && auth.loggedIn && m && m.plan !== 'single') {
+      // Subscription from server
+      if (!m.expires_at || m.expires_at > now) {
+        const planLabel = (m.plan === 'trial7' ? 'monthly' : m.plan) as 'monthly' | 'quarterly' | 'yearly'
+        setProStatus({ kind: 'subscription', plan: planLabel, expiresAt: m.expires_at ?? now + 365 * 86_400_000 })
+      } else {
+        setProStatus({ kind: 'free' })
+      }
+    } else {
+      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+    }
+    // For logged-in users, server is the source of truth for student status
+    setIsStudentVerified(auth.loggedIn && !auth.loading ? auth.isStudent : isStudentUser(deviceId))
+  }, [deviceId, currentHistoryId, auth.loggedIn, auth.loading, auth.membership, auth.isStudent])
+
+  // ============ Cloud sync — pull on login / first auth resolve ============
+  useEffect(() => {
+    if (auth.loading || !auth.loggedIn || cloudSyncDone.current) return
+    cloudSyncDone.current = true
+    // Sync free AI-analyze count (max(local, server))
+    syncFreeAnalyzeOnLogin(auth.freeAnalyzeUsed)
+    // Sync paid orders into localStorage so getProStatus works cross-device
+    syncOrdersFromServer().then(() => {
+      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+    })
+    // Sync resume history
+    syncResumesWithCloud().then(changed => {
+      if (changed) setHistoryRefreshKey(k => k + 1)
+    })
+  }, [auth.loading, auth.loggedIn])
 
   // ============ Load draft from localStorage on mount ============
   useEffect(() => {
@@ -277,15 +314,24 @@ function EditorInner() {
   useEffect(() => {
     if (!initialized.current) return
     const hid = loadedFromHistoryId.current
+    const now = Date.now()
     // Persist historyId in the draft so "继续编辑" can restore the correct association
     try {
-      saveDraft({ data, templateId, color, docTitle, savedAt: Date.now(), historyId: hid ?? undefined })
+      saveDraft({ data, templateId, color, docTitle, savedAt: now, historyId: hid ?? undefined })
       // Keep the history entry in sync — includes name so renaming the doc updates the list
       if (hid && hid !== 'draft') {
-        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
+        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: now })
       }
     } catch {
       showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
+    }
+    // Debounced cloud push: 3 s after the last edit, push the current resume to cloud
+    if (auth.loggedIn && hid && hid !== 'draft') {
+      if (cloudPushTimer.current) clearTimeout(cloudPushTimer.current)
+      cloudPushTimer.current = setTimeout(() => {
+        const entry = loadHistory().find(h => h.id === hid)
+        if (entry) upsertCloudResume(entry)
+      }, 3000)
     }
   }, [data, templateId, color, docTitle])
 
@@ -774,13 +820,15 @@ ${autoprint ? `<script>
     const status = getProStatus(deviceId, currentHistoryId || undefined)
     setProStatus(status)
     setIsStudentVerified(isStudentUser(deviceId))
+    // Refresh server auth so membership is up to date across devices
+    auth.refresh()
     const action = pendingPaywallActionRef.current
     pendingPaywallActionRef.current = null
     if (action?.type === 'download') setTimeout(() => setModal('download'), 80)
     if (action?.type === 'ai_translate') setTimeout(() => handleTranslate(), 80)
     if (action?.type === 'compress') setTimeout(() => handleCompress(), 80)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, currentHistoryId])
+  }, [deviceId, currentHistoryId, auth.refresh])
 
   const handleDownloadAttempt = useCallback(() => {
     if (showWatermark) {
@@ -847,6 +895,7 @@ ${autoprint ? `<script>
       if (res.ok) {
         const result = await res.json()
         recordUsage(deviceId, 'ai_analyze', proStatus)
+        if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
         setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
         setAiAnalysis(result)
         aiAnalyzedDataSnapshot.current = dataSnapshot
@@ -935,6 +984,7 @@ ${autoprint ? `<script>
       const parsed = parsedToResumeData(json.data ?? {})
       // Deduct from ai_analyze quota (shared free counter) after successful parse
       recordUsage(deviceId, 'ai_analyze', proStatus)
+      if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
       setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
       // Also deduct import quota for paid tiers
       if (proStatus.kind !== 'free') recordUsage(deviceId, 'import', proStatus)
@@ -1109,7 +1159,8 @@ ${autoprint ? `<script>
       setIsCurrentEnglish(false)
       clearDraft()
     }
-  }, [currentHistoryId])
+    if (auth.loggedIn) deleteCloudResume(id)
+  }, [currentHistoryId, auth.loggedIn])
 
   // Loading a history entry clears the empty state, closes right panel, and resets AI panel
   const handleLoadHistoryWithClear = useCallback((entry: HistoryEntry) => {
@@ -2072,6 +2123,7 @@ ${autoprint ? `<script>
           onSuccess={() => {
             setIsStudentVerified(true)
             setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+            auth.refresh()
           }}
         />
       )}

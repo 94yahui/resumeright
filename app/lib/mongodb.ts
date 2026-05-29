@@ -1,5 +1,6 @@
 import { MongoClient, Collection, ObjectId } from 'mongodb'
 import type { PlanType } from './payment'
+import type { ResumeData } from './types'
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 export interface UserDoc {
@@ -14,6 +15,12 @@ export interface UserDoc {
     expires_at?: number      // undefined = 永久（单次解锁）
     single_template_id?: string
   }
+  student?: {
+    email: string
+    certified_at: number
+    expires_at: number       // 1 year from certification
+  }
+  free_analyze_used?: number  // lifetime free AI-analyze count (synced across devices)
   created_at: number
   updated_at: number
 }
@@ -47,6 +54,7 @@ export interface PromoDoc {
 // ── Payment orders ────────────────────────────────────────────────────────────
 export interface OrderDoc {
   _id: string              // RC-xxx order ID
+  openid?: string          // set when user is logged in at time of purchase
   deviceId: string
   planType: PlanType
   amountFen: number        // in fen (¥1 = 100)
@@ -96,4 +104,20 @@ export interface DailyUsageDoc {
 
 export async function getDailyUsageCollection(): Promise<Collection<DailyUsageDoc>> {
   return (await db()).collection<DailyUsageDoc>('daily_usage')
+}
+
+// ── Cloud resumes (per-user resume history, synced across devices) ─────────────
+export interface ResumeDoc {
+  _id: string        // same as client-side HistoryEntry.id
+  openid: string
+  name: string
+  data: ResumeData
+  templateId: string
+  color?: string
+  savedAt: number
+  isEnglish?: boolean
+}
+
+export async function getResumeCollection(): Promise<Collection<ResumeDoc>> {
+  return (await db()).collection<ResumeDoc>('resumes')
 }

@@ -263,8 +263,16 @@ export function getFreeAnalyzeUsed(): number {
   return ls<number>(LS_FREE_ANALYZE, 0)
 }
 
+export function setFreeAnalyzeUsed(count: number): void {
+  lsSet(LS_FREE_ANALYZE, count)
+}
+
 function incrementFreeAnalyze(): void {
   lsSet(LS_FREE_ANALYZE, getFreeAnalyzeUsed() + 1)
+}
+
+export function setPayments(list: PaymentRecord[]): void {
+  lsSet(LS_PAYMENTS, list)
 }
 
 // ─── Usage check + record ─────────────────────────────────────────────────────

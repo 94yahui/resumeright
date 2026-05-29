@@ -15,10 +15,14 @@ export async function GET(req: NextRequest) {
   const user   = await users.findOne({ openid })
   if (!user) return NextResponse.json({ logged_in: false })
 
+  const now = Date.now()
+  const isStudent = !!user.student && user.student.expires_at > now
   return NextResponse.json({
     logged_in: true,
     openid,
     membership: user.membership ?? null,
+    is_student: isStudent,
+    free_analyze_used: user.free_analyze_used ?? 0,
   })
 }
 

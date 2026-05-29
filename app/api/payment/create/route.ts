@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import QRCode from 'qrcode'
 import { hpjCreate } from '../../../lib/hupijiao'
 import { getOrderCollection } from '../../../lib/mongodb'
+import { verifyToken } from '../../../lib/jwt'
 import type { PlanType } from '../../../lib/payment'
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '参数缺失' }, { status: 400 })
   }
 
+  // Attach openid if user is logged in — enables cross-device order sync
+  const token = req.cookies.get('rc_token')?.value
+  const openid = token ? ((verifyToken(token)?.openid as string) ?? undefined) : undefined
+
   const host      = req.headers.get('host') ?? ''
   const proto     = host.startsWith('localhost') ? 'http' : 'https'
   const base      = `${proto}://${host}`
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
   // Store order in MongoDB before calling payment gateway
   const col = await getOrderCollection()
   await col.insertOne({
-    _id: orderId, deviceId, planType, amountFen, isStudent,
+    _id: orderId, openid, deviceId, planType, amountFen, isStudent,
     resumeId, templateId,
     status: 'pending', createdAt: Date.now(),
   })

@@ -1722,6 +1722,12 @@ export function StudentModal({
     if (code.trim() !== '123456') { setError('验证码错误，模拟环境验证码为 123456'); return }
     const now = Date.now()
     setStudentRecord({ deviceId, email, certifiedAt: now, expiresAt: now + 365 * 86_400_000 })
+    // Persist to MongoDB for cross-device sync (silently ignored if not logged in)
+    fetch('/api/auth/student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => {})
     setDone(true)
     setTimeout(() => { onSuccess(); onClose() }, 1200)
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '../../lib/jwt'
 
 export type PlanType = 'monthly' | 'quarterly' | 'yearly' | 'trial7'
 
@@ -42,6 +43,24 @@ export async function POST(req: NextRequest) {
   if (!doc) return NextResponse.json({ valid: false, error: '兑换码无效或已过期' })
   if (doc.usedAt) return NextResponse.json({ valid: false, error: '此兑换码已被使用' })
 
-  await col.updateOne({ _id: code }, { $set: { usedAt: Date.now() } })
+  const now = Date.now()
+  await col.updateOne({ _id: code }, { $set: { usedAt: now } })
+
+  // If logged in, persist the membership to the user doc so it syncs across devices
+  const token = req.cookies.get('rc_token')?.value
+  if (token) {
+    const payload = verifyToken(token)
+    if (payload) {
+      const { getUserCollection } = await import('../../lib/mongodb')
+      const { PLAN_DURATION_MS } = await import('../../lib/payment')
+      const users = await getUserCollection()
+      const expiresAt = PLAN_DURATION_MS[doc.plan] ? now + PLAN_DURATION_MS[doc.plan] : undefined
+      await users.updateOne(
+        { openid: payload.openid as string },
+        { $set: { membership: { plan: doc.plan, purchased_at: now, expires_at: expiresAt }, updated_at: now } }
+      )
+    }
+  }
+
   return NextResponse.json({ valid: true, plan: doc.plan, label: doc.label ?? null })
 }
