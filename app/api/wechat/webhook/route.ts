@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyWechatSignature, parseWechatXml, buildTextReply } from '../../../lib/wechat'
 import { getLoginCodeCollection, getUserCollection } from '../../../lib/mongodb'
 
-const APPID      = process.env.WECHAT_APPID ?? ''
-const CODE_TTL   = 5 * 60 * 1000  // 5 分钟
+const CODE_TTL = 5 * 60 * 1000  // 5 分钟
 
 // ── GET: 微信服务器验证 ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -30,10 +29,11 @@ export async function POST(req: NextRequest) {
     return new NextResponse('forbidden', { status: 403 })
   }
 
-  const xml     = await req.text()
-  const msg     = parseWechatXml(xml)
-  const openid  = msg.FromUserName
-  const msgType = msg.MsgType
+  const xml      = await req.text()
+  const msg      = parseWechatXml(xml)
+  const ghid     = msg.ToUserName    // 公众号 gh_xxx，用于回复的 FromUserName
+  const openid   = msg.FromUserName  // 用户 openid
+  const msgType  = msg.MsgType
 
   // ── 事件：用户关注（新用户 or 重新关注） ───────────────────────────────────
   if (msgType === 'event' && msg.Event === 'subscribe') {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       ? `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
       : `🎉 欢迎关注简力全开！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。\n\n之后登录可点击底部「获取登录码」，或直接发送「登录」。`
 
-    return xml_reply(buildTextReply(openid, APPID, text))
+    return xml_reply(buildTextReply(openid, ghid, text))
   }
 
   // ── 事件：取消关注 ──────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   if (msgType === 'event' && msg.Event === 'CLICK' && msg.EventKey === 'GET_LOGIN_CODE') {
     await ensureUser(openid)
     const code = await issueLoginCode(openid)
-    return xml_reply(buildTextReply(openid, APPID,
+    return xml_reply(buildTextReply(openid, ghid,
       `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
     ))
   }
@@ -71,12 +71,12 @@ export async function POST(req: NextRequest) {
     if (content === '登录') {
       await ensureUser(openid)
       const code = await issueLoginCode(openid)
-      return xml_reply(buildTextReply(openid, APPID,
+      return xml_reply(buildTextReply(openid, ghid,
         `👋 欢迎回来！\n\n您的登录码是：\n\n${code}\n\n请在网页登录框输入此码，5分钟内有效。`
       ))
     }
 
-    return xml_reply(buildTextReply(openid, APPID,
+    return xml_reply(buildTextReply(openid, ghid,
       '发送「登录」或点击底部「获取登录码」即可登录网页。'
     ))
   }
