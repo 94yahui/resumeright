@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyWechatSignature, parseWechatXml, buildTextReply } from '../../../lib/wechat'
-import { getLoginSessionCollection, getUserCollection } from '../../../lib/mongodb'
+import { getLoginCodeCollection, getUserCollection } from '../../../lib/mongodb'
 
 const APPID = process.env.WECHAT_APPID ?? ''
+const CODE_TTL_MS = 5 * 60 * 1000  // 5 分钟
 
 // ── GET: 微信服务器验证 ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -29,16 +30,16 @@ export async function POST(req: NextRequest) {
     return new NextResponse('forbidden', { status: 403 })
   }
 
-  const xml  = await req.text()
-  const msg  = parseWechatXml(xml)
-  const openid  = msg.FromUserName  // 用户的 OpenID
-  const msgType = msg.MsgType       // text | event
+  const xml     = await req.text()
+  const msg     = parseWechatXml(xml)
+  const openid  = msg.FromUserName
+  const msgType = msg.MsgType
 
   // ── 事件：用户关注 ──────────────────────────────────────────────────────────
   if (msgType === 'event' && msg.Event === 'subscribe') {
     await ensureUser(openid)
     const reply = buildTextReply(openid, APPID,
-      '欢迎关注简力全开！\n\n请将网页上显示的登录码发送给我，即可完成登录。\n\n例如发送：RC-A1B2C3'
+      '欢迎关注简力全开！\n\n发送「登录」即可获取网页登录码。'
     )
     return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
   }
@@ -48,46 +49,40 @@ export async function POST(req: NextRequest) {
     return new NextResponse('success')
   }
 
-  // ── 文本消息：匹配登录码 ────────────────────────────────────────────────────
+  // ── 文本消息 ────────────────────────────────────────────────────────────────
   if (msgType === 'text') {
-    const content = (msg.Content ?? '').trim().toUpperCase()
+    const content = (msg.Content ?? '').trim()
 
-    if (/^RC-[A-Z0-9]{6}$/.test(content)) {
-      const sessions = await getLoginSessionCollection()
-      const now = Date.now()
-      const session = await sessions.findOne({ _id: content, status: 'pending' })
-
-      if (!session) {
-        const reply = buildTextReply(openid, APPID, '登录码无效或已过期，请刷新网页重新获取。')
-        return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
-      }
-
-      if (session.expires_at < now) {
-        const reply = buildTextReply(openid, APPID, '登录码已过期，请刷新网页重新获取。')
-        return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
-      }
-
-      // 标记 session 已认证，写入 openid
-      await sessions.updateOne(
-        { _id: content },
-        { $set: { status: 'authenticated', openid } }
-      )
-
-      // 确保用户记录存在
+    if (content === '登录') {
       await ensureUser(openid)
-
-      const reply = buildTextReply(openid, APPID, '✅ 登录成功！请返回网页继续使用。')
+      const code = await issueLoginCode(openid)
+      const reply = buildTextReply(openid, APPID,
+        `您的登录码是：${code}\n\n请在网页登录框中输入此码，5分钟内有效。`
+      )
       return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
     }
 
     // 其他文字消息
     const reply = buildTextReply(openid, APPID,
-      '请将网页上显示的登录码发送给我（格式：RC-XXXXXX），即可完成登录。'
+      '发送「登录」即可获取网页登录码。'
     )
     return new NextResponse(reply, { headers: { 'Content-Type': 'text/xml' } })
   }
 
   return new NextResponse('success')
+}
+
+// ── 生成并存储登录码（openid 为主键，同时只有一个有效码） ─────────────────────
+async function issueLoginCode(openid: string): Promise<string> {
+  const codes = await getLoginCodeCollection()
+  const now = Date.now()
+  const code = String(Math.floor(100000 + Math.random() * 900000))  // 6位数字
+  await codes.updateOne(
+    { _id: openid },
+    { $set: { code, created_at: now, expires_at: now + CODE_TTL_MS } },
+    { upsert: true }
+  )
+  return code
 }
 
 // ── 首次见到该 openid 时自动建用户记录 ───────────────────────────────────────

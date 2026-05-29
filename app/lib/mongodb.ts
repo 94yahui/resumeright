@@ -22,18 +22,17 @@ export async function getUserCollection(): Promise<Collection<UserDoc>> {
   return (await db()).collection<UserDoc>('users')
 }
 
-// ── WeChat login sessions ─────────────────────────────────────────────────────
-// 用户发送的登录码（如 RC-A1B2C3）作为 _id，避免重复
-export interface WechatLoginSessionDoc {
-  _id: string                // 登录码，e.g. "RC-A1B2C3"
-  openid?: string            // 用户发码后填入
-  status: 'pending' | 'authenticated'
+// ── WeChat login codes (反转流程：用户发"登录"→公众号回复6位码→用户在网页输入) ──
+// openid 作为 _id，每个用户同时只有一个有效码
+export interface LoginCodeDoc {
+  _id: string        // openid
+  code: string       // 6位数字，如 "482917"
   created_at: number
-  expires_at: number         // Unix ms，10 分钟有效
+  expires_at: number // Unix ms，5 分钟有效
 }
 
-export async function getLoginSessionCollection(): Promise<Collection<WechatLoginSessionDoc>> {
-  return (await db()).collection<WechatLoginSessionDoc>('wechat_login_sessions')
+export async function getLoginCodeCollection(): Promise<Collection<LoginCodeDoc>> {
+  return (await db()).collection<LoginCodeDoc>('wechat_login_codes')
 }
 
 // ── Promo codes ───────────────────────────────────────────────────────────────
