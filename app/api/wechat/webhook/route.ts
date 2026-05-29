@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const xml      = await req.text()
+  console.log('[wx] raw body:', JSON.stringify(xml.slice(0, 500)))
   const msg      = parseWechatXml(xml)
   const ghid     = msg.ToUserName    // 公众号 gh_xxx，用于回复的 FromUserName
   const openid   = msg.FromUserName  // 用户 openid
