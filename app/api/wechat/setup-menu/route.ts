@@ -10,7 +10,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const token = await getAccessToken()
+  let token: string
+  try {
+    token = await getAccessToken()
+  } catch (e) {
+    return NextResponse.json({ ok: false, step: 'get_token', error: String(e) }, { status: 500 })
+  }
 
   const menu = {
     button: [
@@ -18,11 +23,16 @@ export async function POST(req: NextRequest) {
     ],
   }
 
-  const res  = await fetch(
-    `https://api.weixin.qq.com/cgi-bin/menu/create?access_token=${token}`,
-    { method: 'POST', body: JSON.stringify(menu) }
-  )
-  const data = await res.json() as { errcode: number; errmsg: string }
+  let data: { errcode: number; errmsg: string }
+  try {
+    const res = await fetch(
+      `https://api.weixin.qq.com/cgi-bin/menu/create?access_token=${token}`,
+      { method: 'POST', body: JSON.stringify(menu) }
+    )
+    data = await res.json()
+  } catch (e) {
+    return NextResponse.json({ ok: false, step: 'create_menu', error: String(e) }, { status: 500 })
+  }
 
   if (data.errcode !== 0) {
     return NextResponse.json({ ok: false, detail: data }, { status: 500 })
