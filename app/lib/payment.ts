@@ -30,7 +30,6 @@ export interface PaymentRecord {
 
 export interface StudentRecord {
   deviceId: string
-  email: string
   certifiedAt: number
   expiresAt: number       // 1 year from certification
 }
@@ -257,7 +256,7 @@ export function cleanOldUsage(): void {
 
 // ─── Free AI-analyze lifetime counter ────────────────────────────────────────
 const LS_FREE_ANALYZE = 'rc_fa'
-export const FREE_ANALYZE_LIMIT = 2
+export const FREE_ANALYZE_LIMIT = 1
 
 export function getFreeAnalyzeUsed(): number {
   return ls<number>(LS_FREE_ANALYZE, 0)

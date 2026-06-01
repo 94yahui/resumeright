@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react'
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
-  Trash2, Lock, Lightbulb, History, Plus, X,
+  Trash2, Lock, Lightbulb, History, X,
 } from 'lucide-react'
-import { TEMPLATES, TemplateConfig } from '../../lib/templates-config'
+import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
 import { ResumeData, Entry } from '../../lib/types'
 import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
@@ -45,10 +45,13 @@ interface Props {
   onTemplateChange: (id: string) => void
   onColorChange: (c: string) => void
   currentColor: string
+  currentAccentStyle?: AccentStyle
+  onAccentStyleChange?: (s: AccentStyle) => void
+  currentFontPair?: FontPair
+  onFontPairChange?: (f: FontPair) => void
   onAddModule: (key: string) => void
   data: ResumeData
   onUpdate: (patch: Partial<ResumeData>) => void
-  onSaveHistory?: () => void
   onLoadHistory?: (entry: HistoryEntry) => void
   onHistoryDelete?: (id: string) => void
   historyRefreshKey?: number
@@ -61,12 +64,17 @@ interface Props {
   canUseProTemplate?: boolean
   unlockedProTemplateId?: string  // single-plan: only this one pro template is unlocked
   onProTemplateLocked?: () => void
+  loggedIn?: boolean
+  onShowLogin?: () => void
 }
 
 export default function LeftPanel({
-  templateId, onTemplateChange, onColorChange, currentColor, onAddModule, data, onUpdate,
-  onSaveHistory, onLoadHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
+  templateId, onTemplateChange, onColorChange, currentColor,
+  currentAccentStyle, onAccentStyleChange, currentFontPair, onFontPairChange,
+  onAddModule, data, onUpdate,
+  onLoadHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
   isMobile, onClose, forceTab, disabled, canUseProTemplate = false, unlockedProTemplateId, onProTemplateLocked,
+  loggedIn = false, onShowLogin,
 }: Props) {
   const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
 
@@ -103,7 +111,7 @@ export default function LeftPanel({
   }
 
   const TABS = ['tpl', 'mod', 'color', 'hist'] as const
-  const TAB_LABELS = ['模板', '模块', '颜色', '我的']
+  const TAB_LABELS = ['模板', '模块', '样式', '我的']
 
   return (
     <div style={{
@@ -141,7 +149,7 @@ export default function LeftPanel({
 
         {/* ===== TEMPLATE TAB ===== */}
         {tab === 'tpl' && (
-          <div>
+          <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
             <div style={{ padding: '14px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--theme-blue)' }}>
               免费模板 ({freeTpls.length})
             </div>
@@ -285,52 +293,105 @@ export default function LeftPanel({
           </div>
         )}
 
-        {/* ===== COLOR TAB ===== */}
+        {/* ===== STYLE TAB ===== */}
         {tab === 'color' && (
-          <div style={{ padding: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '12px' }}>
+          <div style={{ padding: '16px 16px 24px', ...(disabled ? { opacity: 0.4, pointerEvents: 'none' } : {}) }}>
+
+            {/* Color */}
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
               主题色
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
               {COLORS.map(c => (
                 <div key={c} onClick={() => onColorChange(c)} style={{
-                  width: '30px', height: '30px', borderRadius: '50%',
+                  width: '28px', height: '28px', borderRadius: '50%',
                   background: c, cursor: 'pointer',
                   border: '2px solid white',
                   boxShadow: currentColor === c ? `0 0 0 2.5px #0f172a` : '0 0 0 1.5px #e2e8f0',
                   transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '12px', color: 'white',
+                  fontSize: '11px', color: 'white',
                 }}>
                   {currentColor === c ? '✓' : ''}
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
-              自定义颜色
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
               <input type="color" defaultValue={currentColor} id="customColor"
-                style={{ width: '38px', height: '38px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: '2px', background: '#f8fafc' }}
+                style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: '2px', background: '#f8fafc' }}
               />
               <button onClick={() => {
                 const el = document.getElementById('customColor') as HTMLInputElement
                 if (el) onColorChange(el.value)
               }} style={{
-                padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                padding: '7px 14px', borderRadius: '8px', border: '1px solid #e2e8f0',
                 background: 'white', fontSize: '12px', cursor: 'pointer',
                 fontFamily: 'var(--font-sans)', color: '#334155', fontWeight: 500,
               }}>应用</button>
             </div>
 
+            {/* Font pair */}
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
+              字体风格
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+              {FONT_PAIRS.map(fp => (
+                <button key={fp.value} onClick={() => onFontPairChange?.(fp.value)} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `1.5px solid ${currentFontPair === fp.value ? '#0f172a' : '#e2e8f0'}`,
+                  background: currentFontPair === fp.value ? '#f8fafc' : 'white',
+                  fontFamily: 'var(--font-sans)', textAlign: 'left', width: '100%',
+                  transition: 'all 0.15s',
+                }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f1f5f9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontFamily: fp.cssFont, fontSize: '16px', fontWeight: 700, color: '#334155', lineHeight: 1 }}>A</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0f172a' }}>{fp.label}</div>
+                    <div style={{ fontSize: '10.5px', color: '#94a3b8', marginTop: '1px' }}>{fp.desc}</div>
+                  </div>
+                  {currentFontPair === fp.value && (
+                    <div style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ color: 'white', fontSize: '9px', lineHeight: 1 }}>✓</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Accent style */}
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
+              标题样式
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '20px' }}>
+              {ACCENT_STYLES.map(as => (
+                <button key={as.value} onClick={() => onAccentStyleChange?.(as.value)} style={{
+                  padding: '8px 10px 8px', borderRadius: '8px', cursor: 'pointer',
+                  border: `1.5px solid ${currentAccentStyle === as.value ? '#0f172a' : '#e2e8f0'}`,
+                  background: currentAccentStyle === as.value ? '#f8fafc' : 'white',
+                  fontFamily: 'var(--font-sans)', textAlign: 'left',
+                  transition: 'all 0.15s', position: 'relative',
+                }}>
+                  <AccentStylePreview style={as.value} color={currentColor} />
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', fontWeight: 500 }}>{as.label}</div>
+                  {currentAccentStyle === as.value && (
+                    <div style={{ position: 'absolute', top: '5px', right: '5px', width: '14px', height: '14px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ color: 'white', fontSize: '8px', lineHeight: 1 }}>✓</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
             <div style={{
-              marginTop: '24px', padding: '14px',
+              padding: '12px',
               background: '#f8fafc', borderRadius: '8px',
-              fontSize: '12px', color: '#64748b', lineHeight: 1.6,
+              fontSize: '11.5px', color: '#64748b', lineHeight: 1.6,
               display: 'flex', alignItems: 'flex-start', gap: '6px',
             }}>
               <Lightbulb size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
-              主题色影响标题、边框等强调元素，切换模板后会保持
+              样式调整独立于模板，切换模板后重置
             </div>
           </div>
         )}
@@ -338,21 +399,6 @@ export default function LeftPanel({
         {/* ===== HISTORY TAB ===== */}
         {tab === 'hist' && (
           <div style={{ padding: '14px' }}>
-            <button
-              onClick={disabled ? undefined : () => onSaveHistory?.()}
-              disabled={disabled}
-              style={{
-                width: '100%', padding: '9px 14px',
-                borderRadius: '8px', border: `1px solid ${disabled ? '#e2e8f0' : 'var(--theme-blue)'}`,
-                background: disabled ? '#f8fafc' : '#e0f0fd', fontSize: '12.5px',
-                color: disabled ? '#94a3b8' : 'var(--theme-blue)', fontWeight: 600,
-                cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-sans)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                marginBottom: '14px', opacity: disabled ? 0.5 : 1,
-              }}
-            >
-              <Plus size={13} /> 保存当前
-            </button>
 
             {historyEntries.length === 0 ? (
               <div style={{
@@ -464,6 +510,107 @@ export default function LeftPanel({
       </div>
     </div>
   )
+}
+
+const FONT_PAIRS: { value: FontPair; label: string; desc: string; cssFont: string }[] = [
+  { value: 'modern-sans', label: '无衬线体', desc: '简洁现代，通用性强', cssFont: "Inter, sans-serif" },
+  { value: 'serif-heading', label: '衬线体', desc: '典雅正式，学术感强', cssFont: "Georgia, 'Noto Serif SC', serif" },
+  { value: 'mono-accent', label: '等宽体', desc: '技术感，代码/设计行业', cssFont: "'JetBrains Mono', 'Courier New', monospace" },
+]
+
+const ACCENT_STYLES: { value: AccentStyle; label: string }[] = [
+  { value: 'underline-bar', label: '下划线条' },
+  { value: 'left-bar',      label: '左侧竖线' },
+  { value: 'side-icon',     label: '圆点连线' },
+  { value: 'background-pill', label: '背景色块' },
+  { value: 'thin-line',     label: '细线底框' },
+  { value: 'double-line',   label: '双线夹标题' },
+  { value: 'triple-bar',    label: '渐变竖条' },
+  { value: 'gradient-band', label: '渐变色带' },
+  { value: 'plain-bold',    label: '粗体简洁' },
+]
+
+function AccentStylePreview({ style, color }: { style: AccentStyle; color: string }) {
+  const c = color || '#0f172a'
+  const text = '工作经历'
+
+  const baseText: React.CSSProperties = {
+    fontSize: '9px', fontWeight: 700, color: c,
+    letterSpacing: '0.8px', textTransform: 'uppercase',
+    lineHeight: 1, whiteSpace: 'nowrap',
+  }
+
+  switch (style) {
+    case 'underline-bar':
+      return (
+        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px' }}>
+          <div style={baseText}>{text}</div>
+          <div style={{ height: '2px', width: '24px', background: c }} />
+        </div>
+      )
+    case 'left-bar':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={{ width: '3px', height: '13px', background: c, flexShrink: 0 }} />
+          <div style={baseText}>{text}</div>
+        </div>
+      )
+    case 'side-icon':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: c, flexShrink: 0 }} />
+          <div style={baseText}>{text}</div>
+          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.3 }} />
+        </div>
+      )
+    case 'background-pill':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ background: c, borderRadius: '3px', padding: '3px 7px' }}>
+            <span style={{ ...baseText, color: '#fff' }}>{text}</span>
+          </div>
+        </div>
+      )
+    case 'thin-line':
+      return (
+        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px' }}>
+          <div style={baseText}>{text}</div>
+          <div style={{ height: '1px', background: c }} />
+        </div>
+      )
+    case 'double-line':
+      return (
+        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}>
+          <div style={{ height: '1px', background: c }} />
+          <div style={{ ...baseText, textAlign: 'center' }}>{text}</div>
+          <div style={{ height: '1px', background: c }} />
+        </div>
+      )
+    case 'triple-bar':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={baseText}>{text}</div>
+          <div style={{ display: 'flex', gap: '2px', alignItems: 'center', marginLeft: '2px' }}>
+            <div style={{ width: '4px', height: '10px', background: c }} />
+            <div style={{ width: '3px', height: '10px', background: c, opacity: 0.6 }} />
+            <div style={{ width: '2px', height: '10px', background: c, opacity: 0.3 }} />
+          </div>
+        </div>
+      )
+    case 'gradient-band':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', marginLeft: '-4px', paddingLeft: '6px', borderLeft: `2px solid ${c}`, background: `linear-gradient(to right, ${c}22, transparent)` }}>
+          <div style={baseText}>{text}</div>
+        </div>
+      )
+    case 'plain-bold':
+    default:
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ ...baseText, fontSize: '10px' }}>{text}</div>
+        </div>
+      )
+  }
 }
 
 function TplCard({ tpl, active, onClick, isPro, isLocked }: {

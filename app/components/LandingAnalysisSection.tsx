@@ -3,8 +3,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
-import { getDeviceId, getProStatus, checkUsage, recordUsage, getFreeAnalyzeUsed, getDailyCount, FREE_ANALYZE_LIMIT, type ProStatus } from '../lib/payment'
-import { incrementFreeAnalyzeOnServer } from '../lib/storage'
+import { getDeviceId, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT } from '../lib/payment'
+import { useAuth } from '../hooks/useAuth'
 import LogoSweepLoader from './LogoSweepLoader'
 
 interface AnalysisResult {
@@ -12,8 +12,6 @@ interface AnalysisResult {
   offerRate?: number
   overview: string
   suggestions: Array<{ label: string; tip: string; optimizedContent?: string[] | string }>
-  interviewQuestions?: string[]
-  interviewAnswers?: string[]
   missingSkills?: string[]
   jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null
   matchBreakdown?: { overall?: number; experience: number; skills: number; other: number } | null
@@ -28,6 +26,7 @@ function formatSkillTag(s: string): string {
 }
 
 const FREE_LIMIT = FREE_ANALYZE_LIMIT
+const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
 
 const SAMPLE_JDS = [
   {
@@ -80,8 +79,9 @@ const SAMPLE_JDS = [
   },
 ]
 
-export default function LandingAnalysisSection() {
+export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequest: () => void }) {
   const router = useRouter()
+  const auth = useAuth()
   const [jobDesc, setJobDesc] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
@@ -90,21 +90,28 @@ export default function LandingAnalysisSection() {
   const [showModal, setShowModal] = useState(false)
   const [showInterviewQ, setShowInterviewQ] = useState(false)
   const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(new Set())
+  const [interviewData, setInterviewData] = useState<{ questions: string[]; answers: string[] } | null>(null)
+  const [interviewLoading, setInterviewLoading] = useState(false)
   const [error, setError] = useState('')
   const [deviceId, setDeviceId] = useState('')
-  const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
-  const [usedToday, setUsedToday] = useState(0)
-  const [proUsedToday, setProUsedToday] = useState(0)
+  const [usedToday, setUsedToday] = useState(0)  // guest-only localStorage counter, populated after mount
   const analyzeAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const did = getDeviceId()
     setDeviceId(did)
-    const status = getProStatus(did)
-    setProStatus(status)
     setUsedToday(getFreeAnalyzeUsed())
-    setProUsedToday(getDailyCount(did, 'ai_analyze'))
   }, [])
+
+  // Derived quota state — always from DB (auth) for logged-in, localStorage for guests
+  const isSubscriber = auth.loggedIn && !!auth.membership &&
+    SUB_PLANS.has(auth.membership.plan) &&
+    (!auth.membership.expires_at || auth.membership.expires_at > Date.now())
+  const analyzeUsed = isSubscriber ? auth.dailyAnalyzeUsed
+    : auth.loggedIn ? auth.freeAnalyzeUsed
+    : usedToday
+  const analyzeLimit = isSubscriber ? 20 : FREE_LIMIT
+  const analyzeExhausted = analyzeUsed >= analyzeLimit
 
   useEffect(() => {
     if (!showModal) { setAnimRate(0); return }
@@ -149,14 +156,20 @@ export default function LandingAnalysisSection() {
   const handleAnalyze = async () => {
     if (!file) { setError('请上传简历文件'); return }
 
-    // Check shared AI-analyze quota (free: 2 lifetime, shared with editor analyze)
-    const check = checkUsage(deviceId, 'ai_analyze', proStatus)
-    if (!check.allowed) {
-      setError(proStatus.kind === 'free'
-        ? `${check.limit} 次免费次数已用完，升级 Pro 每天可用 20 次 →`
-        : `今日分析次数已达上限（${check.limit} 次/天）`
-      )
+    // Quota pre-check (server enforces authoritatively; this avoids wasted round-trips)
+    if (auth.loggedIn && analyzeExhausted) {
+      setError(isSubscriber
+        ? `今日分析次数已达上限（20 次/天）`
+        : `1 次免费次数已用完，升级 Pro 每天可用 20 次 `)
       return
+    }
+    if (!auth.loggedIn) {
+      const liveUsed = getFreeAnalyzeUsed()
+      if (liveUsed >= FREE_LIMIT) {
+        setUsedToday(liveUsed)  // sync state so button shows exhausted text
+        setError('免费次数已用完，升级 Pro · 每日 20 次')
+        return
+      }
     }
 
     // Abort any previous in-flight analysis
@@ -170,6 +183,7 @@ export default function LandingAnalysisSection() {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('deviceId', deviceId)
+      fd.append('skipImportQuota', 'true')
       const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: fd, signal: controller.signal })
       if (controller.signal.aborted) return
       if (parseRes.status === 422) {
@@ -177,7 +191,12 @@ export default function LandingAnalysisSection() {
         return
       }
       if (!parseRes.ok) {
-        setError('AI 开小差了，请稍后重试')
+        if (parseRes.status === 429) {
+          const errJson = await parseRes.json().catch(() => null)
+          setError(errJson?.error || '导入次数已达上限，请升级 Pro')
+        } else {
+          setError('AI 开小差了，请稍后重试')
+        }
         return
       }
       const parseJson = await parseRes.json()
@@ -194,17 +213,28 @@ export default function LandingAnalysisSection() {
       })
       if (controller.signal.aborted) return
       if (!analyzeRes.ok) {
-        setError('AI 开小差了，请稍后重试')
+        if (analyzeRes.status === 429) {
+          const errJson = await analyzeRes.json().catch(() => null)
+          setError(errJson?.error || '分析次数已达上限，请升级 Pro')
+          if (auth.loggedIn) window.dispatchEvent(new Event('rc:login'))
+        } else {
+          setError('AI 开小差了，请稍后重试')
+        }
         return
       }
       const analysisResult = await analyzeRes.json()
       if (controller.signal.aborted) return
       // Record usage only after both calls succeed
-      recordUsage(deviceId, 'ai_analyze', proStatus)
-      if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
-      setUsedToday(getFreeAnalyzeUsed())
-      setProUsedToday(getDailyCount(deviceId, 'ai_analyze'))
+      if (auth.loggedIn) {
+        // Server already updated DB via checkServerQuota; refresh auth so counts reflect in UI
+        window.dispatchEvent(new Event('rc:login'))
+      } else {
+        // Guest: update localStorage counter and local display
+        recordUsage(deviceId, 'ai_analyze', { kind: 'free' })
+        setUsedToday(getFreeAnalyzeUsed())
+      }
       setResult(analysisResult)
+      setInterviewData(null)
       setShowInterviewQ(false)
       setShowModal(true)
     } catch (e: unknown) {
@@ -215,6 +245,25 @@ export default function LandingAnalysisSection() {
         analyzeAbortRef.current = null
         setLoading(false)
       }
+    }
+  }
+
+  const handleGenerateInterview = async () => {
+    if (interviewLoading || !result || !parsedRawData) return
+    setInterviewLoading(true)
+    try {
+      const res = await fetch('/api/ai/interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData: parsedRawData, jobDesc, deviceId }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setInterviewData({ questions: json.interviewQuestions ?? [], answers: json.interviewAnswers ?? [] })
+        setShowInterviewQ(true)
+      }
+    } catch { /* silent */ } finally {
+      setInterviewLoading(false)
     }
   }
 
@@ -290,7 +339,7 @@ export default function LandingAnalysisSection() {
               backdropFilter: 'blur(1px)'
             }}>
               <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#a78bfa' }} />
-              精准定向优化
+              精准定向分析优化
             </div>
 
             <h2 style={{
@@ -362,20 +411,21 @@ export default function LandingAnalysisSection() {
                     suppressHydrationWarning
                     value={jobDesc}
                     onChange={e => setJobDesc(e.target.value)}
-                    placeholder="粘贴目标岗位招聘信息，AI 将定向优化简历内容并估算 Offer 率..."
+                    placeholder="粘贴目标岗位招聘信息，AI 将定向优化简历内容并估算面试机会..."
                     rows={3}
                     style={{
                       width: '100%', padding: '12px 14px', boxSizing: 'border-box',
                       paddingRight: jobDesc ? '34px' : '14px',
+                      paddingBottom: '22px',
                       background: '#f8fafc',
-                      border: '1.5px solid #e2e8f0',
+                      border: `1.5px solid ${jobDesc.length > 3000 ? '#ef4444' : '#e2e8f0'}`,
                       borderRadius: '10px',
                       fontFamily: "'Inter','Noto Sans SC',sans-serif",
                       fontSize: '13px', color: '#0f172a',
                       outline: 'none', resize: 'none', lineHeight: 1.6,
                     }}
-                    onFocus={e => { e.target.style.borderColor = 'rgba(109,40,217,0.6)'; e.target.style.background = '#faf5ff' }}
-                    onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
+                    onFocus={e => { e.target.style.borderColor = jobDesc.length > 3000 ? '#ef4444' : 'rgba(109,40,217,0.6)'; e.target.style.background = '#faf5ff' }}
+                    onBlur={e => { e.target.style.borderColor = jobDesc.length > 3000 ? '#ef4444' : '#e2e8f0'; e.target.style.background = '#f8fafc' }}
                   />
                   {jobDesc && (
                     <button
@@ -392,7 +442,17 @@ export default function LandingAnalysisSection() {
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(100,116,139,0.15)'; e.currentTarget.style.color = '#94a3b8' }}
                     ><X size={10} /></button>
                   )}
+                  {jobDesc.length > 0 && (
+                    <div style={{ position: 'absolute', bottom: '6px', right: '8px', fontSize: '11px', color: jobDesc.length > 3000 ? '#ef4444' : '#94a3b8', pointerEvents: 'none' }}>
+                      {jobDesc.length}/3000
+                    </div>
+                  )}
                 </div>
+                {jobDesc.length > 3000 && (
+                  <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '5px' }}>
+                    内容过长，请删减至 3000 字以内
+                  </div>
+                )}
                 {/* Sample JD chips */}
                 <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '5px' }}>
                   <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>试试：</span>
@@ -454,18 +514,23 @@ export default function LandingAnalysisSection() {
               </div>
 
               <button
-                onClick={handleAnalyze}
-                disabled={loading}
+                onClick={!auth.loading && analyzeExhausted && !auth.loggedIn ? onLoginRequest : handleAnalyze}
+                disabled={loading || jobDesc.length > 3000}
                 style={{
                   width: '100%', padding: '14px',
-                  background: loading ? 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))' : jobDesc.trim()
-                    ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)'
-                    : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
-                  boxShadow: !loading && jobDesc.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : '0 2px 8px rgba(0,0,0,0.08)',
-                  color: 'white', border: 'none', borderRadius: '12px',
+                  background: jobDesc.length > 3000
+                    ? '#e2e8f0'
+                    : (!auth.loading && analyzeExhausted && !auth.loggedIn)
+                      ? 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))'
+                      : loading ? 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))' : jobDesc.trim()
+                        ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)'
+                        : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))',
+                  boxShadow: jobDesc.length > 3000 ? 'none' : !loading && jobDesc.trim() ? '0 4px 16px rgba(124,58,237,0.35)' : '0 2px 8px rgba(0,0,0,0.08)',
+                  color: jobDesc.length > 3000 ? '#94a3b8' : 'white',
+                  border: 'none', borderRadius: '12px',
                   fontFamily: "'Inter','Noto Sans SC',sans-serif",
                   fontSize: '14px', fontWeight: 600,
-                  cursor: loading ? 'not-allowed' : 'pointer',
+                  cursor: loading || jobDesc.length > 3000 ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   transition: 'background 0.3s, box-shadow 0.3s',
                 }}
@@ -475,21 +540,28 @@ export default function LandingAnalysisSection() {
                     <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'landingSpin 0.8s linear infinite', flexShrink: 0 }} />
                     AI 分析中...
                   </>
+                ) : analyzeExhausted && !auth.loggedIn ? (
+                  <>登录后继续使用</>
+                ) : analyzeExhausted && auth.loggedIn ? (
+                  isSubscriber ? <>今日次数已用完</> : <>免费次数已用完 · 升级 Pro</>
                 ) : jobDesc.trim() ? (
-                  <>精准定向分析</>
+                  <>精准定向分析优化</>
                 ) : (
-                  <>分析我的简历</>
+                  <>分析优化我的简历</>
                 )}
               </button>
 
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
-                {proStatus.kind === 'subscription'
-                  ? `今日已用 ${proUsedToday}/20 次 · 数据不存储`
-                  : proStatus.kind === 'single'
-                    ? `今日已用 ${proUsedToday} 次 · 数据不存储`
-                    : usedToday === 0
-                      ? '首次免费 · 无需注册 · 数据不存储'
-                      : `还剩 ${Math.max(0, FREE_LIMIT - usedToday)} 次免费机会 · 数据不存储`
+                {auth.loading ? ' '
+                  : !auth.loggedIn
+                    ? (usedToday === 0
+                        ? '首次免费 · 登录后可解锁更多次数'
+                        : '免费次数已用完 · 登录后可使用更多')
+                  : isSubscriber
+                    ? `今日已用 ${auth.dailyAnalyzeUsed}/20 次 · 数据不存储`
+                    : auth.freeAnalyzeUsed === 0
+                      ? '还有 1 次免费机会 · 升级 Pro 每天可用 20 次'
+                      : '免费次数已用完 · 升级 Pro 每天可用 20 次'
                 }
               </div>
             </>)}
@@ -537,14 +609,14 @@ export default function LandingAnalysisSection() {
             {/* Offer rate — current vs post-optimization */}
             {showOfferRate && (
               <div style={{ background: '#0a0a0f', borderRadius: '16px', padding: '22px 28px', marginBottom: '18px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Target size={10} color="rgba(255,255,255,0.35)" /> 拿到 Offer 率预测
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--theme-blue)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Target size={10} color="var(--theme-blue)" /> 拿到面试机会预测
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <div style={{ flex: 1, textAlign: 'center' }}>
                     <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginBottom: '6px' }}>当前预计</div>
                     <div style={{ fontFamily: "'Inter',sans-serif", fontSize: '48px', fontWeight: 800, color: offerColor, lineHeight: 1 }}>{offerRate}%</div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>拿到 Offer 率</div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>拿到面试机会</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', color: 'rgba(255,255,255,0.2)' }}>
                     <ChevronRight size={20} />
@@ -594,63 +666,86 @@ export default function LandingAnalysisSection() {
               </div>
             )}
 
-            {/* Interview questions (expandable) */}
-            {result.interviewQuestions && result.interviewQuestions.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
+            {/* Interview questions — on-demand */}
+            <div style={{ marginBottom: '16px' }}>
+              <style>{`@keyframes landingSpin { to { transform: rotate(360deg) } }`}</style>
+              {!interviewData ? (
                 <button
-                  onClick={() => setShowInterviewQ(v => !v)}
+                  onClick={handleGenerateInterview}
+                  disabled={interviewLoading}
                   style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 14px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: showInterviewQ ? '10px 10px 0 0' : '10px',
-                    cursor: 'pointer', transition: 'all 0.2s',
-                    fontFamily: 'var(--font-sans)',
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '12px 14px', background: interviewLoading ? '#f8fafc' : 'rgba(13,148,136,0.06)',
+                    border: `1px solid ${interviewLoading ? '#e2e8f0' : 'rgba(13,148,136,0.3)'}`,
+                    borderRadius: '10px', cursor: interviewLoading ? 'default' : 'pointer',
+                    fontFamily: 'var(--font-sans)', transition: 'all 0.2s',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <MessageSquare size={11} color="white" />
-                    </div>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155', fontFamily: 'var(--font-sans)' }}>预测面试题</span>
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400, fontFamily: 'var(--font-sans)' }}>（{result.interviewQuestions.length} 道）</span>
-                  </div>
-                  {showInterviewQ ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
+                  {interviewLoading ? (
+                    <>
+                      <span style={{ width: '14px', height: '14px', border: '2px solid #e2e8f0', borderTopColor: 'var(--teal)', borderRadius: '50%', animation: 'landingSpin 0.7s linear infinite', display: 'inline-block' }} />
+                      <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'var(--font-sans)' }}>正在生成面试题…</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare size={14} color="var(--teal)" />
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--teal)', fontFamily: 'var(--font-sans)' }}>生成面试题预测</span>
+                    </>
+                  )}
                 </button>
-
-                {showInterviewQ && (
-                  <div style={{ border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f8fafc', overflow: 'hidden' }}>
-                    {result.interviewQuestions.map((q, i) => {
-                      const answer = result.interviewAnswers?.[i]
-                      const answerExpanded = expandedAnswers.has(i)
-                      return (
-                        <div key={i} style={{ borderTop: i > 0 ? '1px solid rgba(14,165,233,0.12)' : 'none' }}>
-                          <div onClick={() => answer && toggleAnswer(i)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '10px 14px', cursor: answer ? 'pointer' : 'default' }}>
-                            <span style={{ minWidth: '20px', height: '20px', borderRadius: '50%', background: 'rgba(13,148,136,0.12)', color: 'var(--teal)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>{i + 1}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.65, fontFamily: 'var(--font-sans)' }}>{q}</span>
-                              {answer && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                  <Lightbulb size={10} color="var(--teal)" />
-                                  <span style={{ fontSize: '10px', color: 'var(--teal)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}>{answerExpanded ? '收起回答建议' : '查看回答建议'}</span>
-                                  {answerExpanded ? <ChevronUp size={10} color="var(--teal)" /> : <ChevronDown size={10} color="var(--teal)" />}
-                                </div>
-                              )}
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowInterviewQ(v => !v)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
+                      borderRadius: showInterviewQ ? '10px 10px 0 0' : '10px',
+                      cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: 'var(--teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <MessageSquare size={11} color="white" />
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155', fontFamily: 'var(--font-sans)' }}>预测面试题</span>
+                      <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400, fontFamily: 'var(--font-sans)' }}>（{interviewData.questions.length} 道）</span>
+                    </div>
+                    {showInterviewQ ? <ChevronUp size={16} color="#64748b" /> : <ChevronDown size={16} color="#64748b" />}
+                  </button>
+                  {showInterviewQ && (
+                    <div style={{ border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#f8fafc', overflow: 'hidden' }}>
+                      {interviewData.questions.map((q, i) => {
+                        const answer = interviewData.answers[i]
+                        const answerExpanded = expandedAnswers.has(i)
+                        return (
+                          <div key={i} style={{ borderTop: i > 0 ? '1px solid rgba(14,165,233,0.12)' : 'none' }}>
+                            <div onClick={() => answer && toggleAnswer(i)} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '10px 14px', cursor: answer ? 'pointer' : 'default' }}>
+                              <span style={{ minWidth: '20px', height: '20px', borderRadius: '50%', background: 'rgba(13,148,136,0.12)', color: 'var(--teal)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>{i + 1}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.65, fontFamily: 'var(--font-sans)' }}>{q}</span>
+                                {answer && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                    <Lightbulb size={10} color="var(--teal)" />
+                                    <span style={{ fontSize: '10px', color: 'var(--teal)', fontWeight: 600, fontFamily: 'var(--font-sans)' }}>{answerExpanded ? '收起回答建议' : '查看回答建议'}</span>
+                                    {answerExpanded ? <ChevronUp size={10} color="var(--teal)" /> : <ChevronDown size={10} color="var(--teal)" />}
+                                  </div>
+                                )}
+                              </div>
                             </div>
+                            {answer && answerExpanded && (
+                              <div style={{ margin: '0 14px 10px 44px', padding: '9px 12px', background: 'rgba(13,148,136,0.07)', borderRadius: '7px', borderLeft: '2px solid var(--teal)', animation: 'landingAnswerSlide 0.22s ease' }}>
+                                <p style={{ margin: 0, fontSize: '11.5px', color: '#334155', lineHeight: 1.7, fontFamily: 'var(--font-sans)' }}>{answer}</p>
+                              </div>
+                            )}
                           </div>
-                          {answer && answerExpanded && (
-                            <div style={{ margin: '0 14px 10px 44px', padding: '9px 12px', background: 'rgba(13,148,136,0.07)', borderRadius: '7px', borderLeft: '2px solid var(--teal)', animation: 'landingAnswerSlide 0.22s ease' }}>
-                              <p style={{ margin: 0, fontSize: '11.5px', color: '#334155', lineHeight: 1.7, fontFamily: 'var(--font-sans)' }}>{answer}</p>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Suggestions — summary only, details in editor */}
             <div style={{ marginBottom: '18px' }}>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hpjQuery } from '../../../lib/hupijiao'
 import { getOrderCollection } from '../../../lib/mongodb'
+import { syncMembershipFromOrder } from '../../../lib/syncMembership'
 
 // Polled by frontend every 2s while QR code is shown
 export async function GET(req: NextRequest) {
@@ -19,11 +20,16 @@ export async function GET(req: NextRequest) {
   // Double-check with 虎皮椒 in case webhook hasn't fired yet
   const result = await hpjQuery(orderId)
   if (result.paid) {
-    await col.updateOne(
-      { _id: orderId },
-      { $set: { status: 'paid', paidAt: Date.now(), wxTransactionId: result.transactionId } },
+    const paidAt = Date.now()
+    const updateResult = await col.updateOne(
+      { _id: orderId, status: { $ne: 'paid' } },
+      { $set: { status: 'paid', paidAt, wxTransactionId: result.transactionId } },
     )
-    return NextResponse.json({ paid: true, order: { ...order, status: 'paid', paidAt: Date.now() } })
+    // Only sync if we were the first to confirm payment (webhook may have beaten us)
+    if (updateResult.modifiedCount > 0) {
+      await syncMembershipFromOrder(order, paidAt)
+    }
+    return NextResponse.json({ paid: true, order: { ...order, status: 'paid', paidAt } })
   }
 
   return NextResponse.json({ paid: false })

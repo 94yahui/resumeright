@@ -208,7 +208,7 @@ export default function AdminPage() {
                   transition: 'all 0.2s',
                 }}
               >
-                {copied ? '✓ 已复制' : '全部复制'}
+                {copied ? '已复制' : '全部复制'}
               </button>
             </div>
             <div style={{

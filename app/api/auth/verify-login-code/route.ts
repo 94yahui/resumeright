@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLoginCodeCollection, getUserCollection } from '../../../lib/mongodb'
 import { signToken } from '../../../lib/jwt'
+import { fetchWechatUserInfo } from '../../../lib/wechat'
 
 // POST /api/auth/verify-login-code
 // body: { code: string, device_id?: string }
@@ -26,15 +27,30 @@ export async function POST(req: NextRequest) {
   const openid = record._id  // openid is the document _id
   const users  = await getUserCollection()
 
+  const sessionId = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+
+  // Fetch WeChat profile (nickname + avatar) in parallel with DB write; fail silently
+  const [wechatInfo] = await Promise.allSettled([fetchWechatUserInfo(openid)])
+  const profile = wechatInfo.status === 'fulfilled' ? wechatInfo.value : null
+
+  const profileFields = profile
+    ? { nickname: profile.nickname, avatar: profile.avatar }
+    : {}
+
   if (device_id) {
     await users.updateOne(
       { openid },
-      { $addToSet: { device_ids: device_id }, $set: { updated_at: now } }
+      { $addToSet: { device_ids: device_id }, $set: { updated_at: now, session_id: sessionId, ...profileFields } }
+    )
+  } else {
+    await users.updateOne(
+      { openid },
+      { $set: { updated_at: now, session_id: sessionId, ...profileFields } }
     )
   }
 
   const user  = await users.findOne({ openid })
-  const token = signToken({ openid, uid: user?._id?.toString() ?? openid })
+  const token = signToken({ openid, uid: user?._id?.toString() ?? openid, session_id: sessionId })
 
   await codes.deleteOne({ _id: openid })  // 用完即删
 

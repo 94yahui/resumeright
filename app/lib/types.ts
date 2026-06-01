@@ -87,14 +87,19 @@ export function hasDiffMarkup(s: string): boolean {
   return /\[\[[\+~]/.test(s)
 }
 
-const STRAY_MARKERS = /\[\[[\+~]|[\+~]\]\]/g
+// Strips any leftover marker fragments: [[+, [[~, +]], ~]], [[, ]]
+const STRAY_MARKERS = /\[\[[\+~]|[\+~]\]\]|\[\[|\]\]/g
+
+// Robust regexes: negative lookahead prevents stopping early when content contains + or ~
+const ADD_MARKER = /\[\[\+((?:[^+]|\+(?!\]\]))*)\+\]\]/
+const DEL_MARKER = /\[\[~((?:[^~]|~(?!\]\]))*?)~\]\]/
 
 export function parseDiffBullet(s: string): DiffSegment[] {
   const segs: DiffSegment[] = []
   let rem = s
   while (rem.length > 0) {
-    const aM = /\[\[\+(.*?)\+\]\]/.exec(rem)
-    const dM = /\[\[~(.*?)~\]\]/.exec(rem)
+    const aM = ADD_MARKER.exec(rem)
+    const dM = DEL_MARKER.exec(rem)
     const ai = aM ? aM.index : Infinity
     const di = dM ? dM.index : Infinity
     if (ai === Infinity && di === Infinity) {
@@ -103,18 +108,22 @@ export function parseDiffBullet(s: string): DiffSegment[] {
     }
     const fi = Math.min(ai, di)
     if (fi > 0) segs.push({ text: rem.slice(0, fi).replace(STRAY_MARKERS, ''), type: 'keep' })
-    if (ai <= di && aM) { segs.push({ text: aM[1], type: 'add' }); rem = rem.slice(ai + aM[0].length) }
-    else if (dM)        { segs.push({ text: dM[1], type: 'del' }); rem = rem.slice(di + dM[0].length) }
-    else break
+    if (ai <= di && aM) {
+      segs.push({ text: aM[1].replace(STRAY_MARKERS, ''), type: 'add' })
+      rem = rem.slice(ai + aM[0].length)
+    } else if (dM) {
+      segs.push({ text: dM[1].replace(STRAY_MARKERS, ''), type: 'del' })
+      rem = rem.slice(di + dM[0].length)
+    } else break
   }
   return segs
 }
 
 export function applyDiffBullet(s: string): string {
   return s
-    .replace(/\[\[~.*?~\]\]/g, '')           // drop deleted segments
-    .replace(/\[\[\+(.*?)\+\]\]/g, '$1')     // keep added content, strip markers
-    .replace(STRAY_MARKERS, '')              // strip any remaining malformed/unclosed markers
+    .replace(/\[\[~((?:[^~]|~(?!\]\]))*?)~\]\]/g, '')           // drop deleted segments
+    .replace(/\[\[\+((?:[^+]|\+(?!\]\]))*)\+\]\]/g, '$1')       // keep added content, strip markers
+    .replace(STRAY_MARKERS, '')                                   // strip any remaining fragments
     .trim()
 }
 
@@ -308,6 +317,10 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
   const websiteVal = allUrls[0] ?? ''
   const extraVal = allUrls.length > 1 ? allUrls.slice(1) : undefined
 
+  const CJK = /[一-鿿　-〿＀-￯]/
+  const keyTexts = [String(raw.jobtitle ?? ''), String(raw.summary ?? ''), ...exp.flatMap(e => e.bullets).slice(0, 4)].filter(Boolean)
+  const resumeLang: 'en' | 'zh' = keyTexts.length > 0 && !keyTexts.some(t => CJK.test(t)) ? 'en' : 'zh'
+
   return {
     name: String(raw.name ?? ''),
     jobtitle: String(raw.jobtitle ?? ''),
@@ -326,6 +339,7 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     hasCert: !!raw.hasCert || cert.length > 0,
     hasVolunteer: !!raw.hasVolunteer || volunteer.length > 0,
     hasInterest: !!raw.hasInterest || interest.length > 0,
+    resumeLang,
     exp, edu, project, award, cert, volunteer, interest, language, skills,
   }
 }

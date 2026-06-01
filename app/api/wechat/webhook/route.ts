@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     return xml_reply(buildTextReply(openid, ghid,
-      '发送「登录」或点击底部「获取登录码」即可登录网页。'
+      '发送「登录」即可登录网页。'
     ))
   }
 

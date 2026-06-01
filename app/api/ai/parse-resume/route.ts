@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
-import { guardAI, checkServerQuota } from '../_guard'
+import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
 
 const inflateRawAsync = promisify(inflateRaw)
 
-const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
-const PARSE_MODEL = process.env.QWEN_MODEL || 'qwen-plus'
+const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
+const PARSE_MODEL = process.env.QWEN_MODEL || 'deepseek-chat'
 
 const PARSE_PROMPT = `You are a resume parser. First determine if this document is a resume/CV.
 
@@ -114,8 +114,12 @@ export async function POST(req: NextRequest) {
     const deviceId = formData.get('deviceId')
     const guard = guardAI(req, deviceId)
     if (guard) return guard
-    const quotaGuard = await checkServerQuota(req, 'parse-resume', String(deviceId ?? ''))
-    if (quotaGuard) return quotaGuard
+    // skipImportQuota=true: called from landing analyze flow — only analyze quota counts, not import
+    const skipImportQuota = formData.get('skipImportQuota') === 'true'
+    if (!skipImportQuota) {
+      const quotaGuard = await checkServerQuota(req, 'parse-resume', String(deviceId ?? ''))
+      if (quotaGuard) return quotaGuard
+    }
 
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: '文件过大，请上传 5 MB 以内的文件。' }, { status: 413 })
@@ -169,7 +173,6 @@ export async function POST(req: NextRequest) {
         ],
         response_format: { type: 'json_object' },
         temperature: 0.1,
-        enable_thinking: false,
       }),
     })
 
@@ -215,6 +218,7 @@ export async function POST(req: NextRequest) {
       extraWebsites: allUrls.slice(1),
     }
 
+    if (!skipImportQuota) await incrementQuota(req, 'parse-resume', String(deviceId ?? ''))
     return NextResponse.json({ data: normalizedData })
   } catch (e) {
     console.error('parse-resume route error:', e)

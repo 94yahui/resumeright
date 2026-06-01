@@ -80,7 +80,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
 
           {/* ── Green gradient header ── */}
           <div style={{
-            background: 'linear-gradient(180deg, #07C160 0%, rgba(7,193,96,0.08) 100%)',
+            background: 'linear-gradient(180deg, var(--highlight) 0%, var(--paper) 100%)',
             padding: '18px 20px 28px',
             textAlign: 'center',
             position: 'relative',
@@ -110,7 +110,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
               />
             </div>
 
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '12px', color: 'var(--ink)', lineHeight: 1.5 }}>
               扫码关注「简力全开」后，发送
               <span style={{ fontWeight: 700, margin: '0 2px' }}>登录</span>
               获取验证码
@@ -121,7 +121,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
           <div style={{ padding: '20px 20px 24px' }}>
             {success ? (
               <div style={{ textAlign: 'center', padding: '12px 0', color: '#07C160', fontSize: '17px', fontWeight: 600 }}>
-                ✓ 登录成功！
+                登录成功！
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
@@ -158,7 +158,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
                   disabled={!canSubmit}
                   style={{
                     width: '100%',
-                    background: canSubmit ? 'var(--theme-blue)' : '#d1d5db',
+                    background: canSubmit ? 'var(--highlight)' : '#d1d5db',
                     color: '#fff', border: 'none', borderRadius: '8px',
                     padding: '11px', fontSize: '15px', fontWeight: 600,
                     cursor: canSubmit ? 'pointer' : 'default',

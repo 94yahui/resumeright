@@ -3,7 +3,8 @@ import Link from 'next/link'
 import whiteLogo from "../../../public/logo-white.png"
 import Image from 'next/image'
 import { useState, useEffect, useRef } from 'react'
-import { Eye, Download, Save, Undo2, Redo2 } from 'lucide-react'
+import { Eye, Download, Undo2, Redo2 } from 'lucide-react'
+import { UserDropdown } from '../../components/UserProfile'
 
 interface Props {
   docTitle: string
@@ -15,19 +16,35 @@ interface Props {
   onRedo: () => void
   canUndo: boolean
   canRedo: boolean
-  onSave: () => void
   isMobile?: boolean
   onNewResume?: () => void
   onImportFile?: () => void
   onTranslate?: () => void
   translateLoading?: boolean
   disabled?: boolean
+  userInfo?: {
+    loggedIn: boolean
+    avatar?: string | null
+    openid?: string | null
+    nickname?: string | null
+    membership?: { plan: string; purchased_at: number; expires_at?: number } | null
+    isStudent?: boolean
+    loading?: boolean
+    freeAnalyzeUsed?: number
+    dailyAnalyzeUsed?: number
+    dailyTranslateUsed?: number
+    dailyImportUsed?: number
+    onShowLogin?: () => void
+    onLogout?: () => void
+    onUpgrade?: () => void
+    onRefreshAuth?: () => void
+  }
 }
 
 export default function EditorTopbar({
   docTitle, setDocTitle, onPreview, onAIAnalyze, onDownload,
-  onUndo, onRedo, canUndo, canRedo, onSave, isMobile,
-  onNewResume, onImportFile, onTranslate, translateLoading, disabled,
+  onUndo, onRedo, canUndo, canRedo, isMobile,
+  onNewResume, onImportFile, onTranslate, translateLoading, disabled, userInfo,
 }: Props) {
   const [dropOpen, setDropOpen] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -73,7 +90,9 @@ export default function EditorTopbar({
             border: '1px solid rgba(255,255,255,0.1)',
             color: 'rgba(255,255,255,0.9)',
             fontFamily: 'var(--font-sans)', fontSize: '13px',
-            outline: 'none', width: '140px', cursor: 'text',
+            outline: 'none',
+            width: isMobile ? '90px' : '140px',
+            cursor: 'text',
             padding: '0 8px', borderRadius: '5px',
             transition: 'background 0.15s, border-color 0.15s',
           }}
@@ -165,19 +184,62 @@ export default function EditorTopbar({
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
         {!isMobile && (
-          <button onClick={disabled ? undefined : onSave} disabled={disabled} style={{ ...tbBtn, display: 'flex', alignItems: 'center', gap: '5px', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-            <Save size={13} /> 保存
-          </button>
-        )}
-        {!isMobile && (
           <button onClick={disabled ? undefined : onPreview} disabled={disabled} style={{ ...tbBtn, display: 'flex', alignItems: 'center', gap: '5px', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
             <Eye size={13} /> 预览
           </button>
         )}
         <button onClick={disabled ? undefined : onAIAnalyze} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))', borderColor: 'var(--paper)', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>✦ {isMobile ? 'AI' : 'AI 优化'}</button>
         <button onClick={disabled ? undefined : onDownload} disabled={disabled} style={{ ...tbBtn, background: disabled ? 'rgba(255,255,255,0.06)' : 'var(--theme-blue)', borderColor: disabled ? 'rgba(255,255,255,0.15)' : 'var(--theme-blue)', color: disabled ? 'rgba(255,255,255,0.3)' : 'var(--paper)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-          <Download size={13} /> {isMobile ? '下载' : '下载 PDF'}
+         {isMobile ? '下载' : '下载 PDF'}
         </button>
+        {userInfo !== undefined && (
+          <>
+            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+            {userInfo.loading && !userInfo.loggedIn ? (
+              // Auth still resolving — show a neutral skeleton to avoid the login-button flash
+              <div style={{
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.1)',
+                flexShrink: 0,
+              }} />
+            ) : userInfo.loggedIn ? (
+              <UserDropdown
+                avatar={userInfo.avatar}
+                nickname={userInfo.nickname}
+                openid={userInfo.openid}
+                membership={userInfo.membership}
+                isStudent={userInfo.isStudent}
+                freeAnalyzeUsed={userInfo.freeAnalyzeUsed}
+                dailyAnalyzeUsed={userInfo.dailyAnalyzeUsed}
+                dailyTranslateUsed={userInfo.dailyTranslateUsed}
+                dailyImportUsed={userInfo.dailyImportUsed}
+                onLogout={userInfo.onLogout ?? (() => {})}
+                onUpgrade={userInfo.onUpgrade}
+                onRefreshAuth={userInfo.onRefreshAuth}
+                dark
+                compact
+              />
+            ) : (
+              <button
+                onClick={userInfo.onShowLogin}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  height: '28px', padding: '0 12px',
+                  background: '#374151', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+                  fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  transition: 'background 0.15s',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#4b5563')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#374151')}
+              >
+                登录
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

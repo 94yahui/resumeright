@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { guardAI, checkServerQuota } from '../_guard'
+import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
 
-const QWEN_BASE  = process.env.QWEN_BASE_URL  || 'https://dashscope-us.aliyuncs.com/compatible-mode/v1'
-const QWEN_MODEL = process.env.QWEN_MODEL     || 'qwen-plus'
+const QWEN_BASE  = process.env.QWEN_BASE_URL  || 'https://api.deepseek.com'
+const QWEN_MODEL = process.env.QWEN_MODEL     || 'deepseek-chat'
 
 async function qwen(prompt: string, apiKey: string): Promise<unknown> {
   const res = await fetch(`${QWEN_BASE}/chat/completions`, {
@@ -13,7 +13,6 @@ async function qwen(prompt: string, apiKey: string): Promise<unknown> {
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      enable_thinking: false,
     }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -128,6 +127,7 @@ ${JSON.stringify(snippet)}`
       volunteer: volResult.cleanArr,
     }
 
+    await incrementQuota(req, 'compress', deviceId)
     return NextResponse.json({
       data: result,
       bulletDiffs: allDiffs,

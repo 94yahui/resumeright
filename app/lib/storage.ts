@@ -2,6 +2,7 @@
 const DRAFT_KEY = 'resumecraft_draft'
 const HISTORY_KEY = 'resumecraft_history'
 const PAID_KEY = 'resumecraft_paid'
+const GUEST_IDS_KEY = 'rc_guest_ids'
 
 import type { ResumeData } from './types'
 import { getFreeAnalyzeUsed, setFreeAnalyzeUsed, getPayments, setPayments, PLAN_DURATION_MS, type PaymentRecord } from './payment'
@@ -41,6 +42,50 @@ export function saveDraft(state: DraftState): void {
 export function clearDraft(): void {
   if (typeof window === 'undefined') return
   try { localStorage.removeItem(DRAFT_KEY) } catch {}
+}
+
+/** Wipe all resume-related local data on logout — history, draft, anonymous work. */
+export function clearLocalResumeData(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(HISTORY_KEY)
+    localStorage.removeItem(PAID_KEY)
+    localStorage.removeItem('anonymous_resume')
+    localStorage.removeItem(GUEST_IDS_KEY)
+  } catch {}
+}
+
+/** Immediately wipe all guest resume data when the guest leaves the editor page. */
+export function clearGuestResumesNow(): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(HISTORY_KEY)
+    localStorage.removeItem(GUEST_IDS_KEY)
+  } catch {}
+}
+
+// ── Guest resume ID tracking ───────────────────────────────────────────────────
+
+export function getGuestIds(): string[] {
+  if (typeof window === 'undefined') return []
+  try { return JSON.parse(localStorage.getItem(GUEST_IDS_KEY) || '[]') } catch { return [] }
+}
+
+export function addGuestId(id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const ids = getGuestIds()
+    if (!ids.includes(id)) {
+      localStorage.setItem(GUEST_IDS_KEY, JSON.stringify([...ids, id]))
+    }
+  } catch {}
+}
+
+export function clearGuestIds(): void {
+  if (typeof window === 'undefined') return
+  try { localStorage.removeItem(GUEST_IDS_KEY) } catch {}
 }
 
 export function loadHistory(): HistoryEntry[] {
@@ -200,9 +245,12 @@ export async function syncResumesWithCloud(): Promise<boolean> {
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(sorted)) } catch {}
   }
 
-  // Upload local-only or locally-newer entries to cloud
+  // Upload local-only or locally-newer entries to cloud,
+  // but skip entries still pending a guest-sync decision (user hasn't accepted yet)
+  const guestPending = new Set(getGuestIds())
   const cloudMap = new Map(cloud.map(c => [c.id, c]))
   const uploads = sorted.filter(e => {
+    if (guestPending.has(e.id)) return false
     const cv = cloudMap.get(e.id)
     return !cv || e.savedAt > cv.savedAt
   })

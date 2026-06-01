@@ -22,6 +22,14 @@ function lookupEnvCode(code: string): EnvCodeConfig | null {
 
 // ── POST /api/redeem-code ─────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  // Require login so the plan is persisted to the user account (not just localStorage)
+  const token = req.cookies.get('rc_token')?.value
+  const payload = token ? verifyToken(token) : null
+  if (!payload) {
+    return NextResponse.json({ valid: false, error: '请先登录后再兑换' }, { status: 401 })
+  }
+  const openid = payload.openid as string
+
   const body = await req.json()
   const code: string = typeof body?.code === 'string' ? body.code.trim().toUpperCase() : ''
   if (!code) {
@@ -36,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Production: MongoDB single-use
-  const { getPromoCollection } = await import('../../lib/mongodb')
+  const { getPromoCollection, getUserCollection } = await import('../../lib/mongodb')
   const col = await getPromoCollection()
 
   const doc = await col.findOne({ _id: code })
@@ -44,23 +52,29 @@ export async function POST(req: NextRequest) {
   if (doc.usedAt) return NextResponse.json({ valid: false, error: '此兑换码已被使用' })
 
   const now = Date.now()
-  await col.updateOne({ _id: code }, { $set: { usedAt: now } })
-
-  // If logged in, persist the membership to the user doc so it syncs across devices
-  const token = req.cookies.get('rc_token')?.value
-  if (token) {
-    const payload = verifyToken(token)
-    if (payload) {
-      const { getUserCollection } = await import('../../lib/mongodb')
-      const { PLAN_DURATION_MS } = await import('../../lib/payment')
-      const users = await getUserCollection()
-      const expiresAt = PLAN_DURATION_MS[doc.plan] ? now + PLAN_DURATION_MS[doc.plan] : undefined
-      await users.updateOne(
-        { openid: payload.openid as string },
-        { $set: { membership: { plan: doc.plan, purchased_at: now, expires_at: expiresAt }, updated_at: now } }
-      )
-    }
+  // Atomic claim: only succeeds if usedAt is still unset, preventing concurrent redemptions.
+  const claimResult = await col.updateOne(
+    { _id: code, usedAt: { $exists: false } },
+    { $set: { usedAt: now } },
+  )
+  if (claimResult.modifiedCount === 0) {
+    return NextResponse.json({ valid: false, error: '此兑换码已被使用' })
   }
+
+  // Persist membership to user doc (openid always present — login required above)
+  const { PLAN_DURATION_MS } = await import('../../lib/payment')
+  const users = await getUserCollection()
+  let expiresAt: number | undefined
+  if (PLAN_DURATION_MS[doc.plan]) {
+    const existing = await users.findOne({ openid }, { projection: { membership: 1 } })
+    const m = existing?.membership as { plan?: string; expires_at?: number } | null
+    const currentExpiry = (m && m.plan !== 'single' && m.expires_at) ? m.expires_at : 0
+    expiresAt = Math.max(currentExpiry, now) + PLAN_DURATION_MS[doc.plan]
+  }
+  await users.updateOne(
+    { openid },
+    { $set: { membership: { plan: doc.plan, purchased_at: now, expires_at: expiresAt }, updated_at: now } }
+  )
 
   return NextResponse.json({ valid: true, plan: doc.plan, label: doc.label ?? null })
 }

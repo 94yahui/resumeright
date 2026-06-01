@@ -264,24 +264,31 @@ export default function RightPanel({
                     onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
                     onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
                   />
-                  <button
-                    onClick={() => {
-                      const updated = [...(data.customContacts || [])]
-                      updated[i] = { ...updated[i], isInfo: !cc.isInfo }
-                      onUpdate({ customContacts: updated })
-                    }}
-                    title={cc.isInfo ? '当前归类为"基本信息"，点击改为"联系方式"' : '当前归类为"联系方式"，点击改为"基本信息"'}
-                    style={{
-                      padding: '2px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: 600,
-                      cursor: 'pointer', flexShrink: 0, lineHeight: '16px',
-                      border: cc.isInfo ? '1px solid #8b5cf6' : '1px solid var(--theme-blue)',
-                      background: cc.isInfo ? '#f5f3ff' : '#eff6ff',
-                      color: cc.isInfo ? '#7c3aed' : 'var(--theme-blue)',
-                      fontFamily: 'var(--font-sans)',
-                    }}
-                  >
-                    {cc.isInfo ? '基本信息' : '联系方式'}
-                  </button>
+                  <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', flexShrink: 0 }}>
+                    {([
+                      { label: '联系方式', active: !cc.isInfo, value: false as boolean },
+                      { label: '基本信息', active: !!cc.isInfo, value: true as boolean },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.label}
+                        onClick={() => {
+                          if (opt.active) return
+                          const updated = [...(data.customContacts || [])]
+                          updated[i] = { ...updated[i], isInfo: opt.value }
+                          onUpdate({ customContacts: updated })
+                        }}
+                        style={{
+                          padding: '2px 7px', fontSize: '10px', fontWeight: 600, lineHeight: '16px',
+                          cursor: opt.active ? 'default' : 'pointer', border: 'none',
+                          background: opt.active
+                            ? (opt.value ? '#8b5cf6' : 'var(--theme-blue)')
+                            : '#f8fafc',
+                          color: opt.active ? 'white' : '#94a3b8',
+                          fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
+                        }}
+                      >{opt.label}</button>
+                    ))}
+                  </div>
                   <button
                     onClick={() => {
                       const updated = [...(data.customContacts || [])]

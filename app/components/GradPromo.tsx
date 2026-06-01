@@ -2,19 +2,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { GraduationCap, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { StudentModal } from '../editor/components/Modals'
-import { getDeviceId, isStudent } from '../lib/payment'
+import { getDeviceId } from '../lib/payment'
+import { useAuth } from '../hooks/useAuth'
 
-export default function GradPromo() {
+export default function GradPromo({ onLoginRequest }: { onLoginRequest: (afterLogin: () => void) => void }) {
+  const auth = useAuth()
   const [open, setOpen] = useState(false)
   const [studentOpen, setStudentOpen] = useState(false)
-  const [verified, setVerified] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Hide immediately if student already verified in a prior session
-  useEffect(() => {
-    if (isStudent(getDeviceId())) setVerified(true)
-  }, [])
+  // When logged in, trust server; when logged out, widget should always show
+  const isVerified = auth.loggedIn && !auth.loading ? auth.isStudent : false
 
   // Collapse when clicking outside (skip when modal is open to avoid misfire)
   useEffect(() => {
@@ -28,7 +27,7 @@ export default function GradPromo() {
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [open, studentOpen])
 
-  if (dismissed || verified) return null
+  if (dismissed || isVerified) return null
 
   return (
     <>
@@ -81,12 +80,18 @@ export default function GradPromo() {
                 全场 5 折
               </div>
               <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, whiteSpace: 'nowrap' }}>
-                学生邮箱认证，立即享受折扣
+                在校学生认证，立即享受折扣
               </div>
             </div>
 
             <button
-              onClick={() => setStudentOpen(true)}
+              onClick={() => {
+                if (!auth.loggedIn) {
+                  onLoginRequest(() => setStudentOpen(true))
+                  return
+                }
+                setStudentOpen(true)
+              }}
               style={{
                 padding: '8px 14px', borderRadius: '7px', border: 'none',
                 background: '#fbbf24', color: '#1a1a1a',
@@ -158,9 +163,8 @@ export default function GradPromo() {
           deviceId={getDeviceId()}
           onClose={() => setStudentOpen(false)}
           onSuccess={() => {
-            setVerified(true)
             setStudentOpen(false)
-            // Notify other components (e.g. Pricing) to refresh student status
+            auth.refresh()
             window.dispatchEvent(new CustomEvent('rc:studentVerified'))
           }}
         />

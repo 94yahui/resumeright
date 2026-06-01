@@ -34,6 +34,8 @@ interface Props {
   bulletDiffs?: Record<string, string[]>
   /** Skills checked in the AI panel but not yet applied — shown in --highlight color in real-time */
   pendingSkills?: string[]
+  /** Override language for section titles — takes precedence over data.resumeLang */
+  isEnglish?: boolean
 }
 
 const PAGE_WIDTH = 794   // A4 width @ 96dpi
@@ -41,7 +43,7 @@ const PAGE_HEIGHT = 1123 // A4 height @ 96dpi
 
 export default function ResumeRenderer({
   data, template, color, interactive = false, selection, onSelect, onPhotoUpload, onReorderSection, pageCount = 1,
-  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections, bulletDiffs, pendingSkills,
+  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections, bulletDiffs, pendingSkills, isEnglish,
 }: Props) {
 
   // Internal fallbacks used when not in a paginated context (thumbnails, print layer, etc.)
@@ -68,7 +70,7 @@ export default function ResumeRenderer({
     interest: '兴趣爱好', language: '语言能力',
     summary: '个人简介', skills: '专业技能', contact: '联系方式',
   }
-  const T = (k: string): string => (data.resumeLang === 'en' ? EN : ZH)[k] ?? k
+  const T = (k: string): string => ((isEnglish ?? data.resumeLang === 'en') ? EN : ZH)[k] ?? k
 
   // Scale font sizes and vertical spacings only — structural dimensions (widths, sidebar fills) are untouched
   const sc = data.fontScale ?? 1
@@ -509,9 +511,9 @@ export default function ResumeRenderer({
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '4px 12px', borderRadius: '4px',
                 fontSize: s(11.5), lineHeight: 1, fontWeight: 600,
-                background: 'rgba(255,103,0,0.08)',
-                color: 'var(--highlight)',
-                border: '1px solid rgba(255,103,0,0.25)',
+                background: 'var(--highlight)',
+                color: '#fff',
+                border: '1px solid var(--highlight)',
               }}>{sk}</span>
             ))}
           </div>
@@ -531,9 +533,9 @@ export default function ResumeRenderer({
             </div>
           ))}
           {(pendingSkills ?? []).map((sk, i) => (
-            <div key={`ps_${i}`} style={{ fontSize: s(12), color: 'var(--highlight)', fontWeight: 600, marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div key={`ps_${i}`} style={{ fontSize: s(12), marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--highlight)', flexShrink: 0 }} />
-              {sk}
+              <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
             </div>
           ))}
         </div>

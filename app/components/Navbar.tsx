@@ -6,13 +6,17 @@ import whiteLogo from "../../public/logo-white.png";
 import Image from 'next/image'
 import { useAuth } from '../hooks/useAuth'
 import WechatLoginModal from './WechatLoginModal'
+import { UserDropdown, KickedOutModal } from './UserProfile'
+import { clearLocalResumeData } from '../lib/storage'
 
+// ── Navbar ─────────────────────────────────────────────────────────────────────
 export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }) {
   const [scrolled, setScrolled]       = useState(false);
   const [showLogin, setShowLogin]     = useState(false);
   const [showQrHint, setShowQrHint]   = useState(false);
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { loggedIn, loading, logout, refresh } = useAuth();
+  const auth = useAuth();
+  const { loggedIn, loading, openid, nickname, avatar, membership, isStudent, freeAnalyzeUsed, kickedOut, logout, refresh } = auth;
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
@@ -21,7 +25,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  // Auto-show QR hint ~1s after auth resolves (desktop only — hidden via CSS on mobile)
+  // Auto-show QR hint ~1s after auth resolves (desktop only)
   useEffect(() => {
     if (!loading && !loggedIn) {
       const show = setTimeout(() => {
@@ -32,27 +36,50 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
     }
   }, [loading, loggedIn]);
 
+  // Auto-open login if redirected after logout (?auth=login)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.search.includes('auth=login')) {
+      setShowLogin(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
   const onLoginEnter = () => {
     if (hintTimer.current) clearTimeout(hintTimer.current);
     setShowQrHint(true);
   };
   const onLoginLeave = () => {
-    hintTimer.current = setTimeout(() => setShowQrHint(false), 1500);
+    hintTimer.current = setTimeout(() => setShowQrHint(false), 200);
   };
 
   const handleLoginSuccess = () => {
     setShowLogin(false);
     refresh();
+    window.dispatchEvent(new Event('rc:login'));
   };
 
-  const loginBtnStyle: React.CSSProperties = {
-    background: 'var(--theme-blue)', color: '#fff', border: 'none',
-    padding: '8px 14px', borderRadius: '8px',
-    fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-  };
+  const handleLogout = async () => {
+    clearLocalResumeData()
+    await logout()
+    window.location.replace('/')
+  }
+
+  const handleUpgrade = () => {
+    window.location.href = '/#pricing'
+  }
+
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    lineHeight: '1', border: 'none', cursor: 'pointer',
+    padding: '10px 16px', borderRadius: '8px',
+    fontSize: '14px', fontWeight: 500,
+  }
 
   return (
     <>
+      {kickedOut && <KickedOutModal />}
+
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         background: scrolled ? "rgba(250,250,250,0.88)" : "transparent",
@@ -77,7 +104,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
             { label: '简历优化✦', href: '#analysis' },
             { label: '模板', href: '#templates' },
             { label: 'AI功能', href: '#ai' },
-            { label: '定价', href: '#pricing' },
+            { label: '升级会员', href: '#pricing' },
           ].map(({ label, href }) => (
             <a key={label} href={href} style={{
               fontSize: "14px", fontWeight: 500, color: "var(--ink2)",
@@ -91,11 +118,18 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
           {/* Auth controls */}
           {!loading && (
             loggedIn
-              ? <button onClick={logout} style={{
-                  background: 'none', border: '1px solid var(--paper3)',
-                  color: 'var(--ink2)', padding: '7px 14px', borderRadius: '8px',
-                  fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-                }}>退出登录</button>
+              ? (
+                <UserDropdown
+                  avatar={avatar}
+                  nickname={nickname}
+                  openid={openid}
+                  membership={membership}
+                  isStudent={isStudent}
+                  freeAnalyzeUsed={freeAnalyzeUsed}
+                  onLogout={handleLogout}
+                  onUpgrade={handleUpgrade}
+                />
+              )
               : (
                 /* Login button + QR hint tooltip */
                 <div style={{ position: 'relative' }}>
@@ -103,10 +137,10 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
                     onClick={() => setShowLogin(true)}
                     onMouseEnter={onLoginEnter}
                     onMouseLeave={onLoginLeave}
-                    style={loginBtnStyle}
+                    style={{ ...btnBase, background: 'var(--highlight)', color: '#fff' }}
                   >登录</button>
 
-                  {/* QR tooltip — hidden on mobile via .login-qr-hint CSS */}
+                  {/* QR tooltip */}
                   <div
                     className="login-qr-hint"
                     onMouseEnter={onLoginEnter}
@@ -122,7 +156,6 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
                       zIndex: 20,
                     }}
                   >
-                    {/* Arrow pointing up, aligned to button center */}
                     <div style={{
                       width: 0, height: 0,
                       borderLeft: '7px solid transparent',
@@ -149,43 +182,45 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
           )}
 
           <Link href="/editor" className="nav-cta" style={{
+            ...btnBase,
             background: "var(--ink)", color: "var(--paper)",
-            padding: "8px 18px", borderRadius: "8px",
-            fontSize: "13px", fontWeight: 500,
-            textDecoration: "none", transition: "background 0.2s", display: "inline-block",
+            padding: "10px 18px", textDecoration: "none",
+            transition: "background 0.2s",
           }}
             onMouseEnter={e => (e.currentTarget.style.background = "var(--ink2)")}
             onMouseLeave={e => (e.currentTarget.style.background = "var(--ink)")}
-          >免费开始</Link>
+          >{!loading && loggedIn ? '开始编辑' : '免费开始'}</Link>
         </div>
 
-        {/* Mobile: login + start */}
+        {/* Mobile: login/user dropdown + start */}
         <div className="nav-mobile-cta" style={{ display: "none", alignItems: "center", gap: "8px" }}>
           {!loading && !loggedIn && (
             <button
               onClick={() => setShowLogin(true)}
               style={{
-                background: 'var(--theme-blue)', color: '#fff', border: 'none',
-                padding: '7px 12px', borderRadius: '8px',
-                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                ...btnBase,
+                background: 'var(--highlight)', color: '#fff',
+                padding: '8px 16px',
               }}
             >登录</button>
           )}
           {!loading && loggedIn && (
-            <button
-              onClick={logout}
-              style={{
-                background: 'var(--ink)', color: '#fff', border: 'none',
-                padding: '7px 12px', borderRadius: '8px',
-                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-              }}
-            >退出</button>
+            <UserDropdown
+              avatar={avatar}
+              nickname={nickname}
+              openid={openid}
+              membership={membership}
+              isStudent={isStudent}
+              freeAnalyzeUsed={freeAnalyzeUsed}
+              onLogout={handleLogout}
+              onUpgrade={handleUpgrade}
+            />
           )}
           <Link href="/editor" style={{
+            ...btnBase,
             background: "var(--ink)", color: "var(--paper)",
-            padding: "7px 16px", borderRadius: "8px",
-            fontSize: "13px", fontWeight: 500, textDecoration: "none",
-          }}>开始</Link>
+            padding: "8px 16px", textDecoration: "none",
+          }}>{!loading && loggedIn ? '开始编辑' : '开始'}</Link>
         </div>
       </nav>
 

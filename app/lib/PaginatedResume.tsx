@@ -38,6 +38,7 @@ interface Props {
   aiSuggestionSections?: Set<string>
   bulletDiffs?: Record<string, string[]>
   pendingSkills?: string[]
+  isEnglish?: boolean
 }
 
 /**
@@ -70,7 +71,7 @@ function getSidebarOverlay(layout: string): { left: number; right: number } | nu
 
 export default function PaginatedResume({
   data, template, color, interactive, selection, onSelect, onPhotoUpload, onPagesChange,
-  onReorderSection, showWatermark, externalBreakPoints, onBreakPointsChange, onMeasure, aiSuggestionSections, bulletDiffs, pendingSkills,
+  onReorderSection, showWatermark, externalBreakPoints, onBreakPointsChange, onMeasure, aiSuggestionSections, bulletDiffs, pendingSkills, isEnglish,
 }: Props) {
   const measureRef = useRef<HTMLDivElement>(null)
   const [internalPages, setInternalPages] = useState(1)
@@ -214,6 +215,7 @@ export default function PaginatedResume({
             <ResumeRenderer
               data={data} template={template} color={color}
               interactive={interactive} pageCount={1}
+              isEnglish={isEnglish}
             />
           </div>
         </div>
@@ -267,6 +269,7 @@ export default function PaginatedResume({
                     aiSuggestionSections={aiSuggestionSections}
                     bulletDiffs={bulletDiffs}
                     pendingSkills={pendingSkills}
+                    isEnglish={isEnglish}
                   />
                 </div>
                 {/* Top overlay for continuation pages: hides page-1 tail that bleeds into y=0 */}
@@ -322,6 +325,7 @@ export default function PaginatedResume({
                       aiSuggestionSections={aiSuggestionSections}
                       bulletDiffs={bulletDiffs}
                       pendingSkills={pendingSkills}
+                      isEnglish={isEnglish}
                     />
                   </div>
                 </div>

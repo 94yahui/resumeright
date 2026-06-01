@@ -9,15 +9,12 @@ export async function POST(req: NextRequest) {
   const payload = verifyToken(token)
   if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { email } = await req.json() as { email?: string }
-  if (!email) return NextResponse.json({ error: 'missing email' }, { status: 400 })
-
   const openid = payload.openid as string
   const now = Date.now()
   const users = await getUserCollection()
   await users.updateOne(
     { openid },
-    { $set: { student: { email, certified_at: now, expires_at: now + 365 * 86_400_000 }, updated_at: now } }
+    { $set: { student: { certified_at: now, expires_at: now + 365 * 86_400_000 }, updated_at: now } }
   )
   return NextResponse.json({ ok: true })
 }

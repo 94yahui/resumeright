@@ -77,7 +77,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
                 AI
               </em>
-              助力，快速打造
+              助力，极速打造
             </div>
             <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
               专业
@@ -94,7 +94,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               fontWeight: 300,
             }}
           >
-            模块化编辑 · AI 定向优化 · 专业模板一键套用
+            模块化编辑 · AI 深度定向优化 · 专业模板一键套用
             <br />
             几分钟完成一份让你脱颖而出的简历
           </p>
@@ -133,7 +133,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              创建简历 <span style={{ fontSize: "16px" }}>→</span>
+              创建简历
             </Link>
 
             <button

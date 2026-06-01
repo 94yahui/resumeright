@@ -6,30 +6,42 @@ import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
 import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal } from './components/Modals'
+import WechatLoginModal from '../components/WechatLoginModal'
 import ImportLoadingBar from '../components/ImportLoadingBar'
+import { KickedOutModal } from '../components/UserProfile'
+import PaymentSuccessToast from '../components/PaymentSuccessToast'
 import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
 import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
-import { getTemplate } from '../lib/templates-config'
+import { takePendingImport } from '../lib/pendingImport'
+import { getTemplate, AccentStyle, FontPair } from '../lib/templates-config'
 import {
-  loadDraft, saveDraft, clearDraft,
+  loadDraft, saveDraft, clearDraft, clearLocalResumeData,
   loadHistory, saveToHistory, deleteHistory, updateHistoryEntry, sortAndSaveHistory,
   loadPaidTemplates, addPaidTemplate, uniqueHistoryName,
   upsertCloudResume, deleteCloudResume, syncResumesWithCloud,
-  syncFreeAnalyzeOnLogin, incrementFreeAnalyzeOnServer, syncOrdersFromServer,
+  syncFreeAnalyzeOnLogin, syncOrdersFromServer,
+  clearGuestResumesNow,
   type HistoryEntry, type DraftState,
 } from '../lib/storage'
 import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
   hasNoWatermark, checkUsage, recordUsage, cleanOldUsage, getDailyCount,
+  getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT,
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, hasSessionHint } from '../hooks/useAuth'
 
 const HISTORY_LIMIT = 30
+
+/** Read the rc_mem_hint cookie (set by auth/me) to get optimistic subscription state. */
+function hasSubHintCookie(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split(';').some(c => c.trim().startsWith('rc_mem_hint=1'))
+}
 
 const CJK = /[一-鿿　-〿＀-￯]/
 function looksEnglish(d: ResumeData): boolean {
@@ -45,6 +57,9 @@ const TRANSLATE_STAGES = [
   { after: 18000, msg: '即将完成，请稍候…' },
 ]
 
+
+// Deferred guest-clear timer — cancelled if the editor remounts before it fires (React StrictMode).
+let _guestClearTimer: ReturnType<typeof setTimeout> | null = null
 
 // Strings that are never real user content — added as defaults when a new entry is created.
 // Filtered from the PDF print layer so users don't accidentally export placeholder text.
@@ -91,28 +106,29 @@ function EditorInner() {
   // ============ Editor state ============
   const [templateId, setTemplateId] = useState(initTemplate)
   const [color, setColor] = useState<string | undefined>(undefined)
+  const [accentStyleOverride, setAccentStyleOverride] = useState<AccentStyle | undefined>(undefined)
+  const [fontPairOverride, setFontPairOverride] = useState<FontPair | undefined>(undefined)
   const [selection, setSelection] = useState<SelectionType>({ kind: 'none' })
   const [zoom, setZoom] = useState(70)
   const [docTitle, setDocTitle] = useState('我的简历')
+  const [showEditorLogin, setShowEditorLogin] = useState(false)
   const [modal, setModal] = useState<'none' | 'download'>('none')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
-  const [aiPanelFlow, setAiPanelFlow] = useState<'current' | 'upload'>('current')
   const [aiPanelPhase, setAiPanelPhase] = useState<'entry' | 'analyzing' | 'result' | 'applying'>('entry')
-  const [aiUploadFilename, setAiUploadFilename] = useState('')
-  const [aiUploadObjectUrl, setAiUploadObjectUrl] = useState<string | null>(null)
-  const [aiTemplateApplied, setAiTemplateApplied] = useState(false)
-  const [aiAnalysis, setAiAnalysis] = useState<{ hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; interviewQuestions?: string[]; interviewAnswers?: string[]; missingSkills?: string[]; jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null; matchBreakdown?: { experience: number; skills: number; other: number } | null } | null>(null)
+  const [aiAnalysis, setAiAnalysis] = useState<{ hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; missingSkills?: string[]; jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null; matchBreakdown?: { experience: number; skills: number; other: number } | null } | null>(null)
+  const [interviewData, setInterviewData] = useState<{ questions: string[]; answers: string[] } | null>(null)
+  const [interviewLoading, setInterviewLoading] = useState(false)
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set())
   const [bulletDiffs, setBulletDiffs] = useState<Record<string, string[]>>({})
   const [pendingSkills, setPendingSkills] = useState<string[]>([])
-  const [aiParsedData, setAiParsedData] = useState<ResumeData | null>(null)
-  const [aiUploadError, setAiUploadError] = useState<string | undefined>(undefined)
-  const [aiUploadIsWord, setAiUploadIsWord] = useState(false)
   const [jobDescPersist, setJobDescPersist] = useState('')
   const [noResumeOpen, setNoResumeOpen] = useState(false)
   const [importModalState, setImportModalState] = useState<'none' | 'ready' | 'loading'>('none')
   const [importingFile, setImportingFile] = useState('')
+  const [importBanner, setImportBanner] = useState<'free_exhausted' | 'sub_exhausted' | null>(null)
   const importingFileObjRef = useRef<File | null>(null)
+  const importAbortRef = useRef<AbortController | null>(null)
+  const importCancelledRef = useRef(false)
   const [toast, setToast] = useState('')
   const [pageCount, setPageCount] = useState(1)
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
@@ -120,11 +136,13 @@ function EditorInner() {
   const [pngGenerating, setPngGenerating] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
+  const [localFreeAnalyzeUsed, setLocalFreeAnalyzeUsed] = useState(0)  // populated after mount via useEffect
   const [isStudentVerified, setIsStudentVerified] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
   const [studentModalOpen, setStudentModalOpen] = useState(false)
   const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
+  const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | null>(null)
   const translateAbortRef = useRef<AbortController | null>(null)
   const compressAbortRef = useRef<AbortController | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -148,6 +166,14 @@ function EditorInner() {
   const zoomCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const initialized = useRef(false)
   const cloudSyncDone = useRef(false)
+  // True once the canvas is safe to reveal; starts false for logged-in users so DEMO_DATA never flashes.
+  const [canvasReady, setCanvasReady] = useState(() => !hasSessionHint())
+  const loggingOutRef = useRef(false)
+  const loggedInRef = useRef(false)  // mirrors auth.loggedIn for use inside event handler closures
+  const authRefreshRef = useRef<() => void>(() => {})
+  const authFreeAnalyzeUsedRef = useRef(0)
+  const authDailyAnalyzeUsedRef = useRef(0)
+  const authDailyImportUsedRef = useRef(0)
   const cloudPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Immediately apply a zoom value: cancels any pending gesture debounce, syncs
@@ -171,10 +197,16 @@ function EditorInner() {
   // Live refs for use inside event handler closures that can't depend on state
   const isMobileRef = useRef(false)
   const zoomRef = useRef(zoom)
+  const proStatusRef = useRef<ProStatus>(proStatus)
   const prevDocTitleRef = useRef<string | null>(null)
   const pinchRef = useRef<{ startDist: number; startZoom: number } | null>(null)
 
   const template = getTemplate(templateId)
+  const effectiveTemplate = {
+    ...template,
+    accentStyle: accentStyleOverride ?? template.accentStyle,
+    fontPair: fontPairOverride ?? template.fontPair,
+  }
   const effectiveColor = color || template.accentColor
   const isProTemplate = !template.free
   // Watermark: subscription = always off; single = only off for the paid template;
@@ -196,52 +228,191 @@ function EditorInner() {
     const did = getDeviceId()
     setDeviceId(did)
     cleanOldUsage()
+    setLocalFreeAnalyzeUsed(getFreeAnalyzeUsed())
+  }, [])
+
+  // Safety valve: unblock canvas if cloud sync never fires (e.g. network error, expired token).
+  useEffect(() => {
+    const t = setTimeout(() => setCanvasReady(true), 5000)
+    return () => clearTimeout(t)
   }, [])
 
   // Recompute pro status when device, active resume, or server membership changes.
-  // For logged-in subscription users the server membership takes precedence over
-  // localStorage payment records so status syncs across devices instantly.
+  // Server is authoritative for all logged-in users; localStorage is only the fallback for guests.
   useEffect(() => {
     if (!deviceId) return
     const m = auth.membership
     const now = Date.now()
-    if (!auth.loading && auth.loggedIn && m && m.plan !== 'single') {
-      // Subscription from server
-      if (!m.expires_at || m.expires_at > now) {
-        const planLabel = (m.plan === 'trial7' ? 'monthly' : m.plan) as 'monthly' | 'quarterly' | 'yearly'
-        setProStatus({ kind: 'subscription', plan: planLabel, expiresAt: m.expires_at ?? now + 365 * 86_400_000 })
+    if (!auth.loading && auth.loggedIn && m) {
+      if (m.plan !== 'single') {
+        // Subscription confirmed by server
+        if (!m.expires_at || m.expires_at > now) {
+          const planLabel = (m.plan === 'trial7' ? 'monthly' : m.plan) as 'monthly' | 'quarterly' | 'yearly'
+          setProStatus({ kind: 'subscription', plan: planLabel, expiresAt: m.expires_at ?? now + 365 * 86_400_000 })
+        } else {
+          setProStatus({ kind: 'free' })
+        }
       } else {
-        setProStatus({ kind: 'free' })
+        // Single purchase — use server-stored resumeId and DB usage counter
+        const singleResumeId = m.single_resume_id ?? null
+        if (singleResumeId && currentHistoryId && singleResumeId === currentHistoryId) {
+          setProStatus({
+            kind: 'single',
+            orderId: '',  // server tracks usage; orderId only needed for legacy localStorage path
+            resumeId: singleResumeId,
+            templateId: m.single_template_id ?? '',
+            aiAnalyzeLeft: Math.max(0, 5 - auth.singleAnalyzeUsed),
+          })
+        } else {
+          // Not viewing the unlocked resume — fall back to localStorage in case there's
+          // a local-only single purchase for this resume (e.g. purchased before login)
+          setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+        }
       }
+    } else if (auth.loading && hasSubHintCookie()) {
+      // Auth still loading but hint cookie says subscriber — show member UI immediately
+      // to avoid the free-user flash while waiting for the API round-trip.
+      // The real state will overwrite this once auth/me responds.
+      setProStatus({ kind: 'subscription', plan: 'monthly', expiresAt: now + 365 * 86_400_000 })
     } else {
       setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
     }
     // For logged-in users, server is the source of truth for student status
     setIsStudentVerified(auth.loggedIn && !auth.loading ? auth.isStudent : isStudentUser(deviceId))
-  }, [deviceId, currentHistoryId, auth.loggedIn, auth.loading, auth.membership, auth.isStudent])
+  }, [deviceId, currentHistoryId, auth.loggedIn, auth.loading, auth.membership, auth.isStudent, auth.singleAnalyzeUsed])
 
   // ============ Cloud sync — pull on login / first auth resolve ============
   useEffect(() => {
     if (auth.loading || !auth.loggedIn || cloudSyncDone.current) return
     cloudSyncDone.current = true
+
     // Sync free AI-analyze count (max(local, server))
     syncFreeAnalyzeOnLogin(auth.freeAnalyzeUsed)
     // Sync paid orders into localStorage so getProStatus works cross-device
     syncOrdersFromServer().then(() => {
       setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
     })
-    // Sync resume history
+    // Sync resume history; auto-load most recent entry when nothing is currently open,
+    // or when the current entry is an unedited blank (DEMO_DATA, user logged in without making edits)
     syncResumesWithCloud().then(changed => {
       if (changed) setHistoryRefreshKey(k => k + 1)
-    })
+      const currentId = loadedFromHistoryId.current
+      // Read and immediately clear the intentional-template flag so it only protects once
+      const fromTemplateId = (() => { try { return sessionStorage.getItem('rc_from_template') || '' } catch { return '' } })()
+      try { sessionStorage.removeItem('rc_from_template') } catch {}
+      const isBlankEntry = currentId
+          && JSON.stringify(latestForAutoSave.current.data) === JSON.stringify(DEMO_DATA)
+          && currentId !== fromTemplateId
+      if (!currentId || isBlankEntry) {
+        const hist = loadHistory()
+        const candidates = isBlankEntry ? hist.filter(e => e.id !== currentId) : hist
+        if (candidates.length > 0) {
+          const recent = candidates.reduce((best, e) => e.savedAt > best.savedAt ? e : best, candidates[0])
+          if (isBlankEntry) {
+            deleteHistory(currentId!)
+            deleteCloudResume(currentId!)
+          }
+          loadedFromHistoryId.current = recent.id
+          setCurrentHistoryId(recent.id)
+          setHistory([recent.data])
+          setHistoryIdx(0)
+          setTemplateId(recent.templateId)
+          setColor(recent.color)
+          setDocTitle(recent.name)
+          setIsCurrentEnglish(recent.isEnglish === true || looksEnglish(recent.data))
+          setHistoryRefreshKey(k => k + 1)
+        } else {
+          // No resumes in cloud or local — show empty state (don't auto-create)
+          if (isBlankEntry && currentId) {
+            deleteHistory(currentId)
+            deleteCloudResume(currentId)
+          }
+          loadedFromHistoryId.current = null
+          setCurrentHistoryId(null)
+          setDocTitle('')
+          setNoResumeOpen(true)
+          setHistoryRefreshKey(k => k + 1)
+        }
+      }
+    }).finally(() => setCanvasReady(true))
+  }, [auth.loading, auth.loggedIn])
+
+  // Reset cloudSyncDone so a re-login re-pulls from cloud.
+  useEffect(() => {
+    if (!auth.loading && !auth.loggedIn) {
+      cloudSyncDone.current = false
+      setCanvasReady(true)  // session hint expired or no session — reveal canvas immediately
+    }
+  }, [auth.loading, auth.loggedIn])
+
+  // For guests with no history: create the initial entry after auth resolves so "我的" shows it.
+  // Skip if the user just logged out (they want a clean slate, not a new blank entry).
+  // This must run AFTER auth, not during init, to avoid uploading a blank entry to logged-in users' cloud.
+  useEffect(() => {
+    if (auth.loading || auth.loggedIn) return               // skip for logged-in users
+    if (!initialized.current) return                        // wait for init
+    if (loadedFromHistoryId.current) return                 // already tracking an entry
+    const hist = loadHistory()
+    if (hist.length > 0) return                             // history appeared from somewhere else
+    // Skip if we just did an editor logout — the user expects an empty state, not a new blank entry
+    try {
+      if (sessionStorage.getItem('rc_just_logged_out')) {
+        sessionStorage.removeItem('rc_just_logged_out')
+        return
+      }
+    } catch {}
+    const { data: d, docTitle: dt, templateId: tid, color: c } = latestForAutoSave.current
+    const newId = saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, savedAt: Date.now() })
+    if (newId) {
+      loadedFromHistoryId.current = newId
+      setCurrentHistoryId(newId)
+      setHistoryRefreshKey(k => k + 1)
+    }
   }, [auth.loading, auth.loggedIn])
 
   // ============ Load draft from localStorage on mount ============
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
+
     const paid = loadPaidTemplates()
     setPaidTemplates(paid)
+
+    // Quick import: user clicked "直接导入" on landing page — parse is in-flight in a module-level promise
+    const pendingImport = takePendingImport()
+    if (pendingImport) {
+      // Mark as in-flight so the guest-entry-creation effect doesn't race and create a blank entry
+      loadedFromHistoryId.current = 'pending'
+      importCancelledRef.current = false
+      setImportModalState('loading')
+      setImportingFile('正在导入简历...')
+      pendingImport
+        .then(({ data: importedRaw, filename }) => {
+          if (importCancelledRef.current) return
+          const parsed = parsedToResumeData(importedRaw)
+          const currentHistory = loadHistory()
+          const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
+          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+          loadedFromHistoryId.current = newId || null
+          setCurrentHistoryId(newId || null)
+          setDocTitle(uniqueName)
+          setHistory([parsed])
+          setHistoryIdx(0)
+          setTemplateId('classic-pro')
+          setColor(undefined)
+          setHistoryRefreshKey(k => k + 1)
+          setIsCurrentEnglish(looksEnglish(parsed))
+          setImportModalState('none')
+          setImportingFile('')
+        })
+        .catch((e: Error) => {
+          if (importCancelledRef.current) return
+          setImportModalState('none')
+          setImportingFile('')
+          showToast(e?.message === 'empty' ? '未检测到简历内容，请上传有效的简历文件' : '导入失败，请在编辑器中重新上传')
+        })
+      return
+    }
 
     // Landing-page import: user uploaded/analyzed a resume on the homepage → stored in sessionStorage
     if (typeof sessionStorage !== 'undefined') {
@@ -265,14 +436,9 @@ function EditorInner() {
           setIsCurrentEnglish(looksEnglish(parsed))
 
           if (analysis) {
-            // Diagnosis flow: parsed data goes into canvas, AI panel opens with results immediately clickable
-            setAiParsedData(parsed)
             setAiAnalysis(analysis)
             setAiPanelOpen(true)
-            setAiPanelFlow('upload')
             setAiPanelPhase('result')
-            setAiUploadFilename(uniqueName)
-            setAiTemplateApplied(true)
           }
           // Simple upload flow: no AI panel — canvas shows parsed data right away
           return
@@ -282,32 +448,50 @@ function EditorInner() {
       }
     }
 
-    // When the user arrives via a template card (?template=xxx) they are explicitly
-    // picking a new template — skip the "continue editing" popup.
-    // For all other entry points (landing page CTA, direct URL) show the popup
-    // whenever there is any saved resume in history.
-    if (!searchParams.get('template')) {
+    // Template card (?template=xxx): start fresh with chosen template
+    if (searchParams.get('template')) {
       const currentHistory = loadHistory()
-      if (currentHistory.length > 0) {
-        // Pick the entry with the most recent savedAt (most recently edited, not just most recently created)
-        const recent = currentHistory.reduce((best, e) => e.savedAt > best.savedAt ? e : best, currentHistory[0])
-        setPendingDraft({
-          data: recent.data,
-          templateId: recent.templateId,
-          color: recent.color,
-          docTitle: recent.name,
-          savedAt: recent.savedAt,
-          historyId: recent.id,
-        })
-        return  // wait for user choice in ContinueModal
+      const initName = uniqueHistoryName('我的简历', currentHistory)
+      const newId = saveToHistory({ name: initName, data: DEMO_DATA, templateId: initTemplate, color: undefined, savedAt: Date.now() })
+      if (newId) {
+        loadedFromHistoryId.current = newId
+        setCurrentHistoryId(newId)
+        // Mark as intentional so cloud sync won't treat it as an unedited blank and delete it
+        try { sessionStorage.setItem('rc_from_template', newId) } catch {}
       }
+      setDocTitle(initName)
+      // Strip ?template param so a page refresh doesn't create another entry
+      window.history.replaceState({}, '', '/editor')
+      return
     }
-    // Fresh start — use a unique name in case "我的简历" already exists
+
+    // Logged-in users: skip localStorage — resumes must come from the DB.
+    // Cloud sync (which runs after auth resolves) is the authoritative source.
+    // hasSessionHint() reads the localStorage auth cache as a proxy for login state
+    // since rc_token is httpOnly and unreadable from JS.
+    if (hasSessionHint()) {
+      setDocTitle('我的简历')
+      return
+    }
+
+    // Guest: load the most recent history entry from localStorage directly.
     const currentHistory = loadHistory()
-    const initName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: initName, data: DEMO_DATA, templateId: initTemplate, color: undefined, savedAt: Date.now() })
-    if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
-    setDocTitle(initName)
+    if (currentHistory.length > 0) {
+      const recent = currentHistory.reduce((best, e) => e.savedAt > best.savedAt ? e : best, currentHistory[0])
+      loadedFromHistoryId.current = recent.id
+      setCurrentHistoryId(recent.id)
+      setHistory([recent.data])
+      setHistoryIdx(0)
+      setTemplateId(recent.templateId)
+      setColor(recent.color)
+      setDocTitle(recent.name)
+      setIsCurrentEnglish(recent.isEnglish === true || looksEnglish(recent.data))
+      return
+    }
+
+    // Completely fresh guest (no history): don't create an entry yet.
+    // The guest-entry creation effect runs after auth resolves so "我的" shows it.
+    setDocTitle('我的简历')
   }, [])
 
   // ============ Auto-save draft to localStorage ============
@@ -319,14 +503,14 @@ function EditorInner() {
     try {
       saveDraft({ data, templateId, color, docTitle, savedAt: now, historyId: hid ?? undefined })
       // Keep the history entry in sync — includes name so renaming the doc updates the list
-      if (hid && hid !== 'draft') {
+      if (hid && hid !== 'draft' && hid !== 'pending') {
         updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: now })
       }
     } catch {
       showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
     }
     // Debounced cloud push: 3 s after the last edit, push the current resume to cloud
-    if (auth.loggedIn && hid && hid !== 'draft') {
+    if (auth.loggedIn && hid && hid !== 'draft' && hid !== 'pending') {
       if (cloudPushTimer.current) clearTimeout(cloudPushTimer.current)
       cloudPushTimer.current = setTimeout(() => {
         const entry = loadHistory().find(h => h.id === hid)
@@ -355,6 +539,12 @@ function EditorInner() {
     latestForAutoSave.current = { data, docTitle, templateId, color }
     isMobileRef.current = isMobile
     zoomRef.current = zoom
+    loggedInRef.current = auth.loggedIn
+    authRefreshRef.current = auth.refresh
+    authFreeAnalyzeUsedRef.current = auth.freeAnalyzeUsed ?? 0
+    authDailyAnalyzeUsedRef.current = auth.dailyAnalyzeUsed ?? 0
+    authDailyImportUsedRef.current = auth.dailyImportUsed ?? 0
+    proStatusRef.current = proStatus
   })
 
   // Pinch-to-zoom (mobile) + Ctrl/Cmd+wheel zoom (desktop trackpad)
@@ -447,24 +637,49 @@ function EditorInner() {
   // Only runs via beforeunload (not cleanup) to avoid false saves on React remounts / refresh.
   // Skipped when the user is editing a resumed draft or history entry to prevent duplicates.
   useEffect(() => {
+    // Cancel any pending guest-clear from a previous unmount (React StrictMode double-invoke).
+    if (_guestClearTimer !== null) {
+      clearTimeout(_guestClearTimer)
+      _guestClearTimer = null
+    }
+
     const saveOnExit = () => {
       if (!initialized.current) return
+      if (loggingOutRef.current) return
       if (loadedFromHistoryId.current) return
       const { data: d, docTitle: dt, templateId: tid, color: c } = latestForAutoSave.current
       saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, savedAt: Date.now() })
       // Re-sort history by savedAt so the most recently edited resume appears first next session
       sortAndSaveHistory()
     }
+    const guestExitOnUnload = () => {
+      // Immediately wipe guest resumes when leaving the editor.
+      // Logged-in users' data lives in the cloud; guests get a clean slate on every session.
+      if (!loggingOutRef.current && !loggedInRef.current) {
+        clearGuestResumesNow()
+      }
+    }
     const abortOnExit = () => {
       aiAnalyzeAbortRef.current?.abort()
       translateAbortRef.current?.abort()
     }
     window.addEventListener('beforeunload', saveOnExit)
+    window.addEventListener('beforeunload', guestExitOnUnload)
     window.addEventListener('beforeunload', abortOnExit)
     return () => {
       window.removeEventListener('beforeunload', saveOnExit)
+      window.removeEventListener('beforeunload', guestExitOnUnload)
       window.removeEventListener('beforeunload', abortOnExit)
-      aiAnalyzeAbortRef.current?.abort()  // client-side navigation (component unmount)
+      // Client-side navigation (Next.js router) triggers unmount, not beforeunload.
+      // Defer the clear so React StrictMode's simulated unmount/remount doesn't wipe data.
+      // The timer is cancelled above if the editor remounts within 200ms.
+      if (!loggingOutRef.current && !loggedInRef.current) {
+        _guestClearTimer = setTimeout(() => {
+          _guestClearTimer = null
+          clearGuestResumesNow()
+        }, 200)
+      }
+      aiAnalyzeAbortRef.current?.abort()
       translateAbortRef.current?.abort()
     }
   }, [])
@@ -601,17 +816,40 @@ function EditorInner() {
     const currentHistory = loadHistory()
     const newName = uniqueHistoryName('我的简历', currentHistory)
     const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
-    if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
+    if (newId) {
+      loadedFromHistoryId.current = newId
+      setCurrentHistoryId(newId)
+      if (auth.loggedIn) {
+        // Immediately push to cloud so it persists across navigation
+        const entry = loadHistory().find(h => h.id === newId)
+        if (entry) upsertCloudResume(entry)
+      }
+    }
     setHistory([DEMO_DATA])
     setHistoryIdx(0)
     setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(newName)
     setIsCurrentEnglish(false)
-  }, [])
+  }, [auth.loggedIn])
+
+  // ============ Editor logout ============
+  const handleEditorLogout = useCallback(async () => {
+    loggingOutRef.current = true   // 阻止 beforeunload 重写已清除的数据
+    // Signal that we just logged out so the blank-entry creation effect skips on reload
+    try { sessionStorage.setItem('rc_just_logged_out', '1') } catch {}
+    clearLocalResumeData()
+    await auth.logout()
+    window.location.reload()
+  }, [auth])
 
   // ============ History (saved drafts) ============
   const handleSaveHistory = useCallback(() => {
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'save'
+      setShowEditorLogin(true)
+      return
+    }
     try {
       saveToHistory({ name: docTitle, data, templateId, color, savedAt: Date.now() })
       setHistoryRefreshKey(k => k + 1)
@@ -620,7 +858,7 @@ function EditorInner() {
     } catch {
       showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
     }
-  }, [docTitle, data, templateId, color, isMobile])
+  }, [docTitle, data, templateId, color, isMobile, auth.loggedIn])
 
 
   // ============ Photo upload ============
@@ -830,7 +1068,26 @@ ${autoprint ? `<script>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, currentHistoryId, auth.refresh])
 
+  // After login, automatically retry the action that triggered the login prompt
+  useEffect(() => {
+    if (auth.loading || !auth.loggedIn) return
+    const action = pendingLoginActionRef.current
+    if (!action) return
+    pendingLoginActionRef.current = null
+    if (action === 'download')   setTimeout(() => handleDownloadAttempt(), 80)
+    if (action === 'save')       setTimeout(() => handleSaveHistory(), 80)
+    if (action === 'translate')  setTimeout(() => handleTranslate(), 80)
+    if (action === 'compress')   setTimeout(() => handleCompress(), 80)
+    if (action === 'unlock_pro') setTimeout(() => handleUnlockPro(), 80)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loggedIn, auth.loading])
+
   const handleDownloadAttempt = useCallback(() => {
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'download'
+      setShowEditorLogin(true)
+      return
+    }
     if (showWatermark) {
       pendingPaywallActionRef.current = { type: 'download' }
       setPaywallTrigger(isProTemplate ? 'download_pro' : 'download_free')
@@ -838,7 +1095,17 @@ ${autoprint ? `<script>
       return
     }
     setModal('download')
-  }, [isProTemplate, showWatermark])
+  }, [isProTemplate, showWatermark, auth.loggedIn])
+
+  const handleUnlockPro = useCallback(() => {
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'unlock_pro'
+      setShowEditorLogin(true)
+      return
+    }
+    setPaywallTrigger('download_pro')
+    setPaywallOpen(true)
+  }, [auth.loggedIn])
 
   // ============ AI Panel ============
   const handleAIAnalyze = useCallback(() => {
@@ -847,37 +1114,47 @@ ${autoprint ? `<script>
     aiAnalyzeAbortRef.current = null
     setSelection({ kind: 'none' })
     setAiPanelOpen(true)
-    setAiPanelFlow('current')
-    setAiTemplateApplied(false)
-    setAiUploadError(undefined)
-    setAiUploadFilename('')
-    setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     // If the resume hasn't changed since the last analysis, restore cached results
     const hasCachedAnalysis = aiAnalysis !== null && aiAnalyzedDataSnapshot.current === JSON.stringify(data)
     if (hasCachedAnalysis) {
       setAiPanelPhase('result')
     } else {
       setAiPanelPhase('entry')
-      setAiAnalysis(null)
+      setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
       setAppliedSuggestions(new Set())
     }
   }, [data, aiAnalysis])
 
   const handleAIAnalyzeCurrent = useCallback(async (jobDesc: string) => {
-    const check = checkUsage(deviceId, 'ai_analyze', proStatus)
-    if (!check.allowed) {
-      if (check.reason === 'not_paid') {
-        setPaywallTrigger('ai_analyze')
-        setPaywallOpen(true)
-      } else {
-        showToast(`今日岗位分析次数已用完（${check.used}/${check.limit} 次）`)
+    if (loggedInRef.current) {
+      const currentStatus = proStatusRef.current
+      const isSub    = currentStatus.kind === 'subscription'
+      const isSingle = currentStatus.kind === 'single'
+      const exhausted = isSub
+        ? authDailyAnalyzeUsedRef.current >= 20
+        : isSingle
+          ? currentStatus.aiAnalyzeLeft <= 0
+          : authFreeAnalyzeUsedRef.current >= FREE_ANALYZE_LIMIT
+      if (exhausted) {
+        if (isSub) {
+          showToast('今日 20 次已用完，明日 00:00 自动重置')
+        } else {
+          setPaywallTrigger('ai_analyze')
+          setPaywallOpen(true)
+        }
+        return
       }
-      return
+    } else {
+      // Read lifetime counter directly from localStorage (avoids daily-counter vs lifetime mismatch)
+      const liveUsed = getFreeAnalyzeUsed()
+      if (liveUsed >= FREE_ANALYZE_LIMIT) {
+        setLocalFreeAnalyzeUsed(liveUsed)  // sync state → button becomes disabled / banner shows
+        return
+      }
     }
     const dataSnapshot = JSON.stringify(data)  // snapshot before async gap
-    setAiPanelFlow('current')
     setAiPanelPhase('analyzing')
-    setAiAnalysis(null)
+    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
     setAppliedSuggestions(new Set())
 
     // Abort any previous in-flight request before starting a new one
@@ -895,11 +1172,21 @@ ${autoprint ? `<script>
       if (res.ok) {
         const result = await res.json()
         recordUsage(deviceId, 'ai_analyze', proStatus)
-        if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
+        setLocalFreeAnalyzeUsed(getFreeAnalyzeUsed())
         setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+        // For logged-in users, refresh from server so dailyAnalyzeUsed / freeAnalyzeUsed are up to date
+        if (loggedInRef.current) void authRefreshRef.current()
         setAiAnalysis(result)
         aiAnalyzedDataSnapshot.current = dataSnapshot
         setAiPanelPhase('result')
+      } else if (res.status === 429) {
+        const errJson = await res.json().catch(() => null)
+        showToast(errJson?.error || '使用次数已达上限，请升级 Pro')
+        setAiPanelPhase('entry')
+        if (loggedInRef.current) void authRefreshRef.current()
+      } else if (res.status === 413) {
+        showToast('工作详情太长了，请精简后重试（最多 6000 字）')
+        setAiPanelPhase('entry')
       } else {
         showToast('AI 开小差了，请稍后重试')
         setAiPanelPhase('entry')
@@ -917,139 +1204,6 @@ ${autoprint ? `<script>
   const jobDescRef = useRef(jobDescPersist)
   useEffect(() => { jobDescRef.current = jobDescPersist }, [jobDescPersist])
 
-  const handleAIFileSelect = useCallback(async (file: File) => {
-    // Check shared AI-analyze quota (free: 2 lifetime, shared with landing page and analyze-current)
-    const analyzeCheck = checkUsage(deviceId, 'ai_analyze', proStatus)
-    if (!analyzeCheck.allowed) {
-      setPaywallTrigger('ai_analyze')
-      setPaywallOpen(true)
-      return
-    }
-    // Check import quota for paid tiers (rate limiting for parse API)
-    if (proStatus.kind !== 'free') {
-      const importCheck = checkUsage(deviceId, 'import', proStatus)
-      if (!importCheck.allowed) {
-        setPaywallTrigger('import_limit')
-        setPaywallOpen(true)
-        return
-      }
-    }
-
-    const filename = file.name.replace(/\.[^.]+$/, '')
-    const isWord = /\.(doc|docx)$/i.test(file.name)
-    prevDocTitleRef.current = latestForAutoSave.current.docTitle
-    setAiUploadFilename(filename)
-    setDocTitle(filename)
-    setAiPanelFlow('upload')
-    setAiUploadIsWord(isWord)
-    if (isWord) {
-      // Word files can't be previewed in an iframe — skip object URL to avoid auto-download
-      setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-    } else {
-      setAiUploadObjectUrl(prev => {
-        if (prev) URL.revokeObjectURL(prev)
-        return URL.createObjectURL(file)
-      })
-    }
-    setAiPanelPhase('analyzing')
-    setAiAnalysis(null)
-    setAiParsedData(null)
-    setAiUploadError(undefined)
-    setAppliedSuggestions(new Set())
-    aiAnalyzedDataSnapshot.current = null  // clear current-resume cache when switching to upload flow
-
-    // Abort any previous in-flight request before starting new ones
-    aiAnalyzeAbortRef.current?.abort()
-    const controller = new AbortController()
-    aiAnalyzeAbortRef.current = controller
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('deviceId', deviceId)
-      const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData, signal: controller.signal })
-      if (res.status === 422) {
-        // Not a resume — show error state
-        const json = await res.json()
-        setAiUploadError(json.error ?? 'not_resume')
-        setAiPanelPhase('result')
-        return
-      }
-      if (!res.ok) {
-        showToast('AI 开小差了，请稍后重试')
-        setAiPanelPhase('entry')
-        return
-      }
-      const json = await res.json()
-      const parsed = parsedToResumeData(json.data ?? {})
-      // Deduct from ai_analyze quota (shared free counter) after successful parse
-      recordUsage(deviceId, 'ai_analyze', proStatus)
-      if (proStatus.kind === 'free') incrementFreeAnalyzeOnServer()
-      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
-      // Also deduct import quota for paid tiers
-      if (proStatus.kind !== 'free') recordUsage(deviceId, 'import', proStatus)
-      setAiParsedData(parsed)
-      // Also run analyze on the parsed data, pass current JD if present
-      const analyzeRes = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: parsed, jobDesc: jobDescRef.current, deviceId }),
-        signal: controller.signal,
-      })
-      if (analyzeRes.ok) setAiAnalysis(await analyzeRes.json())
-      else showToast('AI 分析遇到问题，请稍后重试')
-    } catch (e: unknown) {
-      if (e instanceof Error && e.name === 'AbortError') return
-      console.error('parse-resume error:', e)
-      showToast('AI 开小差了，请稍后重试')
-      setAiPanelPhase('entry')
-      return
-    } finally {
-      if (aiAnalyzeAbortRef.current === controller) aiAnalyzeAbortRef.current = null
-    }
-
-    setAiPanelPhase('result')
-  }, [deviceId, proStatus])
-
-  const handleAIApplyTemplate = useCallback(() => {
-    prevDocTitleRef.current = null  // title is being replaced by upload name; don't restore on close
-    // 1. Save the current resume to history
-    const hid = loadedFromHistoryId.current
-    if (hid && hid !== 'draft') {
-      updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
-    } else {
-      saveToHistory({ name: docTitle || '我的简历', data, templateId, color, savedAt: Date.now() })
-    }
-    // 2. Compute a unique name for the new resume (dedup against current history)
-    const currentHistory = loadHistory()
-    const uniqueName = uniqueHistoryName(aiUploadFilename || '上传简历', currentHistory)
-    // 3. Determine the new resume data (parsed or current)
-    const newData = aiParsedData ?? data
-    // 4. Create the new history entry immediately and track it
-    const newId = saveToHistory({ name: uniqueName, data: newData, templateId, color, savedAt: Date.now() })
-    loadedFromHistoryId.current = newId || null
-    setCurrentHistoryId(newId || null)
-    setDocTitle(uniqueName)
-    // 5. Refresh history panel immediately so the new entry appears
-    setHistoryRefreshKey(k => k + 1)
-    // 6. Start loading animation
-    setAiPanelPhase('applying')
-    setTimeout(() => {
-      // Apply parsed data into the editor and reveal the canvas
-      if (aiParsedData) {
-        setHistory([aiParsedData])
-        setHistoryIdx(0)
-      }
-      setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-      setAiUploadIsWord(false)
-      setAiTemplateApplied(true)
-      setAiPanelPhase('result')
-      setLeftPanelTab('tpl')
-      if (aiParsedData) setIsCurrentEnglish(looksEnglish(aiParsedData))
-    }, 1800)
-  }, [data, templateId, color, docTitle, aiUploadFilename, aiParsedData])
-
-
   const handleCanvasSelect = useCallback((sel: SelectionType) => {
     if (sel.kind !== 'none') setAiPanelOpen(false)
     setSelection(sel)
@@ -1063,17 +1217,11 @@ ${autoprint ? `<script>
       prevDocTitleRef.current = null
     }
     setAiPanelOpen(false)
-    setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-    setAiUploadIsWord(false)
     setAiPanelPhase('entry')
-    setAiPanelFlow('current')
-    setAiUploadFilename('')
-    setAiTemplateApplied(false)
-    setAiAnalysis(null)
+    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
     setAppliedSuggestions(new Set())
     setPendingSkills([])
-    setAiParsedData(null)
-    setAiUploadError(undefined)
+    setJobDescPersist('')
     aiAnalyzedDataSnapshot.current = null
   }, [])
 
@@ -1108,6 +1256,24 @@ ${autoprint ? `<script>
     setAppliedSuggestions(prev => new Set([...prev, s.id]))
     showToast('✓ AI 建议已应用')
   }, [updateData, updateEntry, setData])
+
+  const handleGenerateInterview = useCallback(async () => {
+    if (interviewLoading || !aiAnalysis) return
+    setInterviewLoading(true)
+    try {
+      const res = await fetch('/api/ai/interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, jobDesc: jobDescPersist, deviceId }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setInterviewData({ questions: json.interviewQuestions ?? [], answers: json.interviewAnswers ?? [] })
+      }
+    } catch { /* silent */ } finally {
+      setInterviewLoading(false)
+    }
+  }, [interviewLoading, aiAnalysis, data, jobDescPersist, deviceId])
 
   const handleApplyAllSuggestions = useCallback(() => {
     if (!aiAnalysis?.suggestions?.length) return
@@ -1176,17 +1342,11 @@ ${autoprint ? `<script>
     // Close AI panel and discard analysis — it belongs to the previous resume
     setAiPanelOpen(false)
     setAiPanelPhase('entry')
-    setAiPanelFlow('current')
-    setAiAnalysis(null)
+    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
     setAppliedSuggestions(new Set())
-    setAiUploadObjectUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-    setAiUploadFilename('')
-    setAiTemplateApplied(false)
-    setAiParsedData(null)
-    setAiUploadError(undefined)
     aiAnalyzedDataSnapshot.current = null
     setIsCurrentEnglish(entry.isEnglish === true || looksEnglish(entry.data))
-    showToast(`✓ 已加载「${entry.name}」`)
+    showToast(`已加载「${entry.name}」`)
   }, [])
 
   // ============ Create new resume / Import resume ============
@@ -1196,6 +1356,10 @@ ${autoprint ? `<script>
       const hid = loadedFromHistoryId.current
       if (hid && hid !== 'draft') {
         updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
+        if (auth.loggedIn) {
+          const prev = loadHistory().find(h => h.id === hid)
+          if (prev) upsertCloudResume(prev)
+        }
       } else {
         saveToHistory({ name: docTitle || '我的简历', data, templateId, color, savedAt: Date.now() })
       }
@@ -1206,6 +1370,10 @@ ${autoprint ? `<script>
     const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
+    if (auth.loggedIn && newId) {
+      const entry = loadHistory().find(h => h.id === newId)
+      if (entry) upsertCloudResume(entry)
+    }
     setHistory([DEMO_DATA])
     setHistoryIdx(0)
     setTemplateId('classic-pro')
@@ -1215,15 +1383,24 @@ ${autoprint ? `<script>
     setNoResumeOpen(false)
     setHistoryRefreshKey(k => k + 1)
     showToast('✓ 新简历已创建')
-  }, [data, templateId, color, docTitle, noResumeOpen])
+  }, [data, templateId, color, docTitle, noResumeOpen, auth.loggedIn])
 
   const handleImportAttempt = useCallback(() => {
-    const check = checkUsage(deviceId, 'import', proStatus)
-    if (!check.allowed) {
-      setPaywallTrigger('import_limit')
-      setPaywallOpen(true)
-      return
+    if (loggedInRef.current) {
+      const isSub = proStatusRef.current.kind === 'subscription'
+      const limit = isSub ? 10 : 2
+      if (authDailyImportUsedRef.current >= limit) {
+        setImportBanner(isSub ? 'sub_exhausted' : 'free_exhausted')
+        return
+      }
+    } else {
+      const check = checkUsage(deviceId, 'import', proStatus)
+      if (!check.allowed) {
+        showToast('今日导入次数已用完，登录后次数重置')
+        return
+      }
     }
+    setImportBanner(null)
     importFileRef.current?.click()
   }, [deviceId, proStatus])
 
@@ -1245,11 +1422,14 @@ ${autoprint ? `<script>
   // Auto-show banner again when content starts overflowing again after being fixed
   useEffect(() => { if (pageCount <= 1) setCompressWarningDismissed(false) }, [pageCount])
 
-  // When template is applied from upload flow, skip overflow banner and show compact toolbar button instead
-  useEffect(() => { if (aiTemplateApplied) setCompressWarningDismissed(true) }, [aiTemplateApplied])
 
   const handleCompress = useCallback(async () => {
-    const freshStatus = getProStatus(deviceId, currentHistoryId || undefined)
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'compress'
+      setShowEditorLogin(true)
+      return
+    }
+    const freshStatus = proStatusRef.current
     if (freshStatus.kind !== 'subscription') {
       pendingPaywallActionRef.current = { type: 'compress' }
       setPaywallTrigger('compress')
@@ -1311,7 +1491,7 @@ ${autoprint ? `<script>
       showToast('压缩失败，请稍后重试')
       setCompressPhase('idle')
     }
-  }, [data, deviceId, currentHistoryId, updateData, setData, compressPhase])
+  }, [data, deviceId, currentHistoryId, updateData, setData, compressPhase, auth.loggedIn])
 
   const handleConfirmCompressDiffs = useCallback(() => {
     const pending = pendingCompressCleanRef.current
@@ -1349,8 +1529,14 @@ ${autoprint ? `<script>
   }, [postCompressCheck])
 
   const handleTranslate = useCallback(async () => {
-    // Always read fresh status from storage so post-paywall calls see the new plan
-    const freshStatus = getProStatus(deviceId, currentHistoryId || undefined)
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'translate'
+      setShowEditorLogin(true)
+      return
+    }
+    // proStatusRef always reflects the latest proStatus (server-confirmed for subscribers,
+    // localStorage-based for local purchases) without stale-closure issues.
+    const freshStatus = proStatusRef.current
     const check = checkUsage(deviceId, 'ai_translate', freshStatus)
     if (!check.allowed) {
       if (check.reason === 'daily_limit') {
@@ -1407,7 +1593,7 @@ ${autoprint ? `<script>
       if (translateAbortRef.current === controller) translateAbortRef.current = null
       setTranslateLoading(false)
     }
-  }, [data, deviceId, currentHistoryId, templateId, color, docTitle])
+  }, [data, deviceId, currentHistoryId, templateId, color, docTitle, auth.loggedIn])
 
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1418,8 +1604,20 @@ ${autoprint ? `<script>
     e.target.value = ''
   }
 
+  const handleImportCancel = useCallback(() => {
+    importCancelledRef.current = true
+    importAbortRef.current?.abort()
+    importAbortRef.current = null
+    if (loadedFromHistoryId.current === 'pending') loadedFromHistoryId.current = null
+    setImportModalState('none')
+    setImportingFile('')
+  }, [])
+
   const handleImportStart = async () => {
     const name = importingFile
+    importCancelledRef.current = false
+    const controller = new AbortController()
+    importAbortRef.current = controller
     setImportModalState('loading')
 
     // Persist current state (skip if no resume is open)
@@ -1439,15 +1637,17 @@ ${autoprint ? `<script>
         const formData = new FormData()
         formData.append('file', fileObj)
         formData.append('deviceId', deviceId)
-        const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData })
+        const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData, signal: controller.signal })
         if (res.ok) {
           const json = await res.json()
           importedData = parsedToResumeData(json.data ?? {})
         }
       } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return  // cancelled
         console.error('import parse error:', e)
       }
     }
+    if (importCancelledRef.current) return
 
     const currentHistory = loadHistory()
     const uniqueName = uniqueHistoryName(name, currentHistory)
@@ -1459,8 +1659,13 @@ ${autoprint ? `<script>
     setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(uniqueName)
-    recordUsage(deviceId, 'import', proStatus)
-    setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+    setIsCurrentEnglish(looksEnglish(importedData))
+    if (loggedInRef.current) {
+      void authRefreshRef.current()
+    } else {
+      recordUsage(deviceId, 'import', proStatus)
+      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+    }
     importingFileObjRef.current = null
     setImportModalState('none')
     setSelection({ kind: 'none' })
@@ -1506,18 +1711,34 @@ ${autoprint ? `<script>
           onUndo={undo} onRedo={redo}
           canUndo={historyIdx > 0}
           canRedo={historyIdx < history.length - 1}
-          onSave={handleSaveHistory}
           isMobile={isMobile}
           onNewResume={handleCreateNewResume}
           onImportFile={handleImportAttempt}
           onTranslate={handleTranslate}
           translateLoading={translateLoading}
           disabled={noResumeOpen}
+          userInfo={{
+            loading: auth.loading,
+            loggedIn: auth.loggedIn,
+            avatar: auth.avatar,
+            openid: auth.openid,
+            nickname: auth.nickname,
+            membership: auth.membership,
+            isStudent: auth.isStudent,
+            freeAnalyzeUsed: auth.freeAnalyzeUsed,
+            dailyAnalyzeUsed: auth.dailyAnalyzeUsed,
+            dailyTranslateUsed: auth.dailyTranslateUsed,
+            dailyImportUsed: auth.dailyImportUsed,
+            onShowLogin: () => setShowEditorLogin(true),
+            onLogout: handleEditorLogout,
+            onUpgrade: () => { setPaywallTrigger('upgrade'); setPaywallOpen(true) },
+            onRefreshAuth: auth.refresh,
+          }}
         />
       </div>
 
       {/* Pro-template preview banner — free users can see the template but need Pro to download */}
-      {isProTemplate && showWatermark && !noResumeOpen && (
+      {isProTemplate && showWatermark && !noResumeOpen && !auth.loading && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
@@ -1531,11 +1752,11 @@ ${autoprint ? `<script>
             }}>Pro 模板预览</span>
             当前为预览模式 · 升级后可下载无水印 PDF
           </span>
-          <button onClick={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }} style={{
+          <button onClick={handleUnlockPro} style={{
             padding: '5px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
             background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
             cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-          }}>解锁 Pro →</button>
+          }}>解锁 Pro</button>
         </div>
       )}
 
@@ -1564,13 +1785,16 @@ ${autoprint ? `<script>
         }}>
           <LeftPanel
             templateId={templateId}
-            onTemplateChange={(id) => { setTemplateId(id); if (data.fontScale) updateData({ fontScale: undefined }); showToast('✓ 模板已切换'); if (isMobile) setLeftOpen(false) }}
+            onTemplateChange={(id) => { setTemplateId(id); setAccentStyleOverride(undefined); setFontPairOverride(undefined); if (data.fontScale) updateData({ fontScale: undefined }); showToast('模板已切换'); if (isMobile) setLeftOpen(false) }}
             currentColor={effectiveColor}
-            onColorChange={(c) => { setColor(c); showToast('✓ 颜色已应用') }}
+            onColorChange={(c) => { setColor(c); showToast('颜色已应用') }}
+            currentAccentStyle={effectiveTemplate.accentStyle}
+            onAccentStyleChange={(s) => { setAccentStyleOverride(s); showToast('标题样式已更新') }}
+            currentFontPair={effectiveTemplate.fontPair}
+            onFontPairChange={(f) => { setFontPairOverride(f); showToast('字体已更新') }}
             onAddModule={handleAddModule}
             data={data}
             onUpdate={updateData}
-            onSaveHistory={handleSaveHistory}
             onLoadHistory={handleLoadHistoryWithClear}
             onHistoryDelete={handleHistoryDelete}
             historyRefreshKey={historyRefreshKey}
@@ -1582,11 +1806,13 @@ ${autoprint ? `<script>
             disabled={noResumeOpen}
             canUseProTemplate={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && !proStatus.templateId)}
             unlockedProTemplateId={proStatus.kind === 'single' && !!proStatus.templateId ? proStatus.templateId : undefined}
-            onProTemplateLocked={() => { setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
+            onProTemplateLocked={handleUnlockPro}
+            loggedIn={auth.loggedIn}
+            onShowLogin={() => setShowEditorLogin(true)}
           />
         </div>
 
-        <div className="editor-canvas-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e2e8f0' }}>
+        <div className="editor-canvas-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e2e8f0', position: 'relative' }}>
           {/* Toolbar */}
           <div className="no-print" style={{
             height: '44px', background: 'white', borderBottom: '1px solid #e2e8f0',
@@ -1635,7 +1861,7 @@ ${autoprint ? `<script>
               }}>含水印</span>
             )}
             {/* Compact compress button — visible when overflow banner was dismissed */}
-            {compressWarningDismissed && pageCount > 1 && compressPhase === 'idle' && !noResumeOpen && !aiUploadObjectUrl && (
+            {compressWarningDismissed && pageCount > 1 && compressPhase === 'idle' && !noResumeOpen && (
               <button
                 onClick={handleCompress}
                 style={{
@@ -1649,10 +1875,10 @@ ${autoprint ? `<script>
                 }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 10px rgba(249,115,22,0.55)' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 6px rgba(249,115,22,0.35)' }}
-              >✨ 压缩至1页</button>
+              >压缩至1页</button>
             )}
             {/* Translate shortcut — shown for all users to prompt upgrade; hidden when already English */}
-            {!noResumeOpen && !aiUploadObjectUrl && !isCurrentEnglish && (
+            {!noResumeOpen && !isCurrentEnglish && (
               <button
                 onClick={handleTranslate}
                 disabled={translateLoading}
@@ -1783,7 +2009,7 @@ ${autoprint ? `<script>
 
           {/* Overflow warning banner — animates out when compress starts */}
           {(() => {
-            const shown = pageCount > 1 && !noResumeOpen && !aiUploadObjectUrl && !compressWarningDismissed && compressPhase === 'idle'
+            const shown = pageCount > 1 && !noResumeOpen && !compressWarningDismissed && compressPhase === 'idle'
             return (
               <div style={{
                 overflow: 'hidden',
@@ -1833,7 +2059,7 @@ ${autoprint ? `<script>
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 14px rgba(249,115,22,0.6)' }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 8px rgba(249,115,22,0.4)' }}
                     >
-                      ✨ 一键压缩至 1 页
+                    一键压缩至 1 页
                     </button>
                     <button
                       onClick={() => setCompressWarningDismissed(true)}
@@ -1855,33 +2081,98 @@ ${autoprint ? `<script>
             )
           })()}
 
+          {/* Guest mode banner — shown when not logged in */}
+          {!auth.loading && !auth.loggedIn && (
+            <div className="no-print" style={{
+              background: '#fffbeb', borderBottom: '1px solid #fde68a',
+              padding: '8px 16px', display: 'flex', alignItems: 'center',
+              gap: '10px', flexShrink: 0,
+            }}>
+              <span style={{ fontSize: '12.5px', color: '#92400e', flex: 1, lineHeight: 1.5 }}>
+                <span style={{ fontWeight: 700 }}>游客模式</span>
+                {' · '}退出编辑器后简历将自动清除，永久保存请登录账号
+              </span>
+              <button
+                onClick={() => setShowEditorLogin(true)}
+                style={{
+                  padding: '5px 14px', borderRadius: '6px', border: 'none',
+                  background: 'var(--highlight)', color: 'white',
+                  fontSize: '12px', fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
+                }}
+              >立即登录</button>
+            </div>
+          )}
+
+          {/* Import limit banner — teal, slides in when daily quota exhausted */}
+          {(() => {
+            const shown = !!importBanner
+            return (
+              <div style={{
+                overflow: 'hidden',
+                maxHeight: shown ? '80px' : '0',
+                flexShrink: 0,
+                pointerEvents: shown ? 'auto' : 'none',
+                transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
+              }}>
+                <div className="no-print" style={{
+                  background: '#f0fdfa', borderBottom: '1px solid #99f6e4',
+                  padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px',
+                  opacity: shown ? 1 : 0,
+                  transition: 'opacity 0.22s ease',
+                }}>
+                  <span style={{ fontSize: '12.5px', color: '#0f766e', flex: 1, lineHeight: 1.5 }}>
+                    {importBanner === 'sub_exhausted'
+                      ? '今日导入次数已用完（10 次/天），明日 00:00 自动重置'
+                      : '今日导入次数已用完（2 次/天）'}
+                  </span>
+                  {importBanner === 'free_exhausted' && (
+                    <button
+                      onClick={() => { setImportBanner(null); setPaywallTrigger('import_limit'); setPaywallOpen(true) }}
+                      style={{
+                        padding: '5px 14px', borderRadius: '6px', border: 'none',
+                        background: 'var(--teal)', color: 'white',
+                        fontSize: '12px', fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
+                      }}
+                    >升级 Pro（每日 10 次）</button>
+                  )}
+                  <button
+                    onClick={() => setImportBanner(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f766e', fontSize: '16px', lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                  >×</button>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Empty state — shown when the active resume was deleted */}
-          {noResumeOpen && !aiUploadObjectUrl && (
+          {noResumeOpen && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '14px', backgroundColor: '#e2e8f0', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
               <img src="/logo-black.png" alt="" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.35 }} />
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧-我的-加载历史简历</div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧-我的-加载简历</div>
               <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>或者在此新建、导入一份简历</div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button onClick={handleCreateNewResume} style={{
                   padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                  border: 'none', background: '#0f172a', color: 'white',
+                  border: '1.5px solid transparent', background: '#0f172a', color: 'white',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>创建新简历</button>
                 <button onClick={handleImportAttempt} style={{
                   padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                  border: '1.5px solid #e2e8f0', background: 'white', color: '#334155',
+                  border: '1.5px solid white', background: 'white', color: '#334155',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>导入简历</button>
               </div>
             </div>
           )}
 
-          {/* Canvas — hidden when showing uploaded file or empty state */}
+          {/* Canvas — hidden when showing empty state */}
           <div
             ref={canvasRef}
             className="print-canvas"
             style={{
-              flex: 1, overflow: 'auto', display: (aiUploadObjectUrl || aiUploadIsWord || noResumeOpen) ? 'none' : 'flex',
+              flex: 1, overflow: 'auto', display: noResumeOpen ? 'none' : 'flex',
               justifyContent: 'center', alignItems: 'flex-start', padding: '32px 24px',
               backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
@@ -1895,7 +2186,7 @@ ${autoprint ? `<script>
               <div className="resume-print-area">
                 <PaginatedResume
                   data={data}
-                  template={template}
+                  template={effectiveTemplate}
                   color={effectiveColor}
                   interactive={!aiPanelOpen || aiPanelPhase === 'entry'}
                   selection={selection}
@@ -1911,54 +2202,25 @@ ${autoprint ? `<script>
                   aiSuggestionSections={aiSuggestionSections}
                   bulletDiffs={compressPhase === 'ai-review' ? compressBulletDiffs : bulletDiffs}
                   pendingSkills={pendingSkills}
+                  isEnglish={isCurrentEnglish}
                 />
               </div>
             </div>
           </div>
 
-          {/* PDF viewer — shown when an uploaded PDF is being analyzed */}
-          {aiUploadObjectUrl && (
-            <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '32px 24px' }}>
-              <iframe
-                src={aiUploadObjectUrl}
-                title="上传简历预览"
-                style={{ width: '794px', height: '1123px', border: 'none', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', flexShrink: 0 }}
-              />
-            </div>
-          )}
+          {/* Canvas loading overlay — hides DEMO_DATA flash while cloud sync is in-flight */}
+          <div
+            className="no-print"
+            style={{
+              position: 'absolute', inset: 0,
+              background: '#e2e8f0',
+              zIndex: 20,
+              opacity: canvasReady ? 0 : 1,
+              pointerEvents: canvasReady ? 'none' : 'all',
+              transition: 'opacity 0.35s ease',
+            }}
+          />
 
-          {/* Word file placeholder — shown when an uploaded Word doc can't be previewed */}
-          {aiUploadIsWord && !aiUploadObjectUrl && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '14px', padding: '32px 24px', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
-              <style>{`@keyframes wordSpin{to{transform:rotate(360deg)}}`}</style>
-              <div style={{ fontSize: '48px', lineHeight: 1 }}>📄</div>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#334155' }}>Word 文档无法直接预览</div>
-              <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', lineHeight: 1.7, maxWidth: '260px' }}>
-                AI 正在解析您的简历内容<br />解析完成后可使用当前模板填入简历
-              </div>
-              {aiPanelPhase === 'result' && !aiTemplateApplied && (
-                <button
-                  onClick={handleAIApplyTemplate}
-                  style={{
-                    marginTop: '8px', padding: '13px 28px',
-                    background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                    color: 'white', border: 'none', borderRadius: '12px',
-                    fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                    boxShadow: '0 4px 20px rgba(15,23,42,0.35)',
-                  }}
-                >
-                  使用当前模板
-                </button>
-              )}
-              {aiPanelPhase === 'analyzing' && (
-                <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(7,137,236,0.22)', borderTopColor: 'var(--theme-blue)', flexShrink: 0, animation: 'wordSpin 0.75s linear infinite' }} />
-                  AI 解析中，请稍候…
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Desktop: right panel slot — flex child that pushes the canvas */}
@@ -1979,24 +2241,32 @@ ${autoprint ? `<script>
                 willChange: 'transform',
               }}>
                 <AIPanel
-                  flow={aiPanelFlow}
                   phase={aiPanelPhase}
-                  uploadFilename={aiUploadFilename}
-                  templateApplied={aiTemplateApplied}
-                  optimizeEnabled={aiPanelFlow === 'current' || (aiPanelFlow === 'upload' && aiTemplateApplied)}
                   analysis={aiAnalysis}
                   appliedSuggestionIds={appliedSuggestions}
-                  uploadError={aiUploadError}
                   jobDesc={jobDescPersist}
                   onJobDescChange={setJobDescPersist}
                   onAnalyzeCurrent={handleAIAnalyzeCurrent}
-                  onSelectFile={handleAIFileSelect}
-                  onApplyTemplate={handleAIApplyTemplate}
                   currentSkills={data.skills}
+                  currentSummary={data.summary}
                   onApplySuggestion={handleApplySuggestion}
                   onApplyAll={handleApplyAllSuggestions}
                   onClose={handleAIClose}
                   onSkillChecksChange={setPendingSkills}
+                  interviewData={interviewData}
+                  interviewLoading={interviewLoading}
+                  onGenerateInterview={handleGenerateInterview}
+                  analyzeExhausted={
+                    proStatus.kind === 'free'
+                      ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= FREE_ANALYZE_LIMIT)
+                      : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
+                      : auth.dailyAnalyzeUsed >= 20
+                  }
+                  analyzeExhaustedKind={proStatus.kind === 'subscription' ? 'daily_reset' : 'upgrade'}
+                  analyzeLoggedIn={auth.loggedIn}
+                  onAnalyzeExhaustedCTA={auth.loggedIn
+                    ? () => { setPaywallTrigger('ai_analyze'); setPaywallOpen(true) }
+                    : () => setShowEditorLogin(true)}
                 />
               </div>
               {/* Edit Panel — slides in from right */}
@@ -2051,37 +2321,34 @@ ${autoprint ? `<script>
               willChange: 'transform',
             }}>
               <AIPanel
-                flow={aiPanelFlow}
                 phase={aiPanelPhase}
-                uploadFilename={aiUploadFilename}
-                templateApplied={aiTemplateApplied}
-                optimizeEnabled={aiPanelFlow === 'current' || (aiPanelFlow === 'upload' && aiTemplateApplied)}
                 analysis={aiAnalysis}
                 appliedSuggestionIds={appliedSuggestions}
-                uploadError={aiUploadError}
                 jobDesc={jobDescPersist}
                 onJobDescChange={setJobDescPersist}
                 onAnalyzeCurrent={handleAIAnalyzeCurrent}
-                onSelectFile={handleAIFileSelect}
-                onApplyTemplate={handleAIApplyTemplate}
                 onApplySuggestion={handleApplySuggestion}
                 onApplyAll={handleApplyAllSuggestions}
                 onClose={handleAIClose}
                 onSkillChecksChange={setPendingSkills}
+                analyzeExhausted={
+                  proStatus.kind === 'free'
+                    ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= FREE_ANALYZE_LIMIT)
+                    : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
+                    : auth.dailyAnalyzeUsed >= 20
+                }
+                analyzeExhaustedKind={proStatus.kind === 'subscription' ? 'daily_reset' : 'upgrade'}
+                analyzeLoggedIn={auth.loggedIn}
+                onAnalyzeExhaustedCTA={auth.loggedIn
+                  ? () => { setPaywallTrigger('ai_analyze'); setPaywallOpen(true) }
+                  : () => setShowEditorLogin(true)}
               />
             </div>
           </>
         )}
       </div>
 
-      {pendingDraft && (
-        <ContinueModal
-          docTitle={pendingDraft.docTitle}
-          savedAt={pendingDraft.savedAt}
-          onContinue={handleContinueDraft}
-          onNew={handleNewResume}
-        />
-      )}
+      {/* ContinueModal removed — editor loads most recent resume directly */}
 
       {modal === 'download' && (
         <DownloadModal
@@ -2099,6 +2366,7 @@ ${autoprint ? `<script>
           loading={importModalState === 'loading'}
           onStart={handleImportStart}
           onClose={() => setImportModalState('none')}
+          onCancel={handleImportCancel}
         />
       )}
       {paywallOpen && (
@@ -2156,6 +2424,19 @@ ${autoprint ? `<script>
         />
       )}
 
+      {showEditorLogin && (
+        <WechatLoginModal
+          onClose={() => setShowEditorLogin(false)}
+          onSuccess={() => {
+            setShowEditorLogin(false)
+            auth.refresh()
+          }}
+        />
+      )}
+
+      {auth.kickedOut && <KickedOutModal />}
+      <PaymentSuccessToast />
+
       {/* Translation loading overlay */}
       {translateLoading && (
         <div className="no-print" style={{
@@ -2173,6 +2454,15 @@ ${autoprint ? `<script>
               AI 正在生成英文简历
             </div>
             <ImportLoadingBar stages={TRANSLATE_STAGES} />
+            <button
+              onClick={() => translateAbortRef.current?.abort()}
+              style={{
+                marginTop: '24px', padding: '7px 24px',
+                borderRadius: '8px', border: '1px solid #e2e8f0',
+                background: 'white', color: '#64748b',
+                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+              }}
+            >取消</button>
           </div>
         </div>
       )}
@@ -2181,10 +2471,11 @@ ${autoprint ? `<script>
       <div className="no-print" style={{
         position: 'fixed', bottom: '24px', left: '50%',
         transform: `translateX(-50%) translateY(${toast ? '0' : '60px'})`,
-        background: '#0f172a', color: '#fff',
+        opacity: toast ? 1 : 0,
+        background: 'var(--teal)', color: '#fff',
         padding: '11px 22px', borderRadius: '10px',
         fontSize: '13px', fontWeight: 500, zIndex: 300,
-        transition: 'transform 0.3s', pointerEvents: 'none',
+        transition: 'transform 0.3s, opacity 0.3s', pointerEvents: 'none',
         boxShadow: '0 4px 20px rgba(15, 23, 42, 0.25)',
       }}>{toast}</div>
 
@@ -2233,9 +2524,10 @@ ${autoprint ? `<script>
     <div className="resume-print-layer" style={{ display: 'none' }}>
       <PaginatedResume
         data={data}
-        template={template}
+        template={effectiveTemplate}
         color={effectiveColor}
         showWatermark={showWatermark}
+        isEnglish={isCurrentEnglish}
       />
     </div>
     </>

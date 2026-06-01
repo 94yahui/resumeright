@@ -1,6 +1,36 @@
 import { createHash } from 'crypto'
 
-const WECHAT_TOKEN = process.env.WECHAT_TOKEN ?? ''
+const WECHAT_TOKEN   = process.env.WECHAT_TOKEN ?? ''
+const WECHAT_APPID   = process.env.WECHAT_APPID ?? ''
+const WECHAT_SECRET  = process.env.WECHAT_APPSECRET ?? ''
+
+// ── Access-token cache (expires in 7200 s, refresh 60 s early) ───────────────
+let _cachedToken = ''
+let _tokenExpiresAt = 0
+
+export async function getAccessToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _tokenExpiresAt) return _cachedToken
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${WECHAT_APPID}&secret=${WECHAT_SECRET}`
+  const res  = await fetch(url)
+  const json = await res.json() as { access_token?: string; expires_in?: number; errcode?: number }
+  if (!json.access_token) throw new Error(`WeChat token error: ${JSON.stringify(json)}`)
+  _cachedToken    = json.access_token
+  _tokenExpiresAt = Date.now() + ((json.expires_in ?? 7200) - 60) * 1000
+  return _cachedToken
+}
+
+export async function fetchWechatUserInfo(openid: string): Promise<{ nickname: string; avatar: string } | null> {
+  try {
+    const token = await getAccessToken()
+    const url   = `https://api.weixin.qq.com/cgi-bin/user/info?access_token=${token}&openid=${openid}&lang=zh_CN`
+    const res   = await fetch(url)
+    const json  = await res.json() as { nickname?: string; headimgurl?: string; errcode?: number }
+    if (json.errcode || !json.nickname) return null
+    return { nickname: json.nickname, avatar: json.headimgurl ?? '' }
+  } catch {
+    return null
+  }
+}
 
 // ── Signature verification (GET handler) ─────────────────────────────────────
 export function verifyWechatSignature(signature: string, timestamp: string, nonce: string): boolean {

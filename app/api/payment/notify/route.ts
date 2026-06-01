@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hpjVerify } from '../../../lib/hupijiao'
 import { getOrderCollection } from '../../../lib/mongodb'
+import { syncMembershipFromOrder } from '../../../lib/syncMembership'
 
 // 虎皮椒 POST callback when payment succeeds
 export async function POST(req: NextRequest) {
@@ -20,24 +21,16 @@ export async function POST(req: NextRequest) {
   const paidAt  = Date.now()
 
   const col = await getOrderCollection()
-  await col.updateOne(
+  const updateResult = await col.updateOne(
     { _id: orderId, status: 'pending' },
     { $set: { status: 'paid', paidAt, wxTransactionId: txId } },
   )
 
-  // Sync membership for subscription orders from logged-in users
-  const order = await col.findOne({ _id: orderId })
-  if (order?.openid && order.planType !== 'single') {
-    const { getUserCollection } = await import('../../../lib/mongodb')
-    const { PLAN_DURATION_MS } = await import('../../../lib/payment')
-    const users = await getUserCollection()
-    const expiresAt = PLAN_DURATION_MS[order.planType]
-      ? paidAt + PLAN_DURATION_MS[order.planType]
-      : undefined
-    await users.updateOne(
-      { openid: order.openid },
-      { $set: { membership: { plan: order.planType, purchased_at: paidAt, expires_at: expiresAt }, updated_at: paidAt } }
-    )
+  // Only sync membership if this webhook was the first to mark the order paid.
+  // Skipping on retry prevents duplicate webhook calls from extending the subscription.
+  if (updateResult.modifiedCount > 0) {
+    const order = await col.findOne({ _id: orderId })
+    await syncMembershipFromOrder(order ?? {}, paidAt)
   }
 
   return new NextResponse('success')

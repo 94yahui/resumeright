@@ -14,15 +14,17 @@ export interface UserDoc {
     purchased_at: number
     expires_at?: number      // undefined = 永久（单次解锁）
     single_template_id?: string
+    single_resume_id?: string  // which resume is unlocked (single plan only)
   }
   student?: {
-    email: string
     certified_at: number
     expires_at: number       // 1 year from certification
   }
-  free_analyze_used?: number  // lifetime free AI-analyze count (synced across devices)
+  free_analyze_used?: number    // lifetime free AI-analyze count (synced across devices)
+  single_analyze_used?: number  // lifetime single-plan AI-analyze count (server-authoritative)
   created_at: number
   updated_at: number
+  session_id?: string
 }
 
 export async function getUserCollection(): Promise<Collection<UserDoc>> {
@@ -70,11 +72,35 @@ export interface OrderDoc {
 // ── Connection singleton ──────────────────────────────────────────────────────
 const uri = process.env.MONGODB_URI ?? ''
 let client: MongoClient | null = null
+let lastErrorAt = 0
+const COOLOFF_MS = 15_000  // don't retry for 15s after a failed connect
 
 async function getClient(): Promise<MongoClient> {
   if (!client) {
-    client = new MongoClient(uri)
-    await client.connect()
+    if (Date.now() - lastErrorAt < COOLOFF_MS) {
+      throw new Error('MongoDB unavailable (cooling off)')
+    }
+    const c = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      maxPoolSize: 1,       // serverless: one connection per function instance is enough
+      minPoolSize: 0,
+      socketTimeoutMS: 10000,
+    })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('MongoDB connect timeout (5s)')), 5000)
+    })
+    try {
+      await Promise.race([c.connect(), deadline])
+      clearTimeout(timer)
+      client = c
+    } catch (e) {
+      clearTimeout(timer)
+      lastErrorAt = Date.now()
+      c.close().catch(() => {})
+      throw e
+    }
   }
   return client
 }
