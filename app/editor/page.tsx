@@ -2331,6 +2331,8 @@ ${autoprint ? `<script>
                 onApplyAll={handleApplyAllSuggestions}
                 onClose={handleAIClose}
                 onSkillChecksChange={setPendingSkills}
+                interviewLoading={interviewLoading}
+                onGenerateInterview={handleGenerateInterview}
                 analyzeExhausted={
                   proStatus.kind === 'free'
                     ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= FREE_ANALYZE_LIMIT)
