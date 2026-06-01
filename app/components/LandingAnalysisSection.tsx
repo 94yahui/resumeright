@@ -138,6 +138,7 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
       data: parsedRawData,
       filename,
       analysis: result,
+      interviewData: interviewData ?? null,
     }))
     setShowModal(false)
     router.push('/editor')

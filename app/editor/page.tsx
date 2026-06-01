@@ -420,7 +420,7 @@ function EditorInner() {
       if (raw) {
         sessionStorage.removeItem('resumecraft_landing_import')
         try {
-          const { data: importedRaw, filename, analysis } = JSON.parse(raw)
+          const { data: importedRaw, filename, analysis, interviewData: importedInterviewData } = JSON.parse(raw)
           const parsed = parsedToResumeData(importedRaw ?? {})
           const currentHistory = loadHistory()
           const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
@@ -439,6 +439,9 @@ function EditorInner() {
             setAiAnalysis(analysis)
             setAiPanelOpen(true)
             setAiPanelPhase('result')
+            if (importedInterviewData?.questions?.length) {
+              setInterviewData(importedInterviewData)
+            }
           }
           // Simple upload flow: no AI panel — canvas shows parsed data right away
           return
@@ -2312,13 +2315,6 @@ ${autoprint ? `<script>
                 onMoveEntry={moveEntry}
               />
             </div>
-            {aiPanelOpen && (
-              <div
-                className="no-print"
-                style={{ position: 'fixed', inset: 0, top: 52, zIndex: 64 }}
-                onClick={handleAIClose}
-              />
-            )}
             <div className="no-print" style={{
               position: 'fixed', right: 0, top: 52, bottom: 0, zIndex: 65,
               width: '288px',
@@ -2334,10 +2330,13 @@ ${autoprint ? `<script>
                 jobDesc={jobDescPersist}
                 onJobDescChange={setJobDescPersist}
                 onAnalyzeCurrent={handleAIAnalyzeCurrent}
+                currentSkills={data.skills}
+                currentSummary={data.summary}
                 onApplySuggestion={handleApplySuggestion}
                 onApplyAll={handleApplyAllSuggestions}
                 onClose={handleAIClose}
                 onSkillChecksChange={setPendingSkills}
+                interviewData={interviewData}
                 interviewLoading={interviewLoading}
                 onGenerateInterview={handleGenerateInterview}
                 analyzeExhausted={
