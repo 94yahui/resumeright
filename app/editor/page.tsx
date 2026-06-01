@@ -2312,6 +2312,13 @@ ${autoprint ? `<script>
                 onMoveEntry={moveEntry}
               />
             </div>
+            {aiPanelOpen && (
+              <div
+                className="no-print"
+                style={{ position: 'fixed', inset: 0, top: 52, zIndex: 64 }}
+                onClick={handleAIClose}
+              />
+            )}
             <div className="no-print" style={{
               position: 'fixed', right: 0, top: 52, bottom: 0, zIndex: 65,
               width: '288px',
