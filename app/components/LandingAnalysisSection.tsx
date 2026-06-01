@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
-import { getDeviceId, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT } from '../lib/payment'
+import { getDeviceId, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, GUEST_ANALYZE_LIMIT } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
 import LogoSweepLoader from './LogoSweepLoader'
 
@@ -25,7 +25,8 @@ function formatSkillTag(s: string): string {
     .replace(/^需需/, '需')
 }
 
-const FREE_LIMIT = FREE_ANALYZE_LIMIT
+const FREE_LIMIT  = FREE_ANALYZE_LIMIT   // logged-in free users
+const GUEST_LIMIT = GUEST_ANALYZE_LIMIT  // not-logged-in guests
 const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
 
 const SAMPLE_JDS = [
@@ -110,7 +111,7 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
   const analyzeUsed = isSubscriber ? auth.dailyAnalyzeUsed
     : auth.loggedIn ? auth.freeAnalyzeUsed
     : usedToday
-  const analyzeLimit = isSubscriber ? 20 : FREE_LIMIT
+  const analyzeLimit = isSubscriber ? 20 : auth.loggedIn ? FREE_LIMIT : GUEST_LIMIT
   const analyzeExhausted = analyzeUsed >= analyzeLimit
 
   useEffect(() => {
@@ -161,12 +162,12 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
     if (auth.loggedIn && analyzeExhausted) {
       setError(isSubscriber
         ? `今日分析次数已达上限（20 次/天）`
-        : `1 次免费次数已用完，升级 Pro 每天可用 20 次 `)
+        : `${FREE_LIMIT} 次免费次数已用完，升级 Pro 每天可用 20 次 `)
       return
     }
     if (!auth.loggedIn) {
       const liveUsed = getFreeAnalyzeUsed()
-      if (liveUsed >= FREE_LIMIT) {
+      if (liveUsed >= GUEST_LIMIT) {
         setUsedToday(liveUsed)  // sync state so button shows exhausted text
         setError('免费次数已用完，升级 Pro · 每日 20 次')
         return
@@ -560,8 +561,8 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
                         : '免费次数已用完 · 登录后可使用更多')
                   : isSubscriber
                     ? `今日已用 ${auth.dailyAnalyzeUsed}/20 次 · 数据不存储`
-                    : auth.freeAnalyzeUsed === 0
-                      ? '还有 1 次免费机会 · 升级 Pro 每天可用 20 次'
+                    : FREE_LIMIT - auth.freeAnalyzeUsed > 0
+                      ? `还有 ${FREE_LIMIT - auth.freeAnalyzeUsed} 次免费机会 · 升级 Pro 每天可用 20 次`
                       : '免费次数已用完 · 升级 Pro 每天可用 20 次'
                 }
               </div>

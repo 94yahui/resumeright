@@ -2425,6 +2425,7 @@ export function PaymentModal({
 // ─────────────────────────────────────────────────────────────
 export function PhotoCropModal({
   src,
+  loading,
   initialMeta,
   onConfirm,
   onReplace,
@@ -2432,6 +2433,7 @@ export function PhotoCropModal({
   onClose,
 }: {
   src: string;
+  loading?: boolean;
   initialMeta?: {
     x: number;
     y: number;
@@ -2572,7 +2574,7 @@ export function PhotoCropModal({
           marginBottom: "20px",
         }}
       >
-        {hint}
+        {loading ? "正在处理照片，请稍候…" : hint}
       </div>
 
       {/* Shape selector */}
@@ -2648,10 +2650,10 @@ export function PhotoCropModal({
         }}
       >
         <div
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onWheel={onWheel}
+          onPointerDown={loading ? undefined : onDown}
+          onPointerMove={loading ? undefined : onMove}
+          onPointerUp={loading ? undefined : onUp}
+          onWheel={loading ? undefined : onWheel}
           style={{
             width: previewW,
             height: previewH,
@@ -2659,33 +2661,49 @@ export function PhotoCropModal({
               shape === "rounded" ? `${Math.round(previewW * 0.15)}px` : "50%",
             overflow: "hidden",
             position: "relative",
-            cursor: dragging ? "grabbing" : "grab",
+            cursor: loading ? "default" : dragging ? "grabbing" : "grab",
             userSelect: "none",
             touchAction: "none",
             boxShadow: "0 0 0 3px #6366f130, 0 4px 20px rgba(0,0,0,0.12)",
             transition: "width 0.2s, height 0.2s, border-radius 0.2s",
+            background: "#f1f5f9",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt=""
-            draggable={false}
-            style={{
-              position: "absolute",
-              width: `${renderedW}px`,
-              height: `${renderedH}px`,
-              left: `${imgLeft}px`,
-              top: `${imgTop}px`,
-              pointerEvents: "none",
-              userSelect: "none",
-            }}
-          />
+          {loading ? (
+            <>
+              <style>{`@keyframes photoCropSpin{to{transform:rotate(360deg)}}`}</style>
+              <div style={{
+                width: "36px", height: "36px", borderRadius: "50%",
+                border: "3px solid rgba(99,102,241,0.2)",
+                borderTopColor: "#6366f1",
+                animation: "photoCropSpin 0.8s linear infinite",
+              }} />
+            </>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={src}
+              alt=""
+              draggable={false}
+              style={{
+                position: "absolute",
+                width: `${renderedW}px`,
+                height: `${renderedH}px`,
+                left: `${imgLeft}px`,
+                top: `${imgTop}px`,
+                pointerEvents: "none",
+                userSelect: "none",
+              }}
+            />
+          )}
         </div>
       </div>
 
       {/* Zoom slider */}
-      <div style={{ marginBottom: "24px" }}>
+      <div style={{ marginBottom: "24px", opacity: loading ? 0.4 : 1, pointerEvents: loading ? "none" : "auto" }}>
         <div
           style={{
             display: "flex",
@@ -2713,7 +2731,7 @@ export function PhotoCropModal({
       </div>
 
       {/* Buttons */}
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div style={{ display: "flex", gap: "8px", opacity: loading ? 0.4 : 1, pointerEvents: loading ? "none" : "auto" }}>
         <button
           onClick={onRemove}
           style={{

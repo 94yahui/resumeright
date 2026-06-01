@@ -56,7 +56,8 @@ const LIMITS: Record<string, { subscriber: number; single: number; free: number;
   'parse-resume': { subscriber: 10, single: 2,  free: 2,  guest: 1 },
 }
 
-const FREE_ANALYZE_LIFETIME_LIMIT = 1
+const GUEST_ANALYZE_LIFETIME_LIMIT = 1  // not-logged-in, keyed by deviceId
+const FREE_ANALYZE_LIFETIME_LIMIT  = 2  // logged-in free users
 
 // ── TTL index (7 days) — created once, MongoDB auto-deletes old docs ──────────
 let _ttlReady = false
@@ -150,9 +151,9 @@ export async function checkServerQuota(req: NextRequest, type: string, deviceId:
         const guestKey = `guest_analyze_${deviceId}`
         const existing = await col.findOne({ _id: guestKey }) as Record<string, unknown> | null
         const used = (existing?.count as number) ?? 0
-        if (used >= FREE_ANALYZE_LIFETIME_LIMIT) {
+        if (used >= GUEST_ANALYZE_LIFETIME_LIMIT) {
           return NextResponse.json(
-            { error: `免费次数已用完，升级 Pro 可享每日 20 次。` },
+            { error: `免费次数已用完，登录后可再用 ${FREE_ANALYZE_LIFETIME_LIMIT} 次，升级 Pro 可享每日 20 次。` },
             { status: 429 },
           )
         }
@@ -224,6 +225,7 @@ export async function incrementQuota(req: NextRequest, type: string, deviceId: s
     if (type === 'analyze' && plan !== 'subscriber') {
       if (!openid) {
         const col = await getDailyUsageCollection()
+        // Intentionally no createdAt — this record must not be expired by the 7-day TTL index.
         await col.updateOne(
           { _id: `guest_analyze_${deviceId}` },
           { $inc: { count: 1 }, $set: { updatedAt: Date.now() } },

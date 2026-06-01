@@ -51,6 +51,7 @@ body {
 @keyframes sweepInnerRing { 0%, 100% { opacity: 0.10; } 50% { opacity: 0.28; } }
 @keyframes importSlide { 0% { left: -44%; } 100% { left: 106%; } }
 @keyframes ddSlide { from { opacity:0; transform:translateY(-6px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }

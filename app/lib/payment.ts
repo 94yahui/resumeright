@@ -256,7 +256,8 @@ export function cleanOldUsage(): void {
 
 // ─── Free AI-analyze lifetime counter ────────────────────────────────────────
 const LS_FREE_ANALYZE = 'rc_fa'
-export const FREE_ANALYZE_LIMIT = 1
+export const FREE_ANALYZE_LIMIT  = 2   // logged-in free users (lifetime)
+export const GUEST_ANALYZE_LIMIT = 1   // not-logged-in guests (lifetime, by deviceId)
 
 export function getFreeAnalyzeUsed(): number {
   return ls<number>(LS_FREE_ANALYZE, 0)

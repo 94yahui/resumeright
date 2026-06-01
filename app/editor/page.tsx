@@ -29,7 +29,7 @@ import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
   hasNoWatermark, checkUsage, recordUsage, cleanOldUsage, getDailyCount,
-  getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT,
+  getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, GUEST_ANALYZE_LIMIT,
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
@@ -158,6 +158,7 @@ function EditorInner() {
   const importFileRef = useRef<HTMLInputElement>(null)
   const [photoCropOpen, setPhotoCropOpen] = useState(false)
   const [photoCropSrc, setPhotoCropSrc] = useState<string | null>(null)
+  const [photoConverting, setPhotoConverting] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasBreakPointsRef = useRef<number[]>([0])
   const canvasTotalHeightRef = useRef(0)
@@ -902,17 +903,38 @@ function EditorInner() {
     })
   }
 
-  const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
+
+    const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+      || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+
+    if (isHeic) {
+      setPhotoConverting(true)
+      setPhotoCropSrc(null)
+      setPhotoCropOpen(true)
+      try {
+        const heic2any = (await import('heic2any')).default
+        const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob
+        file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+      } catch {
+        setPhotoConverting(false)
+        setPhotoCropOpen(false)
+        showToast('照片格式转换失败，请改用 JPG 或 PNG 格式')
+        return
+      }
+    }
+
     const reader = new FileReader()
     reader.onload = async ev => {
       const compressed = await compressPhoto(ev.target?.result as string)
       setPhotoCropSrc(compressed)
-      setPhotoCropOpen(true)
+      setPhotoConverting(false)
+      if (!isHeic) setPhotoCropOpen(true)
     }
     reader.readAsDataURL(file)
-    e.target.value = ''
   }
 
   // ============ Preview / Print ============
@@ -1150,7 +1172,7 @@ ${autoprint ? `<script>
     } else {
       // Read lifetime counter directly from localStorage (avoids daily-counter vs lifetime mismatch)
       const liveUsed = getFreeAnalyzeUsed()
-      if (liveUsed >= FREE_ANALYZE_LIMIT) {
+      if (liveUsed >= GUEST_ANALYZE_LIMIT) {
         setLocalFreeAnalyzeUsed(liveUsed)  // sync state → button becomes disabled / banner shows
         return
       }
@@ -2261,7 +2283,7 @@ ${autoprint ? `<script>
                   onGenerateInterview={handleGenerateInterview}
                   analyzeExhausted={
                     proStatus.kind === 'free'
-                      ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= FREE_ANALYZE_LIMIT)
+                      ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= GUEST_ANALYZE_LIMIT)
                       : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
                       : auth.dailyAnalyzeUsed >= 20
                   }
@@ -2341,7 +2363,7 @@ ${autoprint ? `<script>
                 onGenerateInterview={handleGenerateInterview}
                 analyzeExhausted={
                   proStatus.kind === 'free'
-                    ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= FREE_ANALYZE_LIMIT)
+                    ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= GUEST_ANALYZE_LIMIT)
                     : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
                     : auth.dailyAnalyzeUsed >= 20
                 }
@@ -2406,7 +2428,8 @@ ${autoprint ? `<script>
 
       {photoCropOpen && (
         <PhotoCropModal
-          src={photoCropSrc ?? data.photo}
+          src={photoCropSrc ?? data.photo ?? ''}
+          loading={photoConverting}
           initialMeta={photoCropSrc ? undefined : data.photoMeta}
           onConfirm={(meta) => {
             updateData({ photo: photoCropSrc ?? data.photo, photoMeta: meta })

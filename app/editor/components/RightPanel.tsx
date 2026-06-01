@@ -407,7 +407,7 @@ export default function RightPanel({
             </div>
             <button
               onClick={() => { onUpdate({ hasSkills: false, skills: [] }); onClose() }}
-              style={{ ...btnDanger, display: "flex", alignItems: "center", gap: "6px" }}
+              style={{ ...btnDanger, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
             >
               <Trash2 size={13} /> 删除"专业技能"模块
             </button>
