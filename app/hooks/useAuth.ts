@@ -83,6 +83,7 @@ function isMembershipActive(m: AuthState['membership']): boolean {
 
 export function useAuth() {
   const kickedOutRef = useRef(false)
+  const wasLoggedInRef = useRef(false)
   const prevLoggedInRef    = useRef<boolean>(readCache()?.loggedIn ?? false)
   const prevMembershipRef  = useRef<AuthState['membership']>(readCache()?.membership ?? null)
   const [auth, setAuth] = useState<AuthState>(() => {
@@ -115,7 +116,9 @@ export function useAuth() {
       if (data.kicked_out === true) {
         kickedOutRef.current = true
         clearCache()
-        setAuth({ ...EMPTY, kickedOut: true, loggedIn: false })
+        // 只有本次 session 里 API 已经确认过登录，才弹被踢下线提示；
+        // 刷新页面时 wasLoggedInRef 为 false，静默登出即可
+        setAuth({ ...EMPTY, kickedOut: wasLoggedInRef.current, loggedIn: false })
         return
       }
       const next: AuthState = {
@@ -133,7 +136,7 @@ export function useAuth() {
         dailyTranslateUsed: data.daily_translate_used ?? 0,
         dailyImportUsed: data.daily_import_used ?? 0,
       }
-      if (next.loggedIn) { writeCache(next) } else { clearCache() }
+      if (next.loggedIn) { writeCache(next); wasLoggedInRef.current = true } else { clearCache() }
 
       // Detect silent payment activation (e.g. user closed QR modal but payment went through).
       // Only fire when the user was already logged in — avoids false positive on every login

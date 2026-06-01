@@ -40,7 +40,7 @@ export function UserAvatar({ avatar, nickname, size = 32 }: { avatar?: string | 
 }
 
 // ── KickedOut Modal ────────────────────────────────────────────────────────────
-const KICKED_COUNTDOWN = 3
+const KICKED_COUNTDOWN = 2
 
 export function KickedOutModal() {
   const [countdown, setCountdown] = useState(KICKED_COUNTDOWN)
