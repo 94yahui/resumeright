@@ -226,46 +226,70 @@ ${diffExample}
 简历信息：
 ${resumeSnippet}`
       : `【简历润色模式】
-任务：逐条审视简历描述，找出表达薄弱、缺乏说服力或逻辑不清的地方，运用STAR原则（Action强力动词开头→Result呈现结果）进行改写；若描述已足够清晰有力则仅做最小改动。
-核心原则：①只能基于简历中已有的信息进行优化，严禁虚构、夸大或添加任何简历中未提及的技术、工具、项目成果或具体细节 ②若原文没有数字，绝对不得自行添加任何量化数据或百分比 ③优化方向：强化动词、理清逻辑、补充行为主体或结果说明——不是堆砌数字 ④不生成技能建议（用户未填目标职位）⑤不改动已经优秀的描述。
+任务：全面诊断简历内容，按优先级依次处理以下四类问题，每条bullet独立判断：
+
+【问题检测优先级】
+① 错别字 / 语法错误（最高优先）
+   - 错别字、同音字误用（如"的地得"混用、"已以"混用）、标点堆叠等
+   - 直接修正，diff标记精确标出变化字符
+   - tip写"修正错别字"或"修正语法"
+
+② 描述过短（单条bullet少于15字）
+   - 基于该条已有信息 + 所在职位/公司上下文，合理补充：行为方式、使用工具、或初步结果
+   - 补充内容必须是可以从职位性质合理推断的，不得虚构具体数字或项目名
+   - 例："负责后台开发" → "[[~负责~]][[+主导+]]后台[[+核心模块+]]开发[[+，使用Spring Boot搭建RESTful接口+]]"
+   - tip写"描述过短，已补充细节"
+
+③ 动词薄弱 / 表达被动（参与/负责/协助/支持/完成 → 主导/设计/推动/搭建/优化）
+   - 用STAR原则：强力动词开头 → 行为 → 结果/影响
+   - tip写"强化动词表达"
+
+④ 逻辑不清 / 缺少结果层（已有清晰行动但无结果说明）
+   - 在不虚构数字的前提下补充结果方向（"提升稳定性""缩短交付周期"等）
+   - tip写"补充结果层"
+
+核心约束：
+- 严禁虚构任何原文未提及的技术、项目成果、具体数字或百分比
+- 若某条bullet四类问题均无，原样输出，不加标记
+- 不生成技能建议
 ${diffExample}
 
-请按以下JSON格式返回（不包含skills建议）：
+请按以下JSON格式返回：
 {
   "hasOfferRate": false,
-  "overview": <2-3句：最突出优势 + 最需改进方向>,
+  "overview": <2-3句：检测到的主要问题类型（如"存在X条描述过短、Y处弱动词"）+ 最突出优势 + 最需改进方向>,
   "suggestions": [
     {
       "id": "summary_0", "section": "summary", "entryIndex": 0, "field": "summary",
       "label": "个人简介",
       "tip": <改写重点，15字内>,
-      "changeDescription": <30字内：改了什么、带来什么核心竞争优势>,
+      "changeDescription": <30字内：改了什么问题、带来什么改善>,
       "optimizedContent": [<改写后的简介，必须使用diff标记标注改动词语，1-2句>]
     },
     {
       "id": "exp_0", "section": "exp", "entryIndex": 0, "field": "bullets",
       "label": <如"工作经历·职位@公司">,
-      "tip": <改写重点，15字内>,
-      "changeDescription": <30字内：改了哪个模块、具体改动及核心竞争优势>,
-      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动原样输出；每条50字内>]
+      "tip": <检测到的主要问题类型，15字内>,
+      "changeDescription": <30字内：检测到几类问题、如何处理>,
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；每条50字内>]
     },
     {
       "id": "exp_1", "section": "exp", "entryIndex": 1, "field": "bullets",
       "label": <第二段工作经历>,
-      "tip": <改写重点，15字内>,
-      "changeDescription": <30字内：改了什么、带来什么优势>,
-      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动原样输出>]
+      "tip": <检测到的主要问题类型，15字内>,
+      "changeDescription": <30字内：检测到几类问题、如何处理>,
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出>]
     },
     {
       "id": "project_0", "section": "project", "entryIndex": 0, "field": "bullets",
       "label": <如"项目经历·项目名">,
-      "tip": <改写重点，15字内>,
-      "changeDescription": <30字内：改了什么、带来什么优势>,
-      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动原样输出>]
+      "tip": <检测到的主要问题类型，15字内>,
+      "changeDescription": <30字内：检测到几类问题、如何处理>,
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出>]
     }
   ]
 }
-规则：①只为实际有内容的版块生成建议（没有项目经历时不生成project建议）②bullet不以句号结尾 ③entryIndex从0开始 ④不含任何skills建议。${langNote}
+规则：①只为实际有内容的版块生成建议（没有项目经历时不生成project建议）②bullet不以句号结尾 ③entryIndex从0开始 ④不含任何skills建议 ⑤若某个版块所有bullet均无问题，不生成该版块的suggestion。${langNote}
 
 简历信息：
 ${resumeSnippet}`
