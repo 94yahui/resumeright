@@ -125,7 +125,22 @@ ${hasJD ? `\n目标职位要求：${effectiveJD}` : ''}`.trim()
     const existingSkillsStr = (resumeData.skills || []).join('、')
     // Language instruction appended to both prompts for English resumes
     const langNote = isEN
-      ? '\n\n⚠️ This resume is in English. You MUST write ALL output text in English — overview, tip, label, changeDescription, optimizedContent bullets, missingSkills, interviewQuestions, interviewAnswers, and skill names must all be in English.'
+      ? `\n\n⚠️ ENGLISH RESUME MODE — The following rules OVERRIDE all Chinese-specific instructions above:
+
+LANGUAGE: Every field in the output (overview, tip, label, changeDescription, optimizedContent, missingSkills, interviewQuestions, interviewAnswers, skill names) MUST be written in English.
+
+POWER VERBS: Replace weak verbs (worked on / helped / was responsible for / participated in / assisted with) with strong action verbs such as: Led, Architected, Designed, Built, Implemented, Spearheaded, Optimized, Delivered, Scaled, Launched, Drove, Streamlined, Owned, Championed, Overhauled.
+
+BULLET LENGTH: Target 15–25 words per bullet. Ignore the 50-character limit.
+
+REWRITING DEPTH: The "no full-sentence replacement" restriction is LIFTED for English. You MAY rewrite entire bullets from scratch when the original is vague, passive, or weak — quality rewrites are preferred over micro-edits.
+${hasJD ? `
+JOB-DESCRIPTION ALIGNMENT (JD provided — apply all three):
+• ADD: You MAY add 1–2 new bullets to an experience or project entry when the JD requires a responsibility or skill that is clearly inferable from the candidate's existing work context (e.g., candidate worked at a SaaS company + JD requires Agile ceremonies → add a bullet about sprint/scrum facilitation). Mark new bullets with [[+...+]].
+• REMOVE: You MAY remove or replace bullets that strongly contradict the target role's seniority or focus (e.g., detailed manual QA steps on a resume targeting a senior engineering role). Mark removed bullets with [[~...~]].
+• EMPHASIZE: Surface outcomes, leadership scope, cross-functional collaboration, and technical depth that the JD explicitly calls out.` : ''}
+
+STAR PRINCIPLE (English): Action verb → Context/Scale → Method or Tool used → Measurable Result. Never invent specific numbers or percentages not present in the original resume.`
       : ''
 
     // ── diff markup format ────────────────────────────────────

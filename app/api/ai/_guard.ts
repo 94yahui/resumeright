@@ -29,7 +29,7 @@ function checkIpRateLimit(ip: string): boolean {
   return true
 }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
+function todayStr() { return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10) }
 
 // ── Document key conventions ──────────────────────────────────────────────────
 // Logged-in users (any plan):  "u_{openid}_{YYYY-MM-DD}"
