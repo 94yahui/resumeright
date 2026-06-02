@@ -173,7 +173,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           >
             {[
               { icon: Cloud,    label: "多端同步" },
-              { icon: Users,    label: "AI 专项预测" },
+              { icon: Users,    label: "AI 面试题预测" },
               { icon: FileText, label: "一键压缩一页" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
