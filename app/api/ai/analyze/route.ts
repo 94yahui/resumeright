@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
 
+export const maxDuration = 60 // Vercel Hobby plan max (seconds)
+
 const QWEN_BASE         = process.env.QWEN_BASE_URL     || 'https://api.deepseek.com'
 const QWEN_MODEL        = process.env.QWEN_MODEL        || 'deepseek-chat'
 const QWEN_FAST_MODEL   = process.env.QWEN_FAST_MODEL   || 'deepseek-chat'
@@ -268,7 +270,7 @@ ${diffExample}
 简历信息：
 ${resumeSnippet}`
 
-    const suggestionsData = await qwen(promptSuggestions, apiKey, 90_000, EXPERT_SYSTEM) as Record<string, unknown>
+    const suggestionsData = await qwen(promptSuggestions, apiKey, 55_000, EXPERT_SYSTEM) as Record<string, unknown>
 
     const stripPeriod = (s: string) => s.replace(/[。.！!？?]+$/, '').trim()
 
