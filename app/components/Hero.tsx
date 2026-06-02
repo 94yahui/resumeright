@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Upload, Pencil, Mail, Phone, Globe, Smartphone } from "lucide-react";
+import { Upload, Pencil, Mail, Phone, Globe, Cloud, Users, FileText } from "lucide-react";
 
 export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
   return (
@@ -171,34 +171,17 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             className="hero-stats"
             style={{ display: "flex", gap: "32px", marginTop: "44px", alignItems: "center" }}
           >
-            {/* Icon stat */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <div style={{ height: "34px", display: "flex", alignItems: "center" }}>
-                <Smartphone size={28} color="var(--paper)" strokeWidth={1.5} />
-              </div>
-              <span style={{ fontSize: "12px", color: "var(--paper2)", marginTop: "4px" }}>
-                掌上编辑
-              </span>
-            </div>
-            {/* Number stats */}
             {[
-              { num: "面试", label: "AI 专项预测" },
-              { num: "1页", label: "一键压缩" },
-            ].map((s) => (
-              <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              { icon: Cloud,    label: "多端同步" },
+              { icon: Users,    label: "AI 专项预测" },
+              { icon: FileText, label: "一键压缩一页" },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div style={{ height: "34px", display: "flex", alignItems: "center" }}>
-                  <span style={{
-                    fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
-                    fontSize: "28px",
-                    color: "var(--paper)",
-                    letterSpacing: "-0.5px",
-                    lineHeight: 1,
-                  }}>
-                    {s.num}
-                  </span>
+                  <Icon size={28} color="var(--paper)" strokeWidth={1.5} />
                 </div>
                 <span style={{ fontSize: "12px", color: "var(--paper2)", marginTop: "4px" }}>
-                  {s.label}
+                  {label}
                 </span>
               </div>
             ))}
