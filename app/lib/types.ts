@@ -153,10 +153,10 @@ export function textToBullets(text: string): string[] {
 export const DEMO_DATA: ResumeData = {
   name: '简力全开',
   jobtitle: '高级软件工程师',
-  email: 'resume@jianliall.com',
+  email: 'resume@jianliquankai.com',
   phone: '138-0000-0000',
   city: '上海',
-  website: 'jianliall.com',
+  website: 'jianliquankai.com',
   customContacts: [],
   photo: '/virtual_photo.png',
   summary: '5 年前端开发经验，专注高性能 Web 应用构建与用户体验优化。主导字节跳动核心互动模块重构，曾带领 3 人小组完成百万级 DAU 产品的全链路性能治理。',
