@@ -14,7 +14,34 @@ const PLAN_LABELS: Record<string, string> = {
   trial7: '7天体验卡', monthly: '月度会员', quarterly: '季度会员', yearly: '年度会员',
 }
 
-// ── Default geek avatar ────────────────────────────────────────────────────────
+// ── User avatar: logo-white on a per-user muted color background ───────────────
+const AVATAR_COLORS = [
+  '#5b8dee', '#4fa37a', '#8b72be', '#4ba8a8', '#c9607a',
+  '#c87840', '#6474b8', '#6a9a6a', '#b870a8', '#4d9fca',
+  '#9a7840', '#5a8fc8', '#7a9450', '#a06880',
+]
+
+function userAvatarColor(seed: string | null | undefined): string {
+  const s = seed ?? 'default'
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
+
+export function UserAvatar({ nickname, size = 32 }: { avatar?: string | null; nickname?: string | null; size?: number }) {
+  const logoSize = Math.round(size * 0.62)
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: userAvatarColor(nickname),
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0, overflow: 'hidden',
+    }}>
+      <img src="/logo-white.png" alt="logo" width={logoSize} height={logoSize} style={{ display: 'block', objectFit: 'contain' }} />
+    </div>
+  )
+}
+
 export function GeekAvatar({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,21 +49,6 @@ export function GeekAvatar({ size = 32 }: { size?: number }) {
       <text x="16" y="20.5" textAnchor="middle" fill="#38bdf8" fontSize="11" fontFamily="monospace" fontWeight="600">&lt;/&gt;</text>
     </svg>
   )
-}
-
-export function UserAvatar({ avatar, nickname, size = 32 }: { avatar?: string | null; nickname?: string | null; size?: number }) {
-  const [imgError, setImgError] = useState(false)
-  if (avatar && !imgError) {
-    return (
-      <img
-        src={avatar} alt={nickname ?? 'avatar'}
-        width={size} height={size}
-        style={{ borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-        onError={() => setImgError(true)}
-      />
-    )
-  }
-  return <GeekAvatar size={size} />
 }
 
 // ── KickedOut Modal ────────────────────────────────────────────────────────────
