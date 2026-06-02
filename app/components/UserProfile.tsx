@@ -167,6 +167,12 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
   const [liveTranslate, setLiveTranslate] = useState<number | null>(null)
   const [liveImport, setLiveImport] = useState<number | null>(null)
   const [liveFreeAnalyze, setLiveFreeAnalyze] = useState<number | null>(null)
+  // Redeem code
+  const [redeemExpanded, setRedeemExpanded] = useState(false)
+  const [redeemCode, setRedeemCode] = useState('')
+  const [redeemLoading, setRedeemLoading] = useState(false)
+  const [redeemError, setRedeemError] = useState('')
+  const [redeemOk, setRedeemOk] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -195,6 +201,32 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
       .catch(() => {})
       .finally(() => setOrdersLoading(false))
   }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleRedeem() {
+    const code = redeemCode.trim()
+    if (!code) return
+    setRedeemLoading(true)
+    setRedeemError('')
+    try {
+      const res = await fetch('/api/redeem-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const data = await res.json()
+      if (data.valid) {
+        setRedeemOk(`兑换成功！${data.label ?? ''}已添加到账户`)
+        setRedeemCode('')
+        onRefreshAuth?.()
+      } else {
+        setRedeemError(data.error ?? '兑换码无效或已过期')
+      }
+    } catch {
+      setRedeemError('网络错误，请重试')
+    } finally {
+      setRedeemLoading(false)
+    }
+  }
 
   const isPro = isActiveSub(membership?.plan, membership?.expires_at)
   const isSingle = membership?.plan === 'single'
@@ -517,6 +549,62 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
                 </button>
               </>
             )}
+
+            {/* ── Redeem code ── */}
+            <div style={{ marginTop: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+              {redeemOk ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span style={{ fontSize: '13px', color: '#15803d', fontWeight: 500 }}>{redeemOk}</span>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setRedeemExpanded(v => !v); setRedeemError('') }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '13px', color: '#64748b', fontFamily: 'var(--font-sans)', fontWeight: 500 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                    有兑换码？点此兑换
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: redeemExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  {redeemExpanded && (
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          value={redeemCode}
+                          onChange={e => { setRedeemCode(e.target.value.toUpperCase()); setRedeemError('') }}
+                          onKeyDown={e => e.key === 'Enter' && handleRedeem()}
+                          placeholder="输入兑换码"
+                          style={{
+                            flex: 1, padding: '8px 12px', borderRadius: '8px', fontSize: '13px',
+                            border: `1.5px solid ${redeemError ? '#fca5a5' : '#e2e8f0'}`,
+                            outline: 'none', fontFamily: 'var(--font-sans)', letterSpacing: '1px',
+                          }}
+                          onFocus={e => { if (!redeemError) e.currentTarget.style.borderColor = '#94a3b8' }}
+                          onBlur={e => { if (!redeemError) e.currentTarget.style.borderColor = '#e2e8f0' }}
+                        />
+                        <button
+                          onClick={handleRedeem}
+                          disabled={redeemLoading || !redeemCode.trim()}
+                          style={{
+                            padding: '8px 16px', borderRadius: '8px', border: 'none',
+                            background: redeemCode.trim() ? '#0f172a' : '#e2e8f0',
+                            color: redeemCode.trim() ? '#fff' : '#94a3b8',
+                            fontSize: '13px', fontWeight: 600, cursor: redeemCode.trim() ? 'pointer' : 'default',
+                            fontFamily: 'var(--font-sans)', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {redeemLoading ? '兑换中…' : '兑换'}
+                        </button>
+                      </div>
+                      {redeemError && (
+                        <div style={{ fontSize: '12px', color: '#ef4444' }}>{redeemError}</div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
