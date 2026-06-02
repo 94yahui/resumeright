@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { Upload, Pencil, Mail, Phone, Globe, Cloud, Users, FileText } from "lucide-react";
+import { Upload, Pencil, Mail, Phone, Globe, Cloud, Users, FileText, Target } from "lucide-react";
 
 export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
   return (
@@ -169,10 +169,11 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           {/* Stats */}
           <div
             className="hero-stats"
-            style={{ display: "flex", gap: "32px", marginTop: "44px", alignItems: "center" }}
+            style={{ display: "flex", gap: "20px", marginTop: "44px", alignItems: "center", flexWrap: "wrap" }}
           >
             {[
               { icon: Cloud,    label: "多端同步" },
+              { icon: Target,   label: "投递成功率提升" },
               { icon: Users,    label: "AI 面试题预测" },
               { icon: FileText, label: "一键压缩一页" },
             ].map(({ icon: Icon, label }) => (
