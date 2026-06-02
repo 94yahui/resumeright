@@ -28,14 +28,15 @@ function userAvatarColor(seed: string | null | undefined): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
-export function UserAvatar({ nickname, size = 32 }: { avatar?: string | null; nickname?: string | null; size?: number }) {
+export function UserAvatar({ nickname, size = 32, border }: { avatar?: string | null; nickname?: string | null; size?: number; border?: string }) {
   const logoSize = Math.round(size * 0.62)
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
       background: userAvatarColor(nickname),
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, overflow: 'hidden',
+      flexShrink: 0, overflow: 'hidden', boxSizing: 'border-box',
+      ...(border ? { border } : {}),
     }}>
       <img src="/logo-white.png" alt="logo" width={logoSize} height={logoSize} style={{ display: 'block', objectFit: 'contain' }} />
     </div>
@@ -578,13 +579,10 @@ export function UserDropdown({ avatar, nickname, openid, membership, isStudent, 
           onMouseEnter={e => (e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'none')}
         >
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden',
-            border: isPro ? '2px solid #f59e0b' : dark ? '2px solid rgba(255,255,255,0.25)' : '2px solid rgba(0,0,0,0.1)',
-            flexShrink: 0,
-          }}>
-            <UserAvatar avatar={avatar} nickname={nickname} size={32} />
-          </div>
+          <UserAvatar
+            avatar={avatar} nickname={nickname} size={32}
+            border={isPro ? '2px solid #f59e0b' : dark ? '2px solid rgba(255,255,255,0.25)' : '2px solid rgba(0,0,0,0.1)'}
+          />
           {!compact && (
             <>
               <span style={{ fontSize: '13px', fontWeight: 500, color: dark ? 'rgba(255,255,255,0.85)' : 'var(--ink2)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
