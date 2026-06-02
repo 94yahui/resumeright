@@ -182,7 +182,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             </div>
             {/* Number stats */}
             {[
-              { num: "PDF", label: "一键导出" },
+              { num: "面试", label: "AI 专项预测" },
               { num: "1页", label: "一键压缩" },
             ].map((s) => (
               <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
