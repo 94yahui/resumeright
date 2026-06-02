@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
-  Trash2, Lock, Lightbulb, History, X,
+  Trash2, Lock, Lightbulb, History, X, Check,
 } from 'lucide-react'
 import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
@@ -312,7 +312,7 @@ export default function LeftPanel({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '11px', color: 'white',
                 }}>
-                  {currentColor === c ? '✓' : ''}
+                  {currentColor === c ? <Check size={13} color="white" strokeWidth={3} /> : null}
                 </div>
               ))}
             </div>
@@ -353,7 +353,7 @@ export default function LeftPanel({
                   </div>
                   {currentFontPair === fp.value && (
                     <div style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ color: 'white', fontSize: '9px', lineHeight: 1 }}>✓</span>
+                      <Check size={10} color="white" strokeWidth={3} />
                     </div>
                   )}
                 </button>
@@ -377,7 +377,7 @@ export default function LeftPanel({
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', fontWeight: 500 }}>{as.label}</div>
                   {currentAccentStyle === as.value && (
                     <div style={{ position: 'absolute', top: '5px', right: '5px', width: '14px', height: '14px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: 'white', fontSize: '8px', lineHeight: 1 }}>✓</span>
+                      <Check size={9} color="white" strokeWidth={3} />
                     </div>
                   )}
                 </button>
