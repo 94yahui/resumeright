@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 
 export interface AuthState {
   loading: boolean
@@ -85,27 +85,25 @@ export function useAuth() {
   const kickedOutRef = useRef(false)
   const prevLoggedInRef    = useRef<boolean>(readCache()?.loggedIn ?? false)
   const prevMembershipRef  = useRef<AuthState['membership']>(readCache()?.membership ?? null)
-  const [auth, setAuth] = useState<AuthState>(() => {
-    // rc_token is httpOnly — JS can't read it to detect login state.
-    // Use the localStorage auth cache as a proxy instead.
-    // Always start with loading: true so the guest banner never flashes
-    // for logged-in users while the API call is in flight.
+  // Always start with the same state on server and client to avoid hydration mismatches.
+  // Cache is applied synchronously before the first paint via useLayoutEffect below.
+  const [auth, setAuth] = useState<AuthState>({ ...EMPTY, loading: true })
+
+  // Apply localStorage cache before the browser paints — invisible to users, no flash.
+  useLayoutEffect(() => {
     const cache = readCache()
     if (cache) {
-      return {
-        ...EMPTY,
-        loading: true,
+      setAuth(prev => ({
+        ...prev,
         loggedIn: cache.loggedIn,
         openid: cache.openid,
         nickname: cache.nickname,
         avatar: cache.avatar,
         membership: cache.membership,
         isStudent: cache.isStudent,
-      }
+      }))
     }
-    // No cache — still loading: true to prevent premature guest banner flash
-    return { ...EMPTY, loading: true }
-  })
+  }, [])
 
   const refresh = useCallback(async () => {
     if (kickedOutRef.current) return  // locked until page reload

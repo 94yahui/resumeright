@@ -1,6 +1,7 @@
 'use client'
-import { useState, useRef, FormEvent } from 'react'
+import React, { useState, useRef, FormEvent } from 'react'
 import Image from 'next/image'
+import { BottomSheet, PrivacyContent, TermsContent } from './PolicySheets'
 
 interface Props {
   onClose: () => void
@@ -24,6 +25,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
   const [success, setSuccess]       = useState(false)
   const [showCode, setShowCode]     = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [showPolicy, setShowPolicy] = useState<null | 'privacy' | 'terms'>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async (e: FormEvent) => {
@@ -194,15 +196,15 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
                   />
                   <span style={{ fontSize: '11.5px', color: '#6b7280', lineHeight: 1.5 }}>
                     我已阅读并同意{' '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer"
-                      style={{ color: '#07C160', textDecoration: 'none' }}
-                      onClick={e => e.stopPropagation()}
-                    >隐私政策</a>
+                    <button type="button"
+                      style={{ color: '#07C160', textDecoration: 'none', background: 'none', border: 'none', padding: 0, fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      onClick={e => { e.stopPropagation(); setShowPolicy('privacy') }}
+                    >隐私政策</button>
                     {' '}和{' '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer"
-                      style={{ color: '#07C160', textDecoration: 'none' }}
-                      onClick={e => e.stopPropagation()}
-                    >用户协议</a>
+                    <button type="button"
+                      style={{ color: '#07C160', textDecoration: 'none', background: 'none', border: 'none', padding: 0, fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      onClick={e => { e.stopPropagation(); setShowPolicy('terms') }}
+                    >用户协议</button>
                   </span>
                 </label>
                 <button
@@ -224,6 +226,14 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Policy sheets (shared with Footer) ── */}
+      <BottomSheet open={showPolicy === 'privacy'} title="隐私政策" onClose={() => setShowPolicy(null)} zIndex={1100}>
+        <PrivacyContent />
+      </BottomSheet>
+      <BottomSheet open={showPolicy === 'terms'} title="用户协议" onClose={() => setShowPolicy(null)} zIndex={1100}>
+        <TermsContent />
+      </BottomSheet>
     </>
   )
 }

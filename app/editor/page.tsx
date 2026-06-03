@@ -98,11 +98,6 @@ function EditorInner() {
     })
   }, [historyIdx])
 
-  const undo = useCallback(() => { if (historyIdx > 0) setHistoryIdx(historyIdx - 1) }, [historyIdx])
-  const redo = useCallback(() => {
-    if (historyIdx < history.length - 1) setHistoryIdx(historyIdx + 1)
-  }, [historyIdx, history.length])
-
   // ============ Editor state ============
   const [templateId, setTemplateId] = useState(initTemplate)
   const [color, setColor] = useState<string | undefined>(undefined)
@@ -120,6 +115,59 @@ function EditorInner() {
   const [interviewLoading, setInterviewLoading] = useState(false)
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set())
   const [bulletDiffs, setBulletDiffs] = useState<Record<string, string[]>>({})
+
+  const undo = useCallback(() => {
+    if (historyIdx <= 0) return
+    const prevIdx = historyIdx - 1
+    const toUnapply = [...appliedSuggestions].filter(
+      id => appliedAtHistoryIdxRef.current.get(id) === prevIdx
+    )
+    if (toUnapply.length > 0) {
+      setAppliedSuggestions(prev => {
+        const next = new Set(prev)
+        toUnapply.forEach(id => next.delete(id))
+        return next
+      })
+      if (aiAnalysis?.suggestions) {
+        setBulletDiffs(prev => {
+          const next = { ...prev }
+          for (const id of toUnapply) {
+            const s = aiAnalysis.suggestions.find(s => s.id === id)
+            if (s && (s.section === 'exp' || s.section === 'project') && s.entryIndex !== undefined && Array.isArray(s.optimizedContent)) {
+              next[`${s.section}:${s.entryIndex}`] = s.optimizedContent as string[]
+            }
+          }
+          return next
+        })
+      }
+    }
+    setHistoryIdx(prevIdx)
+  }, [historyIdx, appliedSuggestions, aiAnalysis])
+
+  const redo = useCallback(() => {
+    if (historyIdx >= history.length - 1) return
+    const toReapply = [...appliedAtHistoryIdxRef.current.entries()]
+      .filter(([_, fromIdx]) => fromIdx === historyIdx)
+      .map(([id]) => id)
+      .filter(id => !appliedSuggestions.has(id))
+    if (toReapply.length > 0) {
+      setAppliedSuggestions(prev => new Set([...prev, ...toReapply]))
+      if (aiAnalysis?.suggestions) {
+        setBulletDiffs(prev => {
+          const next = { ...prev }
+          for (const id of toReapply) {
+            const s = aiAnalysis.suggestions.find(s => s.id === id)
+            if (s && (s.section === 'exp' || s.section === 'project') && s.entryIndex !== undefined) {
+              delete next[`${s.section}:${s.entryIndex}`]
+            }
+          }
+          return next
+        })
+      }
+    }
+    setHistoryIdx(historyIdx + 1)
+  }, [historyIdx, history.length, appliedSuggestions, aiAnalysis])
+
   const [pendingSkills, setPendingSkills] = useState<string[]>([])
   const [jobDescPersist, setJobDescPersist] = useState('')
   const [noResumeOpen, setNoResumeOpen] = useState(false)
@@ -142,6 +190,7 @@ function EditorInner() {
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
   const [studentModalOpen, setStudentModalOpen] = useState(false)
   const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
+  const appliedAtHistoryIdxRef = useRef<Map<string, number>>(new Map())
   const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | null>(null)
   const translateAbortRef = useRef<AbortController | null>(null)
   const compressAbortRef = useRef<AbortController | null>(null)
@@ -392,6 +441,13 @@ function EditorInner() {
           if (importCancelledRef.current) return
           const parsed = parsedToResumeData(importedRaw)
           const currentHistory = loadHistory()
+          const mountLimit = getProStatus(getDeviceId(), undefined).kind === 'free' ? 20 : 100
+          if (currentHistory.length >= mountLimit) {
+            showToast(`简历数量已达上限（${mountLimit} 份），请先删除旧简历`)
+            setImportModalState('none')
+            setImportingFile('')
+            return
+          }
           const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
           const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
@@ -424,6 +480,11 @@ function EditorInner() {
           const { data: importedRaw, filename, analysis, interviewData: importedInterviewData } = JSON.parse(raw)
           const parsed = parsedToResumeData(importedRaw ?? {})
           const currentHistory = loadHistory()
+          const mountLimit = getProStatus(getDeviceId(), undefined).kind === 'free' ? 20 : 100
+          if (currentHistory.length >= mountLimit) {
+            showToast(`简历数量已达上限（${mountLimit} 份），请先删除旧简历`)
+            return
+          }
           const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
           const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
@@ -818,6 +879,11 @@ function EditorInner() {
   const handleNewResume = useCallback(() => {
     setPendingDraft(null)
     const currentHistory = loadHistory()
+    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
+    if (currentHistory.length >= resumeLimit) {
+      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      return
+    }
     const newName = uniqueHistoryName('我的简历', currentHistory)
     const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     if (newId) {
@@ -1181,6 +1247,7 @@ ${autoprint ? `<script>
     setAiPanelPhase('analyzing')
     setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
     setAppliedSuggestions(new Set())
+    appliedAtHistoryIdxRef.current.clear()
 
     // Abort any previous in-flight request before starting a new one
     aiAnalyzeAbortRef.current?.abort()
@@ -1252,6 +1319,7 @@ ${autoprint ? `<script>
 
   // ============ AI suggestion apply ============
   const handleApplySuggestion = useCallback((s: AISuggestion, checkedSkills?: string[]) => {
+    appliedAtHistoryIdxRef.current.set(s.id, historyIdx)
     const stripDot = (t: string) => t.replace(/[。.！!？?]+$/, '').trim()
     if (s.section === 'summary' && s.field === 'summary') {
       const raw = s.optimizedContent
@@ -1280,7 +1348,7 @@ ${autoprint ? `<script>
     }
     setAppliedSuggestions(prev => new Set([...prev, s.id]))
     showToast('✓ AI 建议已应用')
-  }, [updateData, updateEntry, setData])
+  }, [historyIdx, updateData, updateEntry, setData])
 
   const handleGenerateInterview = useCallback(async () => {
     if (interviewLoading || !aiAnalysis) return
@@ -1304,6 +1372,7 @@ ${autoprint ? `<script>
     if (!aiAnalysis?.suggestions?.length) return
     const stripDot = (t: string) => t.replace(/[。.！!？?]+$/, '').trim()
     const pending = aiAnalysis.suggestions.filter(s => !appliedSuggestions.has(s.id))
+    for (const s of pending) { appliedAtHistoryIdxRef.current.set(s.id, historyIdx) }
 
     setData(prev => {
       let next = { ...prev }
@@ -1337,7 +1406,7 @@ ${autoprint ? `<script>
     setBulletDiffs({})
     setPendingSkills([])
     showToast(`✓ 已应用 ${pending.length} 条 AI 建议`)
-  }, [aiAnalysis, appliedSuggestions, setData])
+  }, [historyIdx, aiAnalysis, appliedSuggestions, setData])
 
   // ============ History delete ============
   const handleHistoryDelete = useCallback((id: string) => {
@@ -1369,6 +1438,7 @@ ${autoprint ? `<script>
     setAiPanelPhase('entry')
     setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
     setAppliedSuggestions(new Set())
+    appliedAtHistoryIdxRef.current.clear()
     aiAnalyzedDataSnapshot.current = null
     setIsCurrentEnglish(entry.isEnglish === true || looksEnglish(entry.data))
     showToast(`已加载「${entry.name}」`)
@@ -1376,6 +1446,11 @@ ${autoprint ? `<script>
 
   const handleDuplicateHistory = useCallback((entry: HistoryEntry) => {
     const currentHistory = loadHistory()
+    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
+    if (currentHistory.length >= resumeLimit) {
+      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      return
+    }
     const copyName = uniqueHistoryName(entry.name + ' 副本', currentHistory)
     const newId = saveToHistory({ name: copyName, data: entry.data, templateId: entry.templateId, color: entry.color, savedAt: Date.now(), isEnglish: entry.isEnglish })
     if (auth.loggedIn && newId) {
@@ -1388,6 +1463,11 @@ ${autoprint ? `<script>
 
   // ============ Create new resume / Import resume ============
   const handleCreateNewResume = useCallback(() => {
+    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
+    if (loadHistory().length >= resumeLimit) {
+      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      return
+    }
     if (!noResumeOpen) {
       // Persist current state before switching (skip if no resume is open)
       const hid = loadedFromHistoryId.current
@@ -1687,6 +1767,12 @@ ${autoprint ? `<script>
     if (importCancelledRef.current) return
 
     const currentHistory = loadHistory()
+    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
+    if (currentHistory.length >= resumeLimit) {
+      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      setImportModalState('none')
+      return
+    }
     const uniqueName = uniqueHistoryName(name, currentHistory)
     const newId = saveToHistory({ name: uniqueName, data: importedData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
@@ -1816,6 +1902,8 @@ ${autoprint ? `<script>
           willChange: 'transform',
         } : {
           width: leftCollapsed ? '0' : '264px',
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
           flexShrink: 0,
           transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',

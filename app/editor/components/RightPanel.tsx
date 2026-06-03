@@ -110,7 +110,7 @@ export default function RightPanel({
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
 
         {/* Name + Job */}
         {selection.kind === "field" && selection.field === "name" && (

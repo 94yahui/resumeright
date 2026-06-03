@@ -120,7 +120,7 @@ export default function LeftPanel({
       borderRight: '1px solid #e2e8f0',
       display: 'flex', flexDirection: 'column',
       flexShrink: 0, overflow: 'hidden',
-      height: '100%',
+      ...(isMobile ? { height: '100%' } : { flex: 1, minHeight: 0 }),
     }}>
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
         {TABS.map((t, i) => (
@@ -146,7 +146,7 @@ export default function LeftPanel({
         )}
       </div>
 
-      <div className="overlay-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
         {/* ===== TEMPLATE TAB ===== */}
         {tab === 'tpl' && (

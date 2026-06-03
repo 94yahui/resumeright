@@ -246,8 +246,8 @@ export default function EditorTopbar({
 }
 
 const tbBtn: React.CSSProperties = {
-  padding: '6px 14px', borderRadius: '7px',
-  fontSize: '12px', fontWeight: 500,
+  height: '28px', padding: '0 12px', borderRadius: '7px',
+  fontSize: '12px', fontWeight: 500, boxSizing: 'border-box',
   cursor: 'pointer', fontFamily: 'var(--font-sans)',
   border: '1px solid rgba(255,255,255,0.15)',
   background: 'rgba(255,255,255,0.06)',
