@@ -131,7 +131,10 @@ export function useAuth() {
         dailyTranslateUsed: data.daily_translate_used ?? 0,
         dailyImportUsed: data.daily_import_used ?? 0,
       }
-      if (next.loggedIn) { writeCache(next) } else { clearCache() }
+      // Only write/clear cache on definitive state changes.
+      // Don't clear on logged_in:false — it may be a transient DB error.
+      // Cache is only cleared on explicit logout or kicked_out.
+      if (next.loggedIn) { writeCache(next) }
 
       // Detect silent payment activation (e.g. user closed QR modal but payment went through).
       // Only fire when the user was already logged in — avoids false positive on every login
@@ -149,7 +152,8 @@ export function useAuth() {
 
       setAuth(next)
     } catch {
-      setAuth({ ...EMPTY })
+      // Network/server error — don't wipe cached auth state
+      setAuth(prev => ({ ...prev, loading: false }))
     }
   }, [])
 
