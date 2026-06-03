@@ -666,14 +666,20 @@ export default function ResumeRenderer({
 
     // Compute rendered image dimensions preserving natural aspect ratio.
     // Without natW/natH (legacy photos), fall back to object-fit: cover on the container.
-    let imgW = containerW, imgH = containerH, imgLeft = 0, imgTop = 0, hasMeta = false
+    // globals.css applies box-sizing:border-box globally, so the 2px border is included in
+    // containerW/H. The absolutely-positioned image is relative to the content box (border
+    // excluded), which is containerW - 2*2 = containerW - 4 pixels wide/tall.
+    const BORDER = 2
+    const contentW = containerW - 2 * BORDER
+    const contentH = containerH - 2 * BORDER
+    let imgW = contentW, imgH = contentH, imgLeft = 0, imgTop = 0, hasMeta = false
     if (meta && meta.natW && meta.natH) {
       hasMeta = true
-      const coverScale = Math.max(containerW / meta.natW, containerH / meta.natH)
+      const coverScale = Math.max(contentW / meta.natW, contentH / meta.natH)
       imgW = Math.round(meta.natW * coverScale * meta.scale)
       imgH = Math.round(meta.natH * coverScale * meta.scale)
-      imgLeft = Math.round((containerW - imgW) / 2 + meta.x * containerW)
-      imgTop  = Math.round((containerH - imgH) / 2 + meta.y * containerH)
+      imgLeft = Math.round((contentW - imgW) / 2 + meta.x * contentW)
+      imgTop  = Math.round((contentH - imgH) / 2 + meta.y * contentH)
     }
 
     const handleClick = (e: React.MouseEvent) => {
