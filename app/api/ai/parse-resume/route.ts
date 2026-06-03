@@ -6,7 +6,7 @@ import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
 const inflateRawAsync = promisify(inflateRaw)
 
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
-const PARSE_MODEL = process.env.QWEN_MODEL || 'deepseek-chat'
+const PARSE_MODEL = process.env.QWEN_FAST_MODEL || process.env.QWEN_MODEL || 'deepseek-chat'
 
 const PARSE_PROMPT = `You are a resume parser. First determine if this document is a resume/CV.
 
