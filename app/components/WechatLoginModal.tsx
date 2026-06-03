@@ -18,11 +18,12 @@ function getDeviceId(): string {
 }
 
 export default function WechatLoginModal({ onClose, onSuccess }: Props) {
-  const [code, setCode]       = useState('')
-  const [error, setError]     = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [showCode, setShowCode] = useState(false)
+  const [code, setCode]             = useState('')
+  const [error, setError]           = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [success, setSuccess]       = useState(false)
+  const [showCode, setShowCode]     = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async (e: FormEvent) => {
@@ -54,7 +55,7 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
     }
   }
 
-  const canSubmit = code.length === 6 && !loading
+  const canSubmit = code.length === 6 && !loading && privacyAgreed
 
   return (
     <>
@@ -181,6 +182,29 @@ export default function WechatLoginModal({ onClose, onSuccess }: Props) {
                     {error}
                   </div>
                 )}
+                <label style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '8px',
+                  marginBottom: '12px', cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={privacyAgreed}
+                    onChange={e => setPrivacyAgreed(e.target.checked)}
+                    style={{ marginTop: '2px', flexShrink: 0, accentColor: '#07C160', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '11.5px', color: '#6b7280', lineHeight: 1.5 }}>
+                    我已阅读并同意{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#07C160', textDecoration: 'none' }}
+                      onClick={e => e.stopPropagation()}
+                    >隐私政策</a>
+                    {' '}和{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#07C160', textDecoration: 'none' }}
+                      onClick={e => e.stopPropagation()}
+                    >用户协议</a>
+                  </span>
+                </label>
                 <button
                   type="submit"
                   disabled={!canSubmit}

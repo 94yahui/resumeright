@@ -218,6 +218,46 @@ export default function ResumeRenderer({
             <div style={{ ...baseProps, marginBottom: 0, color: onDark ? '#fff' : titleColor }}>{children}</div>
           </div>
         )
+      case 'flanked-line':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: s(6), marginBottom: s(5) }}>
+            <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.6 }} />
+            <div style={{ ...baseProps, marginBottom: 0, whiteSpace: 'nowrap' }}>{children}</div>
+            <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.6 }} />
+          </div>
+        )
+      case 'slash-prefix':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: s(5), marginBottom: s(5) }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              fontSize: s(13),
+              color: titleColor,
+              opacity: 0.45,
+              flexShrink: 0,
+              letterSpacing: '-1.5px',
+              lineHeight: 1,
+            }}>//</span>
+            <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
+          </div>
+        )
+      case 'highlight-mark':
+        return (
+          <div style={{ marginBottom: s(5) }}>
+            <div style={{ display: 'inline-block', position: 'relative' }}>
+              <div style={{ ...baseProps, marginBottom: 0, position: 'relative', zIndex: 1 }}>{children}</div>
+              <div style={{
+                position: 'absolute',
+                bottom: '-1px', left: '-3px', right: '-3px',
+                height: '42%',
+                background: onDark ? 'rgba(255,255,255,0.28)' : `${titleColor}38`,
+                zIndex: 0,
+                borderRadius: '1px',
+              }} />
+            </div>
+          </div>
+        )
       case 'plain-bold':
       default:
         return <div style={{ ...baseProps, fontSize: s(14) }}>{children}</div>

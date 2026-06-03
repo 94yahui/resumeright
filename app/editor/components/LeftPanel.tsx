@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
-  Trash2, Lock, Lightbulb, History, X, Check,
+  Trash2, Lock, Lightbulb, History, X, Check, Copy,
 } from 'lucide-react'
 import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
@@ -53,6 +53,7 @@ interface Props {
   data: ResumeData
   onUpdate: (patch: Partial<ResumeData>) => void
   onLoadHistory?: (entry: HistoryEntry) => void
+  onDuplicateHistory?: (entry: HistoryEntry) => void
   onHistoryDelete?: (id: string) => void
   historyRefreshKey?: number
   currentHistoryId?: string | null
@@ -72,7 +73,7 @@ export default function LeftPanel({
   templateId, onTemplateChange, onColorChange, currentColor,
   currentAccentStyle, onAccentStyleChange, currentFontPair, onFontPairChange,
   onAddModule, data, onUpdate,
-  onLoadHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
+  onLoadHistory, onDuplicateHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
   isMobile, onClose, forceTab, disabled, canUseProTemplate = false, unlockedProTemplateId, onProTemplateLocked,
   loggedIn = false, onShowLogin,
 }: Props) {
@@ -488,6 +489,22 @@ export default function LeftPanel({
                             </button>
                           )}
                           <button
+                            onClick={() => {
+                              const fresh = loadHistory().find(h => h.id === entry.id) ?? entry
+                              onDuplicateHistory?.(fresh)
+                              setHistoryEntries(loadHistory())
+                            }}
+                            title="复制简历"
+                            style={{
+                              padding: '4px 7px', borderRadius: '5px', fontSize: '12px',
+                              border: '1px solid #e2e8f0', background: 'white',
+                              color: '#64748b', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <Copy size={12} />
+                          </button>
+                          <button
                             onClick={() => setConfirmDeleteId(entry.id)}
                             style={{
                               padding: '4px 7px', borderRadius: '5px', fontSize: '12px',
@@ -527,6 +544,9 @@ const ACCENT_STYLES: { value: AccentStyle; label: string }[] = [
   { value: 'double-line',   label: '双线夹标题' },
   { value: 'triple-bar',    label: '渐变竖条' },
   { value: 'gradient-band', label: '渐变色带' },
+  { value: 'flanked-line',  label: '双侧横线' },
+  { value: 'slash-prefix',  label: '斜杠前缀' },
+  { value: 'highlight-mark', label: '荧光划线' },
   { value: 'plain-bold',    label: '粗体简洁' },
 ]
 
@@ -601,6 +621,30 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
       return (
         <div style={{ height: '30px', display: 'flex', alignItems: 'center', marginLeft: '-4px', paddingLeft: '6px', borderLeft: `2px solid ${c}`, background: `linear-gradient(to right, ${c}22, transparent)` }}>
           <div style={baseText}>{text}</div>
+        </div>
+      )
+    case 'flanked-line':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.6 }} />
+          <div style={{ ...baseText, whiteSpace: 'nowrap' }}>{text}</div>
+          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.6 }} />
+        </div>
+      )
+    case 'slash-prefix':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '9px', color: c, opacity: 0.45, letterSpacing: '-1px', lineHeight: 1, flexShrink: 0 }}>//</span>
+          <div style={baseText}>{text}</div>
+        </div>
+      )
+    case 'highlight-mark':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ ...baseText, position: 'relative', zIndex: 1 }}>{text}</div>
+            <div style={{ position: 'absolute', bottom: '-1px', left: '-2px', right: '-2px', height: '42%', background: `${c}38`, borderRadius: '1px', zIndex: 0 }} />
+          </div>
         </div>
       )
     case 'plain-bold':

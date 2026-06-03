@@ -42,7 +42,7 @@ function AboutContent() {
       <h2 style={h2s}>我们的产品</h2>
       <ul style={uls}>
         <li style={lis}>
-          30 套专业简历模板，覆盖互联网、金融、设计、学术等主流行业
+          160+ 套专业简历模板，覆盖互联网、金融、设计、学术等主流行业
         </li>
         <li style={lis}>
           AI 简历分析：简历润色 + 岗位匹配度评分 + 面试题预测，覆盖两种使用场景

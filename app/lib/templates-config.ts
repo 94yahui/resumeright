@@ -18,6 +18,9 @@ export type AccentStyle =
   | 'plain-bold'
   | 'triple-bar'
   | 'gradient-band'
+  | 'flanked-line'
+  | 'slash-prefix'
+  | 'highlight-mark'
 
 export type FontPair =
   | 'modern-sans'
@@ -59,7 +62,7 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'navy-modern',
-    name: '深蓝现代',
+    name: '宽栏现代',
     categories: ['tech', 'finance'],
     free: true,
     layout: 'sidebar-left-wide',
@@ -85,7 +88,7 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'teal-creative',
-    name: '青绿创意',
+    name: '窄栏创意',
     categories: ['tech', 'design', 'general'],
     free: true,
     layout: 'sidebar-left-narrow',
@@ -1079,29 +1082,69 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
   { id: 'pro-grad-card-serif-ph', name: '渐变卡片衬线照片', categories: ['finance', 'general'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: true, tag: '律师·照片', desc: '卡片衬线渐变带配头像，沉稳专业' },
   { id: 'pro-grad-card-mono', name: '渐变卡片等宽', categories: ['tech'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#0891b2', fontPair: 'mono-accent', showPhoto: false, tag: '开发·DevOps', desc: '卡片等宽渐变带，开发者专属' },
   { id: 'pro-grad-card-photo', name: '渐变卡片照片', categories: ['general', 'tech'], free: false, layout: 'header-card', accentStyle: 'gradient-band', accentColor: '#7c3aed', fontPair: 'modern-sans', showPhoto: true, tag: '市场·创意', desc: '卡片渐变带配头像，活力个性' },
+
+  // ══════════════════════════════════════════════════════════════
+  // flanked-line (双侧横线) — 8 variants across all layouts
+  // ══════════════════════════════════════════════════════════════
+  { id: 'pro-flanked-cls-sans',      name: '双侧线单栏',      categories: ['general', 'finance'], free: false, layout: 'single-classic',       accentStyle: 'flanked-line', accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: false, tag: '简洁·通用·ATS',   desc: '双侧横线居中节标题，优雅通透，高度 ATS 友好' },
+  { id: 'pro-flanked-cls-serif',     name: '双侧线衬线',      categories: ['finance', 'general'], free: false, layout: 'single-classic',       accentStyle: 'flanked-line', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '金融·学术',       desc: '衬线字体配双侧横线节标题，传统典雅气质' },
+  { id: 'pro-flanked-cls-serif-ph',  name: '双侧线衬线照片',  categories: ['finance', 'general'], free: false, layout: 'single-classic',       accentStyle: 'flanked-line', accentColor: '#292524', fontPair: 'serif-heading', showPhoto: true,  tag: '法律·照片',       desc: '衬线双侧横线配头像，正式庄重' },
+  { id: 'pro-flanked-nrw-photo',     name: '双侧线侧栏照片',  categories: ['general', 'design'],  free: false, layout: 'sidebar-left-narrow',  accentStyle: 'flanked-line', accentColor: '#0f766e', fontPair: 'modern-sans',   showPhoto: true,  tag: '通用·设计·照片', desc: '左窄栏配头像与双侧横线节标题，清新对称' },
+  { id: 'pro-flanked-wide-photo',    name: '双侧线宽栏照片',  categories: ['general', 'tech'],    free: false, layout: 'sidebar-left-wide',    accentStyle: 'flanked-line', accentColor: '#1e3a8a', fontPair: 'modern-sans',   showPhoto: true,  tag: '科技·照片',       desc: '深色宽栏配头像与双侧横线，层次丰富' },
+  { id: 'pro-flanked-card-serif',    name: '双侧线卡片衬线',  categories: ['finance', 'general'], free: false, layout: 'header-card',          accentStyle: 'flanked-line', accentColor: '#1f2937', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·高管',       desc: '头部卡片配衬线双侧横线，精英气质' },
+  { id: 'pro-flanked-two-col',       name: '双侧线双栏',      categories: ['general', 'finance'], free: false, layout: 'two-column-balance',   accentStyle: 'flanked-line', accentColor: '#334155', fontPair: 'modern-sans',   showPhoto: false, tag: '信息密集·商务',   desc: '双栏平衡配双侧横线节标题，工整严谨' },
+  { id: 'pro-flanked-ctr-serif',     name: '双侧线居中衬线',  categories: ['design', 'general'],  free: false, layout: 'single-centered',      accentStyle: 'flanked-line', accentColor: '#374151', fontPair: 'serif-heading', showPhoto: false, tag: '设计·艺术',       desc: '居中衬线排版配双侧横线，文艺大气' },
+  { id: 'pro-flanked-right',         name: '双侧线右栏',      categories: ['general', 'tech'],    free: false, layout: 'sidebar-right',        accentStyle: 'flanked-line', accentColor: '#0c4a6e', fontPair: 'modern-sans',   showPhoto: false, tag: '通用·清爽',       desc: '右侧辅助栏配双侧横线节标题，布局独特清爽' },
+  { id: 'pro-flanked-banner',        name: '双侧线横幅',      categories: ['general', 'design'],  free: false, layout: 'top-banner-photo',     accentStyle: 'flanked-line', accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: true,  tag: '通用·横幅·照片', desc: '顶部横幅配双侧横线节标题，视觉层次感强' },
+
+  // ══════════════════════════════════════════════════════════════
+  // slash-prefix (斜杠前缀) — 8 variants across all layouts
+  // ══════════════════════════════════════════════════════════════
+  { id: 'pro-slash-cls-mono',        name: '斜杠单栏',        categories: ['tech'],               free: false, layout: 'single-classic',       accentStyle: 'slash-prefix', accentColor: '#14532d', fontPair: 'mono-accent',   showPhoto: false, tag: '开发·工程师',     desc: '等宽字体配斜杠前缀节标题，代码注释风格' },
+  { id: 'pro-slash-cls-sans',        name: '斜杠单栏简约',    categories: ['tech', 'general'],    free: false, layout: 'single-classic',       accentStyle: 'slash-prefix', accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: false, tag: '简约·极简',       desc: '无衬线斜杠前缀，简约现代，个性感强' },
+  { id: 'pro-slash-cls-mono-ph',     name: '斜杠单栏照片',    categories: ['tech'],               free: false, layout: 'single-classic',       accentStyle: 'slash-prefix', accentColor: '#0c4a6e', fontPair: 'mono-accent',   showPhoto: true,  tag: '技术·照片',       desc: '等宽斜杠配头像，工程师个性简历' },
+  { id: 'pro-slash-nrw-mono',        name: '斜杠窄栏',        categories: ['tech'],               free: false, layout: 'sidebar-left-narrow',  accentStyle: 'slash-prefix', accentColor: '#4c1d95', fontPair: 'mono-accent',   showPhoto: false, tag: '后端·极客',       desc: '左窄栏等宽斜杠前缀，极客代码风' },
+  { id: 'pro-slash-wide-mono',       name: '斜杠宽栏',        categories: ['tech'],               free: false, layout: 'sidebar-left-wide',    accentStyle: 'slash-prefix', accentColor: '#1e3a8a', fontPair: 'mono-accent',   showPhoto: true,  tag: '全栈·架构·照片', desc: '深色宽栏等宽斜杠配头像，工程师专属' },
+  { id: 'pro-slash-card',            name: '斜杠卡片',        categories: ['tech', 'general'],    free: false, layout: 'header-card',          accentStyle: 'slash-prefix', accentColor: '#16a34a', fontPair: 'modern-sans',   showPhoto: false, tag: '科技·清爽',       desc: '头部卡片配斜杠节标题，技术感与整洁感并存' },
+  { id: 'pro-slash-two-col',         name: '斜杠双栏',        categories: ['tech', 'general'],    free: false, layout: 'two-column-balance',   accentStyle: 'slash-prefix', accentColor: '#0891b2', fontPair: 'modern-sans',   showPhoto: true,  tag: '产品·工程·照片', desc: '双栏斜杠配头像，高信息密度个性简历' },
+  { id: 'pro-slash-right-mono',      name: '斜杠右栏',        categories: ['tech'],               free: false, layout: 'sidebar-right',        accentStyle: 'slash-prefix', accentColor: '#374151', fontPair: 'mono-accent',   showPhoto: false, tag: '全栈·算法',       desc: '右侧辅助栏配等宽斜杠节标题，极客风格' },
+  { id: 'pro-slash-banner',          name: '斜杠横幅',        categories: ['tech', 'general'],    free: false, layout: 'top-banner-photo',     accentStyle: 'slash-prefix', accentColor: '#0f766e', fontPair: 'modern-sans',   showPhoto: true,  tag: 'DevOps·横幅',    desc: '横幅斜杠节标题，技术感与视觉冲击兼备' },
+  { id: 'pro-slash-ctr-mono',        name: '斜杠居中',        categories: ['tech', 'design'],     free: false, layout: 'single-centered',      accentStyle: 'slash-prefix', accentColor: '#065f46', fontPair: 'mono-accent',   showPhoto: false, tag: '设计·极简',       desc: '居中排版配等宽斜杠，个性与简洁并重' },
+
+  // ══════════════════════════════════════════════════════════════
+  // highlight-mark (荧光划线) — 8 variants across all layouts
+  // ══════════════════════════════════════════════════════════════
+  { id: 'pro-hl-cls-sans',           name: '荧光单栏',        categories: ['general', 'design'],  free: false, layout: 'single-classic',       accentStyle: 'highlight-mark', accentColor: '#0d9488', fontPair: 'modern-sans',   showPhoto: false, tag: '通用·活力',       desc: '主题色荧光衬底节标题，视觉焦点突出' },
+  { id: 'pro-hl-cls-serif',          name: '荧光衬线',        categories: ['finance', 'general'], free: false, layout: 'single-classic',       accentStyle: 'highlight-mark', accentColor: '#7c3aed', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·设计',       desc: '衬线字体配荧光底衬，典雅中透出个性' },
+  { id: 'pro-hl-cls-serif-ph',       name: '荧光衬线照片',    categories: ['general', 'design'],  free: false, layout: 'single-classic',       accentStyle: 'highlight-mark', accentColor: '#b45309', fontPair: 'serif-heading', showPhoto: true,  tag: '媒体·照片',       desc: '衬线荧光配头像，人文温暖气息' },
+  { id: 'pro-hl-nrw-photo',          name: '荧光窄栏照片',    categories: ['general', 'design'],  free: false, layout: 'sidebar-left-narrow',  accentStyle: 'highlight-mark', accentColor: '#ec4899', fontPair: 'modern-sans',   showPhoto: true,  tag: '设计·市场·照片', desc: '左窄栏配头像与荧光节标题，时尚个性' },
+  { id: 'pro-hl-wide-sans',          name: '荧光宽栏',        categories: ['general', 'tech'],    free: false, layout: 'sidebar-left-wide',    accentStyle: 'highlight-mark', accentColor: '#1d4ed8', fontPair: 'modern-sans',   showPhoto: false, tag: '科技·管理',       desc: '深色宽栏配荧光节标题，视觉层次鲜明' },
+  { id: 'pro-hl-card-photo',         name: '荧光卡片照片',    categories: ['general', 'design'],  free: false, layout: 'header-card',          accentStyle: 'highlight-mark', accentColor: '#ea580c', fontPair: 'modern-sans',   showPhoto: true,  tag: '创意·运营·照片', desc: '头部卡片配荧光节标题和头像，活力四射' },
+  { id: 'pro-hl-two-col',            name: '荧光双栏',        categories: ['general', 'finance'], free: false, layout: 'two-column-balance',   accentStyle: 'highlight-mark', accentColor: '#0f172a', fontPair: 'modern-sans',   showPhoto: false, tag: '商务·信息密集',   desc: '双栏平衡配荧光节标题，信息密度高且醒目' },
+  { id: 'pro-hl-right',              name: '荧光右栏',        categories: ['general', 'design'],  free: false, layout: 'sidebar-right',        accentStyle: 'highlight-mark', accentColor: '#6d28d9', fontPair: 'modern-sans',   showPhoto: false, tag: '创意·通用',       desc: '右侧辅助栏配荧光节标题，布局新颖醒目' },
+  { id: 'pro-hl-banner',             name: '荧光横幅',        categories: ['general', 'design'],  free: false, layout: 'top-banner-photo',     accentStyle: 'highlight-mark', accentColor: '#0891b2', fontPair: 'modern-sans',   showPhoto: true,  tag: '市场·横幅·照片', desc: '横幅配荧光节标题，冲击力与识别度并存' },
+  { id: 'pro-hl-ctr-serif',          name: '荧光居中衬线',    categories: ['design', 'general'],  free: false, layout: 'single-centered',      accentStyle: 'highlight-mark', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: false, tag: '艺术·学术',       desc: '居中衬线排版配荧光底衬，文艺雅致' },
 ]
 
-// Round-robin interleave so no two consecutive pro templates share the same accentStyle
-function _interleaveByStyle(arr: TemplateConfig[]): TemplateConfig[] {
-  const free = arr.filter(t => t.free)
-  const pro = arr.filter(t => !t.free)
-  const groups: Record<string, TemplateConfig[]> = {}
-  for (const t of pro) {
-    if (!groups[t.accentStyle]) groups[t.accentStyle] = []
-    groups[t.accentStyle].push(t)
+// Deterministic Fisher-Yates shuffle with a fixed LCG seed so order is stable across builds
+function _seededShuffle<T>(arr: T[], seed: number): T[] {
+  const result = [...arr]
+  let s = seed >>> 0
+  for (let i = result.length - 1; i > 0; i--) {
+    s = Math.imul(s, 1664525) + 1013904223 >>> 0
+    const j = s % (i + 1)
+    ;[result[i], result[j]] = [result[j], result[i]]
   }
-  const keys = Object.keys(groups)
-  const result: TemplateConfig[] = []
-  const maxLen = Math.max(...keys.map(k => groups[k].length))
-  for (let i = 0; i < maxLen; i++) {
-    for (const k of keys) {
-      if (i < groups[k].length) result.push(groups[k][i])
-    }
-  }
-  return [...free, ...result]
+  return result
 }
 
-export const TEMPLATES: TemplateConfig[] = _interleaveByStyle(_ALL_TEMPLATES)
+function _buildTemplates(arr: TemplateConfig[]): TemplateConfig[] {
+  const free = arr.filter(t => t.free)
+  const pro = _seededShuffle(arr.filter(t => !t.free), 0x4A1B9F3E)
+  return [...free, ...pro]
+}
+
+export const TEMPLATES: TemplateConfig[] = _buildTemplates(_ALL_TEMPLATES)
 export const FREE_TEMPLATES = TEMPLATES.filter(t => t.free)
 export const PRO_TEMPLATES = TEMPLATES.filter(t => !t.free)
 

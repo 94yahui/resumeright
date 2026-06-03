@@ -78,19 +78,11 @@ export async function POST(req: NextRequest) {
       exp:      pickEntries((rd.exp as unknown[] | undefined) ?? []),
       edu:      pickEntries((rd.edu as unknown[] | undefined) ?? []),
       project:  pickEntries((rd.project as unknown[] | undefined) ?? []),
-      award:    ((rd.award as unknown[] | undefined) ?? []).map(e => {
-        const r = e as RD; return { title: String(r.title ?? ''), sub: String(r.sub ?? '') }
-      }),
-      cert:     ((rd.cert as unknown[] | undefined) ?? []).map(e => {
-        const r = e as RD; return { title: String(r.title ?? ''), sub: String(r.sub ?? '') }
-      }),
+      award:    pickEntries((rd.award    as unknown[] | undefined) ?? []),
+      cert:     pickEntries((rd.cert     as unknown[] | undefined) ?? []),
       volunteer: pickEntries((rd.volunteer as unknown[] | undefined) ?? []),
-      interest:  ((rd.interest as unknown[] | undefined) ?? []).map(e => {
-        const r = e as RD; return { title: String(r.title ?? ''), sub: String(r.sub ?? '') }
-      }),
-      language:  ((rd.language as unknown[] | undefined) ?? []).map(e => {
-        const r = e as RD; return { title: String(r.title ?? ''), sub: String(r.sub ?? '') }
-      }),
+      interest:  pickEntries((rd.interest as unknown[] | undefined) ?? []),
+      language:  pickEntries((rd.language as unknown[] | undefined) ?? []),
       skills: rd.skills,
     }
 
@@ -126,22 +118,10 @@ ${JSON.stringify(snippet)}`
       edu:      mergeEntries((rd.edu      as RD[] | undefined) ?? [], (translated.edu      as EntrySnippet[] | undefined) ?? []),
       project:  mergeEntries((rd.project  as RD[] | undefined) ?? [], (translated.project  as EntrySnippet[] | undefined) ?? []),
       volunteer:mergeEntries((rd.volunteer as RD[] | undefined) ?? [], (translated.volunteer as EntrySnippet[] | undefined) ?? []),
-      award: ((rd.award as RD[] | undefined) ?? []).map((orig, i) => {
-        const t = (translated.award as RD[] | undefined)?.[i]
-        return t ? { ...orig, title: t.title || orig.title, sub: t.sub || orig.sub } : orig
-      }),
-      cert: ((rd.cert as RD[] | undefined) ?? []).map((orig, i) => {
-        const t = (translated.cert as RD[] | undefined)?.[i]
-        return t ? { ...orig, title: t.title || orig.title, sub: t.sub || orig.sub } : orig
-      }),
-      interest: ((rd.interest as RD[] | undefined) ?? []).map((orig, i) => {
-        const t = (translated.interest as RD[] | undefined)?.[i]
-        return t ? { ...orig, title: t.title || orig.title, sub: t.sub || orig.sub } : orig
-      }),
-      language: ((rd.language as RD[] | undefined) ?? []).map((orig, i) => {
-        const t = (translated.language as RD[] | undefined)?.[i]
-        return t ? { ...orig, title: t.title || orig.title, sub: t.sub || orig.sub } : orig
-      }),
+      award:    mergeEntries((rd.award    as RD[] | undefined) ?? [], (translated.award    as EntrySnippet[] | undefined) ?? []),
+      cert:     mergeEntries((rd.cert     as RD[] | undefined) ?? [], (translated.cert     as EntrySnippet[] | undefined) ?? []),
+      interest: mergeEntries((rd.interest as RD[] | undefined) ?? [], (translated.interest as EntrySnippet[] | undefined) ?? []),
+      language: mergeEntries((rd.language as RD[] | undefined) ?? [], (translated.language as EntrySnippet[] | undefined) ?? []),
     }
 
     const translatedTitle = translated.name ? String(translated.name) : ''

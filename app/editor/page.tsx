@@ -1374,6 +1374,18 @@ ${autoprint ? `<script>
     showToast(`已加载「${entry.name}」`)
   }, [])
 
+  const handleDuplicateHistory = useCallback((entry: HistoryEntry) => {
+    const currentHistory = loadHistory()
+    const copyName = uniqueHistoryName(entry.name + ' 副本', currentHistory)
+    const newId = saveToHistory({ name: copyName, data: entry.data, templateId: entry.templateId, color: entry.color, savedAt: Date.now(), isEnglish: entry.isEnglish })
+    if (auth.loggedIn && newId) {
+      const saved = loadHistory().find(h => h.id === newId)
+      if (saved) upsertCloudResume(saved)
+    }
+    setHistoryRefreshKey(k => k + 1)
+    showToast(`已复制「${copyName}」`)
+  }, [auth.loggedIn])
+
   // ============ Create new resume / Import resume ============
   const handleCreateNewResume = useCallback(() => {
     if (!noResumeOpen) {
@@ -1821,6 +1833,7 @@ ${autoprint ? `<script>
             data={data}
             onUpdate={updateData}
             onLoadHistory={handleLoadHistoryWithClear}
+            onDuplicateHistory={handleDuplicateHistory}
             onHistoryDelete={handleHistoryDelete}
             historyRefreshKey={historyRefreshKey}
             currentHistoryId={currentHistoryId}
@@ -2204,7 +2217,7 @@ ${autoprint ? `<script>
             }}
             onClick={() => {
               setSelection({ kind: 'none' })
-              if (aiPanelOpen && (aiPanelPhase === 'entry' || (isMobile && aiPanelPhase === 'result'))) setAiPanelOpen(false)
+              if (aiPanelOpen && aiPanelPhase === 'entry') setAiPanelOpen(false)
             }}
           >
             <div ref={scaleWrapperRef} className="print-scale-wrapper" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center', willChange: 'transform' }}>
