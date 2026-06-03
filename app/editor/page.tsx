@@ -1760,7 +1760,7 @@ ${autoprint ? `<script>
       }
     }
 
-    let importedData: ResumeData = DEMO_DATA
+    let importedData: ResumeData | null = null
     const fileObj = importingFileObjRef.current
     if (fileObj) {
       try {
@@ -1768,14 +1768,31 @@ ${autoprint ? `<script>
         formData.append('file', fileObj)
         formData.append('deviceId', deviceId)
         const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData, signal: controller.signal })
+        if (res.status === 429) {
+          const errJson = await res.json().catch(() => ({}))
+          showToast(errJson?.error || '今日导入次数已用完，登录后次数重置')
+          setImportModalState('none')
+          return
+        }
         if (res.ok) {
           const json = await res.json()
           importedData = parsedToResumeData(json.data ?? {})
+        } else {
+          showToast('导入失败，请重试')
+          setImportModalState('none')
+          return
         }
       } catch (e) {
         if (e instanceof Error && e.name === 'AbortError') return  // cancelled
         console.error('import parse error:', e)
+        showToast('导入失败，请重试')
+        setImportModalState('none')
+        return
       }
+    }
+    if (!importedData) {
+      setImportModalState('none')
+      return
     }
     if (importCancelledRef.current) return
 

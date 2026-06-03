@@ -2506,8 +2506,8 @@ export function PhotoCropModal({
   const coverScale = Math.max(previewW / nat.w, previewH / nat.h);
   const baseW = nat.w * coverScale;
   const baseH = nat.h * coverScale;
-  const renderedW = baseW * scale;
-  const renderedH = baseH * scale;
+  const renderedW = Math.round(baseW * scale);
+  const renderedH = Math.round(baseH * scale);
 
   // Per-axis pan limits: image must always fully cover the preview in both dimensions.
   const maxOffX = Math.max(0, (renderedW - previewW) / (2 * previewW));
@@ -2515,8 +2515,8 @@ export function PhotoCropModal({
   const cx = Math.max(-maxOffX, Math.min(maxOffX, pos.x));
   const cy = Math.max(-maxOffY, Math.min(maxOffY, pos.y));
 
-  const imgLeft = (previewW - renderedW) / 2 + cx * previewW;
-  const imgTop = (previewH - renderedH) / 2 + cy * previewH;
+  const imgLeft = Math.round((previewW - renderedW) / 2 + cx * previewW);
+  const imgTop = Math.round((previewH - renderedH) / 2 + cy * previewH);
 
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);

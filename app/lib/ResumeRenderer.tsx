@@ -670,10 +670,10 @@ export default function ResumeRenderer({
     if (meta && meta.natW && meta.natH) {
       hasMeta = true
       const coverScale = Math.max(containerW / meta.natW, containerH / meta.natH)
-      imgW = meta.natW * coverScale * meta.scale
-      imgH = meta.natH * coverScale * meta.scale
-      imgLeft = (containerW - imgW) / 2 + meta.x * containerW
-      imgTop  = (containerH - imgH) / 2 + meta.y * containerH
+      imgW = Math.round(meta.natW * coverScale * meta.scale)
+      imgH = Math.round(meta.natH * coverScale * meta.scale)
+      imgLeft = Math.round((containerW - imgW) / 2 + meta.x * containerW)
+      imgTop  = Math.round((containerH - imgH) / 2 + meta.y * containerH)
     }
 
     const handleClick = (e: React.MouseEvent) => {
