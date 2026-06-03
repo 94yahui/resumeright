@@ -392,16 +392,25 @@ export default function RightPanel({
               {data.skills.map((s, i) => (
                 <span
                   key={i}
-                  onClick={() => onUpdate({ skills: data.skills.filter((_, j) => j !== i) })}
                   style={{
-                    padding: "4px 11px", borderRadius: "20px", fontSize: "12px",
+                    display: "inline-flex", alignItems: "center", gap: "4px",
+                    padding: "4px 8px 4px 11px", borderRadius: "20px", fontSize: "12px",
                     background: "#f1f5f9", color: "#334155",
-                    cursor: "pointer", transition: "all 0.15s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#dc2626" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#334155" }}
                 >
-                  {s} ×
+                  {s}
+                  <button
+                    onClick={() => onUpdate({ skills: data.skills.filter((_, j) => j !== i) })}
+                    style={{
+                      border: "none", background: "none", padding: "0 2px",
+                      cursor: "pointer", fontSize: "13px", lineHeight: 1,
+                      color: "#94a3b8", borderRadius: "50%", display: "flex", alignItems: "center",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fee2e2" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "none" }}
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>
