@@ -5,6 +5,12 @@ import './globals.css'
 export const metadata: Metadata = {
   title: '简力全开 — AI赋能专业简历制作',
   description: '模块化编辑，AI 智能优化，一键下载。打造令人印象深刻的简历。',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' },
+    ],
+  },
 }
 
 export default function RootLayout({
