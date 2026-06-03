@@ -90,15 +90,11 @@ export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({ ...EMPTY, loading: true })
 
   // Apply localStorage cache before the browser paints — invisible to users, no flash.
-  // If the cache is fresh, also set loading:false so subscriber UI shows immediately
-  // without waiting for the /api/auth/me round-trip. refresh() still runs in the
-  // background to update daily counts and confirm the session is still valid.
   useLayoutEffect(() => {
     const cache = readCache()
     if (cache) {
       setAuth(prev => ({
         ...prev,
-        loading: false,
         loggedIn: cache.loggedIn,
         openid: cache.openid,
         nickname: cache.nickname,
@@ -113,11 +109,6 @@ export function useAuth() {
     if (kickedOutRef.current) return  // locked until page reload
     try {
       const res = await fetch('/api/auth/me')
-      // 5xx means DB/server error — keep cached auth state, don't log the user out
-      if (!res.ok) {
-        setAuth(prev => ({ ...prev, loading: false }))
-        return
-      }
       const data = await res.json()
       if (data.kicked_out === true) {
         kickedOutRef.current = true
@@ -158,8 +149,7 @@ export function useAuth() {
 
       setAuth(next)
     } catch {
-      // Network error — keep cached state, don't wipe auth
-      setAuth(prev => ({ ...prev, loading: false }))
+      setAuth({ ...EMPTY })
     }
   }, [])
 

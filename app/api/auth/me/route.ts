@@ -81,9 +81,7 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     if (!msg.includes('cooling off')) console.error('[auth/me] DB error:', e)
-    // Return 503 so the client knows this is a server error (not an actual logout).
-    // The client will keep the cached auth state instead of clearing it.
-    return NextResponse.json({ error: 'db_unavailable' }, { status: 503 })
+    return NextResponse.json({ logged_in: false })
   }
 }
 

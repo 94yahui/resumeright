@@ -266,11 +266,6 @@ function EditorInner() {
   // old single purchases (no templateId stored) keep the original no-watermark behaviour.
   const showWatermark = proStatus.kind === 'free' ||
     (proStatus.kind === 'single' && !!proStatus.templateId && proStatus.templateId !== templateId)
-  // Server-confirmed subscriber: auth.membership is the source of truth.
-  // Used to hide the Pro-template banner before proStatus syncs from the useEffect.
-  const isConfirmedSubscriber = auth.loggedIn && !!auth.membership &&
-    auth.membership.plan !== 'single' &&
-    (!auth.membership.expires_at || auth.membership.expires_at > Date.now())
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -353,12 +348,7 @@ function EditorInner() {
     syncFreeAnalyzeOnLogin(auth.freeAnalyzeUsed)
     // Sync paid orders into localStorage so getProStatus works cross-device
     syncOrdersFromServer().then(() => {
-      // Don't override server-confirmed subscription with localStorage-based status.
-      // auth.membership is the source of truth for subscriptions; getProStatus only
-      // covers single purchases that may not be in the payments collection.
-      if (proStatusRef.current.kind !== 'subscription') {
-        setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
-      }
+      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
     })
     // Sync resume history; auto-load most recent entry when nothing is currently open,
     // or when the current entry is an unedited blank (DEMO_DATA, user logged in without making edits)
@@ -1912,7 +1902,7 @@ ${autoprint ? `<script>
       </div>
 
       {/* Pro-template preview banner — free users can see the template but need Pro to download */}
-      {isProTemplate && showWatermark && !isConfirmedSubscriber && !noResumeOpen && !auth.loading && (
+      {isProTemplate && showWatermark && !noResumeOpen && !auth.loading && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
