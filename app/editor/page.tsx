@@ -1689,6 +1689,10 @@ ${autoprint ? `<script>
         body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, deviceId, docTitle }),
         signal: controller.signal,
       })
+      if (res.status === 429) {
+        showToast(`今日生成英文简历次数已用完`)
+        return
+      }
       if (!res.ok) { showToast('翻译失败，请稍后重试'); return }
       const json = await res.json()
       if (!json.data) { showToast('翻译失败，请稍后重试'); return }
@@ -1704,7 +1708,7 @@ ${autoprint ? `<script>
       const newId = saveToHistory({ name: engName, data: { ...json.data, photo: data.photo, photoMeta: data.photoMeta }, templateId, color, savedAt: Date.now(), isEnglish: true })
       loadedFromHistoryId.current = newId || null
       setCurrentHistoryId(newId || null)
-      setHistory([json.data])
+      setHistory([{ ...json.data, photo: data.photo, photoMeta: data.photoMeta }])
       setHistoryIdx(0)
       setDocTitle(engName)
       setSelection({ kind: 'none' })
