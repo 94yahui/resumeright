@@ -113,6 +113,11 @@ export function useAuth() {
     if (kickedOutRef.current) return  // locked until page reload
     try {
       const res = await fetch('/api/auth/me')
+      // 5xx means DB/server error — keep cached auth state, don't log the user out
+      if (!res.ok) {
+        setAuth(prev => ({ ...prev, loading: false }))
+        return
+      }
       const data = await res.json()
       if (data.kicked_out === true) {
         kickedOutRef.current = true
@@ -153,7 +158,8 @@ export function useAuth() {
 
       setAuth(next)
     } catch {
-      setAuth({ ...EMPTY })
+      // Network error — keep cached state, don't wipe auth
+      setAuth(prev => ({ ...prev, loading: false }))
     }
   }, [])
 
