@@ -45,7 +45,7 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
     if (auth.loggedIn) {
       // Logged-in: use DB-sourced daily import count from useAuth
       if (auth.dailyImportUsed >= importLimit) {
-        setError(`今日 ${importLimit} 次导入已用完，请升级 Pro 继续使用`)
+        setError(`今日导入次数已用完（${importLimit} 次/天），明日 00:00 自动重置`)
         return
       }
     } else {

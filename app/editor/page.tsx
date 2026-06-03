@@ -1522,7 +1522,8 @@ ${autoprint ? `<script>
       const isSub = proStatusRef.current.kind === 'subscription'
       const limit = isSub ? 10 : 2
       if (authDailyImportUsedRef.current >= limit) {
-        setImportBanner(isSub ? 'sub_exhausted' : 'free_exhausted')
+        showToast(`今日导入次数已用完（${limit} 次/天），明日 00:00 自动重置`)
+        if (!isSub) { setPaywallTrigger('import_limit'); setPaywallOpen(true) }
         return
       }
     } else {
@@ -1532,7 +1533,6 @@ ${autoprint ? `<script>
         return
       }
     }
-    setImportBanner(null)
     importFileRef.current?.click()
   }, [deviceId, proStatus])
 
@@ -2271,47 +2271,6 @@ ${autoprint ? `<script>
             </div>
           )}
 
-          {/* Import limit banner — teal, slides in when daily quota exhausted */}
-          {(() => {
-            const shown = !!importBanner
-            return (
-              <div style={{
-                overflow: 'hidden',
-                maxHeight: shown ? '80px' : '0',
-                flexShrink: 0,
-                pointerEvents: shown ? 'auto' : 'none',
-                transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
-              }}>
-                <div className="no-print" style={{
-                  background: '#f0fdfa', borderBottom: '1px solid #99f6e4',
-                  padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-                  opacity: shown ? 1 : 0,
-                  transition: 'opacity 0.22s ease',
-                }}>
-                  <span style={{ fontSize: '12.5px', color: '#0f766e', flex: 1, lineHeight: 1.5 }}>
-                    {importBanner === 'sub_exhausted'
-                      ? '今日导入次数已用完（10 次/天），明日 00:00 自动重置'
-                      : '今日导入次数已用完（2 次/天）'}
-                  </span>
-                  {importBanner === 'free_exhausted' && (
-                    <button
-                      onClick={() => { setImportBanner(null); setPaywallTrigger('import_limit'); setPaywallOpen(true) }}
-                      style={{
-                        padding: '5px 14px', borderRadius: '6px', border: 'none',
-                        background: 'var(--teal)', color: 'white',
-                        fontSize: '12px', fontWeight: 600,
-                        cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-                      }}
-                    >升级 Pro（每日 10 次）</button>
-                  )}
-                  <button
-                    onClick={() => setImportBanner(null)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f766e', fontSize: '16px', lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
-                  >×</button>
-                </div>
-              </div>
-            )
-          })()}
 
           {/* Empty state — shown when the active resume was deleted */}
           {noResumeOpen && (
