@@ -1459,7 +1459,13 @@ ${autoprint ? `<script>
       return
     }
     const copyName = uniqueHistoryName(entry.name + ' 副本', currentHistory)
-    const newId = saveToHistory({ name: copyName, data: entry.data, templateId: entry.templateId, color: entry.color, savedAt: Date.now(), isEnglish: entry.isEnglish })
+    let newId: string
+    try {
+      newId = saveToHistory({ name: copyName, data: entry.data, templateId: entry.templateId, color: entry.color, savedAt: Date.now(), isEnglish: entry.isEnglish })
+    } catch {
+      showToast('⚠️ 复制失败：本地存储空间不足，请移除照片或清理历史记录')
+      return
+    }
     if (auth.loggedIn && newId) {
       const saved = loadHistory().find(h => h.id === newId)
       if (saved) upsertCloudResume(saved)
