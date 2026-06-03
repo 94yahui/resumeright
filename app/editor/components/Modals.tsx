@@ -511,6 +511,13 @@ export function AIPanel({
     setExpandedAnswers(new Set());
   }, [analysis]);
 
+  // Auto-expand when interview generation completes
+  useEffect(() => {
+    if (interviewData && interviewData.questions.length > 0) {
+      setShowInterviewQ(true);
+    }
+  }, [interviewData]);
+
   const showOfferRate = analysis?.hasOfferRate === true;
   const offerRate = analysis?.offerRate ?? 0;
   const rawSuggestions = useMemo(() => {
