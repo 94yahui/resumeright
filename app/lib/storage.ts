@@ -3,6 +3,31 @@ const DRAFT_KEY = 'resumecraft_draft'
 const HISTORY_KEY = 'resumecraft_history'
 const PAID_KEY = 'resumecraft_paid'
 const GUEST_IDS_KEY = 'rc_guest_ids'
+const DELETED_KEY = 'resumecraft_deleted'  // tombstone: IDs deleted locally, pending cloud delete
+
+// ── Tombstone helpers ─────────────────────────────────────────────────────────
+function getTombstones(): Record<string, number> {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(localStorage.getItem(DELETED_KEY) ?? '{}') } catch { return {} }
+}
+
+export function addTombstone(id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const t = getTombstones()
+    t[id] = Date.now()
+    localStorage.setItem(DELETED_KEY, JSON.stringify(t))
+  } catch {}
+}
+
+function cleanTombstones(t: Record<string, number>): Record<string, number> {
+  const cutoff = Date.now() - 7 * 24 * 3600_000
+  const cleaned: Record<string, number> = {}
+  for (const [id, ts] of Object.entries(t)) {
+    if (ts > cutoff) cleaned[id] = ts
+  }
+  return cleaned
+}
 
 import type { ResumeData } from './types'
 import { getFreeAnalyzeUsed, setFreeAnalyzeUsed, getPayments, setPayments, PLAN_DURATION_MS, type PaymentRecord } from './payment'
@@ -151,6 +176,7 @@ export function deleteHistory(id: string): void {
     const list = loadHistory().filter(h => h.id !== id)
     localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
   } catch {}
+  addTombstone(id)
 }
 
 export function loadPaidTemplates(): string[] {
@@ -226,9 +252,17 @@ export async function syncResumesWithCloud(): Promise<boolean> {
   const cloud = await fetchCloudResumes()
   const local = loadHistory()
 
+  // Clean and get tombstones (locally deleted IDs)
+  let tombstones = getTombstones()
+  tombstones = cleanTombstones(tombstones)
+  try { localStorage.setItem(DELETED_KEY, JSON.stringify(tombstones)) } catch {}
+  const deletedIds = new Set(Object.keys(tombstones))
+
   const merged = new Map<string, HistoryEntry>()
   for (const e of local) merged.set(e.id, e)
   for (const c of cloud) {
+    // Skip cloud entries that were deleted locally — don't restore them
+    if (deletedIds.has(c.id)) continue
     const existing = merged.get(c.id)
     if (!existing || c.savedAt > existing.savedAt) merged.set(c.id, c)
   }
@@ -254,7 +288,14 @@ export async function syncResumesWithCloud(): Promise<boolean> {
     const cv = cloudMap.get(e.id)
     return !cv || e.savedAt > cv.savedAt
   })
-  await Promise.all(uploads.map(upsertCloudResume))
+
+  // Re-issue delete for tombstoned entries still present in cloud
+  const pendingDeletes = cloud.filter(c => deletedIds.has(c.id))
+
+  await Promise.all([
+    ...uploads.map(upsertCloudResume),
+    ...pendingDeletes.map(c => deleteCloudResume(c.id)),
+  ])
 
   return localChanged
 }
