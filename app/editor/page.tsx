@@ -226,6 +226,7 @@ function EditorInner() {
   const authFreeAnalyzeUsedRef = useRef(0)
   const authDailyAnalyzeUsedRef = useRef(0)
   const authDailyImportUsedRef = useRef(0)
+  const authDailyTranslateUsedRef = useRef(0)
   const cloudPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Immediately apply a zoom value: cancels any pending gesture debounce, syncs
@@ -616,6 +617,7 @@ function EditorInner() {
     authFreeAnalyzeUsedRef.current = auth.freeAnalyzeUsed ?? 0
     authDailyAnalyzeUsedRef.current = auth.dailyAnalyzeUsed ?? 0
     authDailyImportUsedRef.current = auth.dailyImportUsed ?? 0
+    authDailyTranslateUsedRef.current = auth.dailyTranslateUsed ?? 0
     proStatusRef.current = proStatus
   })
 
@@ -1667,6 +1669,10 @@ ${autoprint ? `<script>
     // proStatusRef always reflects the latest proStatus (server-confirmed for subscribers,
     // localStorage-based for local purchases) without stale-closure issues.
     const freshStatus = proStatusRef.current
+    if (freshStatus.kind === 'subscription' && authDailyTranslateUsedRef.current >= 5) {
+      showToast(`今日生成英文简历次数已用完（5/5 次）`)
+      return
+    }
     const check = checkUsage(deviceId, 'ai_translate', freshStatus)
     if (!check.allowed) {
       if (check.reason === 'daily_limit') {
@@ -1716,6 +1722,7 @@ ${autoprint ? `<script>
       setHistoryRefreshKey(k => k + 1)
       setIsCurrentEnglish(true)
       recordUsage(deviceId, 'ai_translate', freshStatus)
+      void authRefreshRef.current()
       setProStatus(getProStatus(deviceId, newId || undefined))
       const usedToday = getDailyCount(deviceId, 'ai_translate')
       const remaining = Math.max(0, 5 - usedToday)
