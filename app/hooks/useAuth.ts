@@ -90,11 +90,15 @@ export function useAuth() {
   const [auth, setAuth] = useState<AuthState>({ ...EMPTY, loading: true })
 
   // Apply localStorage cache before the browser paints — invisible to users, no flash.
+  // If the cache is fresh, also set loading:false so subscriber UI shows immediately
+  // without waiting for the /api/auth/me round-trip. refresh() still runs in the
+  // background to update daily counts and confirm the session is still valid.
   useLayoutEffect(() => {
     const cache = readCache()
     if (cache) {
       setAuth(prev => ({
         ...prev,
+        loading: false,
         loggedIn: cache.loggedIn,
         openid: cache.openid,
         nickname: cache.nickname,
