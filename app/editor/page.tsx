@@ -178,6 +178,8 @@ function EditorInner() {
   const importAbortRef = useRef<AbortController | null>(null)
   const importCancelledRef = useRef(false)
   const [toast, setToast] = useState('')
+  const [toastLabel, setToastLabel] = useState('')
+  const toastHideRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pageCount, setPageCount] = useState(1)
   const [paidTemplates, setPaidTemplates] = useState<string[]>([])
   const [pdfGenerating, setPdfGenerating] = useState(false)
@@ -268,9 +270,14 @@ function EditorInner() {
   const aiSuggestionSections = undefined
 
   const showToast = (msg: string) => {
-    setToast(msg)
     if (toastRef.current) clearTimeout(toastRef.current)
-    toastRef.current = setTimeout(() => setToast(''), 2200)
+    if (toastHideRef.current) clearTimeout(toastHideRef.current)
+    setToastLabel(msg)
+    setToast(msg)
+    toastRef.current = setTimeout(() => {
+      setToast('')  // triggers slide-out animation
+      toastHideRef.current = setTimeout(() => setToastLabel(''), 300)  // clear text after animation
+    }, 2200)
   }
 
   // Initialize device ID once on mount
@@ -2609,7 +2616,7 @@ ${autoprint ? `<script>
         fontSize: '13px', fontWeight: 500, zIndex: 300,
         transition: 'transform 0.3s, opacity 0.3s', pointerEvents: 'none',
         boxShadow: '0 4px 20px rgba(15, 23, 42, 0.25)',
-      }}>{toast}</div>
+      }}>{toastLabel}</div>
 
       {/* PNG generating overlay */}
       {pngGenerating && (
