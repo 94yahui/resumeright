@@ -353,7 +353,12 @@ function EditorInner() {
     syncFreeAnalyzeOnLogin(auth.freeAnalyzeUsed)
     // Sync paid orders into localStorage so getProStatus works cross-device
     syncOrdersFromServer().then(() => {
-      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+      // Don't override server-confirmed subscription with localStorage-based status.
+      // auth.membership is the source of truth for subscriptions; getProStatus only
+      // covers single purchases that may not be in the payments collection.
+      if (proStatusRef.current.kind !== 'subscription') {
+        setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+      }
     })
     // Sync resume history; auto-load most recent entry when nothing is currently open,
     // or when the current entry is an unedited blank (DEMO_DATA, user logged in without making edits)
