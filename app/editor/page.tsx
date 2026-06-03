@@ -266,6 +266,11 @@ function EditorInner() {
   // old single purchases (no templateId stored) keep the original no-watermark behaviour.
   const showWatermark = proStatus.kind === 'free' ||
     (proStatus.kind === 'single' && !!proStatus.templateId && proStatus.templateId !== templateId)
+  // Server-confirmed subscriber: auth.membership is the source of truth.
+  // Used to hide the Pro-template banner before proStatus syncs from the useEffect.
+  const isConfirmedSubscriber = auth.loggedIn && !!auth.membership &&
+    auth.membership.plan !== 'single' &&
+    (!auth.membership.expires_at || auth.membership.expires_at > Date.now())
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -1902,7 +1907,7 @@ ${autoprint ? `<script>
       </div>
 
       {/* Pro-template preview banner — free users can see the template but need Pro to download */}
-      {isProTemplate && showWatermark && !noResumeOpen && !auth.loading && (
+      {isProTemplate && showWatermark && !isConfirmedSubscriber && !noResumeOpen && !auth.loading && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
