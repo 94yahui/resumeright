@@ -560,7 +560,7 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
                         ? '首次免费 · 登录后可解锁更多次数'
                         : '免费次数已用完 · 登录后可使用更多')
                   : isSubscriber
-                    ? `今日已用 ${auth.dailyAnalyzeUsed}/20 次 · 数据不存储`
+                    ? `今日已用 ${auth.dailyAnalyzeUsed}/20 次`
                     : FREE_LIMIT - auth.freeAnalyzeUsed > 0
                       ? `还有 ${FREE_LIMIT - auth.freeAnalyzeUsed} 次免费机会 · 升级 Pro 每天可用 20 次`
                       : '免费次数已用完 · 升级 Pro 每天可用 20 次'
