@@ -19,11 +19,11 @@ interface ATSResult {
 // ── Progress bar loading ──────────────────────────────────────────────────────
 const PHASES = [
   { at: 0,  label: '读取简历内容…' },
-  { at: 12, label: '扫描章节规范…' },
-  { at: 28, label: '分析关键词匹配…' },
-  { at: 44, label: '检测格式兼容…' },
-  { at: 60, label: '评估排版规范…' },
-  { at: 74, label: '评分内容质量…' },
+  { at: 12, label: '提取文字内容…' },
+  { at: 28, label: '检测编码规范…' },
+  { at: 44, label: '分析版面结构…' },
+  { at: 60, label: '识别字段信息…' },
+  { at: 74, label: '检测文件格式…' },
   { at: 88, label: '生成分析报告…' },
 ]
 

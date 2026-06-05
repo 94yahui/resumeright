@@ -1,7 +1,19 @@
 'use client'
-import { Sparkles, FileText, Target, MessageCircle, Globe2, Minimize2 } from 'lucide-react'
+import { Sparkles, FileText, Target, MessageCircle, Globe2, ShieldCheck } from 'lucide-react'
 
 const features = [
+  {
+    icon: ShieldCheck,
+    rgb: '14,165,233',
+    solidColor: '#0ea5e9',
+    iconBg: 'rgba(14,165,233,0.15)',
+    cardBg: 'rgba(14,165,233,0.06)',
+    borderColor: 'rgba(14,165,233,0.3)',
+    title: 'ATS 简历检测',
+    desc: '上传简历，从文字提取、编码规范、版面结构、字段识别、文件格式五个 ATS 技术角度评估兼容性，快速找出无法通过大厂自动筛选的具体原因。',
+    tag: 'Pro 功能',
+    num: '1',
+  },
   {
     icon: Sparkles,
     rgb: '56,189,248',
@@ -12,7 +24,7 @@ const features = [
     title: 'AI 简历优化',
     desc: 'AI 精读每条工作描述，用高亮和删除线直接标注改写建议，强化动词、理清逻辑——严格基于你填写的内容，不编造数字。',
     tag: '内容优化',
-    num: '1',
+    num: '2',
   },
   {
     icon: FileText,
@@ -24,7 +36,7 @@ const features = [
     title: '简历智能导入',
     desc: '上传 PDF / Word 旧简历，AI 自动识别全部内容，按新模板重新排版填充，省去手动录入。',
     tag: '文档解析',
-    num: '2',
+    num: '3',
   },
   {
     icon: Target,
@@ -36,7 +48,7 @@ const features = [
     title: '岗位匹配分析',
     desc: '粘贴目标岗位详情，AI 给出匹配度评分和差距分析，并列出缺失的关键技能，帮你针对性补强。',
     tag: 'Pro 功能',
-    num: '3',
+    num: '4',
   },
   {
     icon: MessageCircle,
@@ -48,7 +60,7 @@ const features = [
     title: '面试题预测',
     desc: '基于简历与目标岗位自动生成 10 道定制面试题，覆盖技术、项目、行为和职业规划，附 STAR 回答建议。',
     tag: 'Pro 功能',
-    num: '4',
+    num: '5',
   },
   {
     icon: Globe2,
@@ -59,18 +71,6 @@ const features = [
     borderColor: 'rgba(52,211,153,0.3)',
     title: '一键生成英文简历',
     desc: '一键将中文简历翻译为英文版，自动另存为独立记录，适合投递外资、港澳台或海外岗位。',
-    tag: 'Pro 功能',
-    num: '5',
-  },
-  {
-    icon: Minimize2,
-    rgb: '251,146,60',
-    solidColor: '#fb923c',
-    iconBg: 'rgba(251,146,60,0.15)',
-    cardBg: 'rgba(251,146,60,0.05)',
-    borderColor: 'rgba(251,146,60,0.3)',
-    title: '一键压缩至 1 页',
-    desc: '超出一页时自动检测：轻微溢出微调字号，大幅超出则 AI 精简内容并高亮标注改动，确认后一键完成。',
     tag: 'Pro 功能',
     num: '6',
   },
