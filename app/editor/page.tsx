@@ -245,6 +245,7 @@ function EditorInner() {
   const aiAnalyzedDataSnapshot = useRef<string | null>(null)
   // When non-null, skip auto-save on exit to avoid duplicates (set when resuming a draft or loading history)
   const loadedFromHistoryId = useRef<string | null>(null)
+  const guestNoResumeRef = useRef(false)  // set synchronously in init to block auto-entry-creation
   // Always reflects the latest editor state for use in cleanup effects
   const latestForAutoSave = useRef({ data, docTitle, templateId, color })
   // Live refs for use inside event handler closures that can't depend on state
@@ -409,6 +410,7 @@ function EditorInner() {
   useEffect(() => {
     if (auth.loading || auth.loggedIn) return               // skip for logged-in users
     if (!initialized.current) return                        // wait for init
+    if (guestNoResumeRef.current || noResumeOpen) return   // user is in empty state, don't auto-create
     if (loadedFromHistoryId.current) return                 // already tracking an entry
     const hist = loadHistory()
     if (hist.length > 0) return                             // history appeared from somewhere else
@@ -426,7 +428,7 @@ function EditorInner() {
       setCurrentHistoryId(newId)
       setHistoryRefreshKey(k => k + 1)
     }
-  }, [auth.loading, auth.loggedIn])
+  }, [auth.loading, auth.loggedIn, noResumeOpen])
 
   // ============ Load draft from localStorage on mount ============
   useEffect(() => {
@@ -521,6 +523,31 @@ function EditorInner() {
       }
     }
 
+    // ATS import: came from landing page ATS analysis — load pre-parsed resume + open AI panel
+    if (searchParams.get('from_ats')) {
+      window.history.replaceState({}, '', '/editor')
+      try {
+        const stored = sessionStorage.getItem('rc_ats_import')
+        sessionStorage.removeItem('rc_ats_import')
+        if (stored) {
+          const raw = JSON.parse(stored)
+          const resumeData = parsedToResumeData(raw)
+          const currentHistory = loadHistory()
+          const newName = uniqueHistoryName(raw.name || '我的简历', currentHistory)
+          const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+          if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
+          setHistory([resumeData])
+          setHistoryIdx(0)
+          setTemplateId('classic-pro')
+          setDocTitle(newName)
+          setNoResumeOpen(false)
+          setAiPanelOpen(true)
+          setAiPanelPhase('entry')
+          return
+        }
+      } catch {}
+    }
+
     // Template card (?template=xxx): start fresh with chosen template
     if (searchParams.get('template')) {
       const currentHistory = loadHistory()
@@ -562,8 +589,9 @@ function EditorInner() {
       return
     }
 
-    // Completely fresh guest (no history): don't create an entry yet.
-    // The guest-entry creation effect runs after auth resolves so "我的" shows it.
+    // Completely fresh guest (no history): show empty state, don't pre-fill with demo data.
+    guestNoResumeRef.current = true
+    setNoResumeOpen(true)
     setDocTitle('我的简历')
   }, [])
 

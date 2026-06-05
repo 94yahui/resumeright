@@ -143,6 +143,8 @@ interface ProfileModalProps {
   dailyAnalyzeUsed?: number  // server-side count for subscribers (cross-device accurate)
   dailyTranslateUsed?: number
   dailyImportUsed?: number
+  freeAtsUsed?: number
+  dailyAtsUsed?: number
   onUpgrade?: () => void
   onAuthSuccess?: () => void
   onRefreshAuth?: () => void
@@ -156,7 +158,7 @@ interface OrderRecord {
   paidAt: number
 }
 
-export function ProfileModal({ onClose, openid, nickname, avatar, membership, isStudent, freeAnalyzeUsed, dailyAnalyzeUsed, dailyTranslateUsed, dailyImportUsed, onUpgrade, onRefreshAuth }: ProfileModalProps) {
+export function ProfileModal({ onClose, openid, nickname, avatar, membership, isStudent, freeAnalyzeUsed, dailyAnalyzeUsed, dailyTranslateUsed, dailyImportUsed, freeAtsUsed, dailyAtsUsed, onUpgrade, onRefreshAuth }: ProfileModalProps) {
   const [importUsed, setImportUsed] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'usage' | 'orders'>('usage')
@@ -167,6 +169,8 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
   const [liveTranslate, setLiveTranslate] = useState<number | null>(null)
   const [liveImport, setLiveImport] = useState<number | null>(null)
   const [liveFreeAnalyze, setLiveFreeAnalyze] = useState<number | null>(null)
+  const [liveAts, setLiveAts] = useState<number | null>(null)
+  const [liveFreeAts, setLiveFreeAts] = useState<number | null>(null)
   // Redeem code
   const [redeemExpanded, setRedeemExpanded] = useState(false)
   const [redeemCode, setRedeemCode] = useState('')
@@ -186,6 +190,8 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
           setLiveTranslate(data.daily_translate_used ?? 0)
           setLiveImport(data.daily_import_used ?? 0)
           setLiveFreeAnalyze(data.free_analyze_used ?? 0)
+          setLiveAts(data.daily_ats_used ?? 0)
+          setLiveFreeAts(data.free_ats_used ?? 0)
         }
       })
       .catch(() => {})
@@ -239,17 +245,26 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
   const PRO_AI_LIMIT = 20
   const PRO_TRANSLATE_LIMIT = 5
   const PRO_IMPORT_LIMIT = 10
+  const PRO_ATS_LIMIT = 5
+  const FREE_ATS_LIMIT = 2
 
   // Live-first display counts: use fresh DB value once loaded, fall back to props then localStorage
   const displayAiAnalyzeUsed = liveAnalyze ?? dailyAnalyzeUsed ?? 0
   const displayTranslateUsed = liveTranslate ?? dailyTranslateUsed ?? 0
   const displayImportUsed    = liveImport ?? dailyImportUsed ?? importUsed
+  const displayAtsUsed       = liveAts ?? dailyAtsUsed ?? 0
 
   // AI counts (free users: lifetime; pro users: daily from DB)
   const effectiveFreeAnalyze = liveFreeAnalyze ?? freeAnalyzeUsed
   const aiUsed = isPro ? null : effectiveFreeAnalyze
   const aiLimit = isPro ? null : FREE_ANALYZE_LIMIT
   const aiPct = aiUsed !== null && aiLimit ? Math.min(1, aiUsed / aiLimit) : 1
+
+  // ATS counts
+  const effectiveFreeAts = liveFreeAts ?? freeAtsUsed ?? 0
+  const atsUsedFree = isPro ? null : effectiveFreeAts
+  const atsLimitFree = isPro ? null : FREE_ATS_LIMIT
+  const atsPctFree = atsUsedFree !== null && atsLimitFree ? Math.min(1, atsUsedFree / atsLimitFree) : 1
 
   // Import counts — use DB-sourced displayImportUsed for all plans
   const importLimit = isPro ? PRO_IMPORT_LIMIT : isSingle ? 5 : 2
@@ -265,6 +280,7 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
     '全部模板随心用',
     '无水印下载',
     `AI优化${PRO_AI_LIMIT}次/天`,
+    `ATS检测${PRO_ATS_LIMIT}次/天`,
     `英文简历${PRO_TRANSLATE_LIMIT}次/天`,
     '压缩1页',
     `导入${PRO_IMPORT_LIMIT}次/天`,
@@ -457,6 +473,7 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
                 </div>
                 {[
                   { label: 'AI 深度定向优化', used: displayAiAnalyzeUsed, limit: PRO_AI_LIMIT },
+                  { label: 'ATS 简历检测', used: displayAtsUsed, limit: PRO_ATS_LIMIT },
                   { label: '生成英文简历', used: displayTranslateUsed, limit: PRO_TRANSLATE_LIMIT },
                   { label: '简历导入解析', used: displayImportUsed, limit: PRO_IMPORT_LIMIT },
                 ].map(({ label, used, limit }) => {
@@ -504,6 +521,26 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
                       background: aiPct >= 1
                         ? 'linear-gradient(90deg, #ef4444, #dc2626)'
                         : 'linear-gradient(90deg, #818cf8, #6366f1)',
+                      borderRadius: '9999px',
+                      transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+                    }} />
+                  </div>
+                </div>
+
+                {/* ATS stat (free users) */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>ATS 简历检测</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
+                      {atsUsedFree} / {atsLimitFree}
+                    </span>
+                  </div>
+                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', width: `${atsPctFree * 100}%`,
+                      background: atsPctFree >= 1
+                        ? 'linear-gradient(90deg, #ef4444, #dc2626)'
+                        : 'linear-gradient(90deg, #34d399, #0d9488)',
                       borderRadius: '9999px',
                       transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1)',
                     }} />
@@ -625,6 +662,8 @@ interface UserDropdownProps {
   dailyAnalyzeUsed?: number
   dailyTranslateUsed?: number
   dailyImportUsed?: number
+  freeAtsUsed?: number
+  dailyAtsUsed?: number
   onLogout: () => void
   onUpgrade?: () => void
   onRefreshAuth?: () => void
@@ -634,7 +673,7 @@ interface UserDropdownProps {
   compact?: boolean
 }
 
-export function UserDropdown({ avatar, nickname, openid, membership, isStudent, freeAnalyzeUsed, dailyAnalyzeUsed, dailyTranslateUsed, dailyImportUsed, onLogout, onUpgrade, onRefreshAuth, dark, compact }: UserDropdownProps) {
+export function UserDropdown({ avatar, nickname, openid, membership, isStudent, freeAnalyzeUsed, dailyAnalyzeUsed, dailyTranslateUsed, dailyImportUsed, freeAtsUsed, dailyAtsUsed, onLogout, onUpgrade, onRefreshAuth, dark, compact }: UserDropdownProps) {
   const [open, setOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -747,6 +786,8 @@ export function UserDropdown({ avatar, nickname, openid, membership, isStudent, 
           dailyAnalyzeUsed={dailyAnalyzeUsed}
           dailyTranslateUsed={dailyTranslateUsed}
           dailyImportUsed={dailyImportUsed}
+          freeAtsUsed={freeAtsUsed}
+          dailyAtsUsed={dailyAtsUsed}
           onUpgrade={onUpgrade}
           onRefreshAuth={onRefreshAuth}
         />

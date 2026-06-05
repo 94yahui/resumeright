@@ -15,6 +15,12 @@ export interface Entry {
   bullets: string[]
 }
 
+export interface SkillCategory {
+  id: string
+  name: string
+  items: string[]
+}
+
 export interface ResumeData {
   // Header
   name: string
@@ -36,6 +42,8 @@ export interface ResumeData {
   hideWebsite?: boolean
 
   // Visibility flags
+  hasExp?: boolean
+  hasEdu?: boolean
   hasSummary: boolean
   hasSkills: boolean
   hasProject: boolean
@@ -55,9 +63,15 @@ export interface ResumeData {
   interest: Entry[]
   language: Entry[]
   skills: string[]
+  skillsStyle?: 'tags' | 'plain' | 'dots'
+  languageStyle?: 'pills' | 'plain' | 'list'
+  skillCategories?: SkillCategory[]
 
   resumeLang?: 'zh' | 'en'
   fontScale?: number
+
+  sectionOrder?: SectionKey[]
+  sectionLabels?: Partial<Record<string, string>>
 }
 
 export type SectionKey =
@@ -287,6 +301,16 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
   const interest = cleanEntries(raw.interest, 'it')
   const language = cleanEntries(raw.language, 'ln')
   const skills = Array.isArray(raw.skills) ? (raw.skills as unknown[]).map(s => String(s)) : []
+  const skillCategories = Array.isArray(raw.skillCategories)
+    ? (raw.skillCategories as unknown[]).map((c: unknown) => {
+        const cat = c as Record<string, unknown>
+        return {
+          id: String(cat.id ?? Math.random().toString(36).slice(2)),
+          name: String(cat.name ?? ''),
+          items: Array.isArray(cat.items) ? (cat.items as unknown[]).map(s => String(s)) : [],
+        }
+      })
+    : undefined
 
   // Normalize links: collect ALL URLs from website + extraWebsites, then distribute:
   // first URL → website field, rest → extraWebsites array (mirrors editor's "添加链接" flow).
@@ -341,6 +365,7 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     hasInterest: !!raw.hasInterest || interest.length > 0,
     resumeLang,
     exp, edu, project, award, cert, volunteer, interest, language, skills,
+    ...(skillCategories !== undefined ? { skillCategories } : {}),
   }
 }
 

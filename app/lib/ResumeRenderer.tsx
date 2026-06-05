@@ -70,7 +70,7 @@ export default function ResumeRenderer({
     interest: '兴趣爱好', language: '语言能力',
     summary: '个人简介', skills: '专业技能', contact: '联系方式',
   }
-  const T = (k: string): string => ((isEnglish ?? data.resumeLang === 'en') ? EN : ZH)[k] ?? k
+  const T = (k: string): string => data.sectionLabels?.[k] ?? ((isEnglish ?? data.resumeLang === 'en') ? EN : ZH)[k] ?? k
 
   // Scale font sizes and vertical spacings only — structural dimensions (widths, sidebar fills) are untouched
   const sc = data.fontScale ?? 1
@@ -433,44 +433,87 @@ export default function ResumeRenderer({
   // ============ LANGUAGE — horizontal wrapping pills ============
   const LanguageSection = ({ onDark = false }: { onDark?: boolean }) => {
     if (!data.hasLanguage || data.language.length === 0) return null
+    const langStyle = data.languageStyle ?? 'pills'
     const textC = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
     const pillBg = onDark ? 'rgba(255,255,255,0.12)' : `${accent}12`
     const pillBorder = onDark ? 'rgba(255,255,255,0.22)' : `${accent}35`
+
+    const renderPills = () => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {data.language.map((entry, idx) => {
+          const sel = isSelected({ kind: 'entry', sec: 'language', idx })
+          return (
+            <div key={entry.id} data-entry="1"
+              onClick={click({ kind: 'entry', sec: 'language', idx })}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '4px 12px',
+                background: sel ? `${accent}20` : pillBg,
+                border: `1.5px solid ${sel ? accent : pillBorder}`,
+                borderRadius: '20px', fontSize: s(12), color: textC,
+                cursor: interactive ? 'pointer' : 'default',
+                transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
+                boxShadow: sel ? `inset 0 0 0 1.5px ${accent}` : 'none',
+              }}>
+              <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
+              {entry.sub && (
+                <><span style={{ opacity: 0.35 }}>·</span><span style={{ opacity: 0.75 }}>{entry.sub}</span></>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+
+    const renderPlain = () => (
+      <p style={{ fontSize: s(12), color: textC, lineHeight: 1.7, margin: 0 }}>
+        {data.language.map((entry, idx) => {
+          const sel = isSelected({ kind: 'entry', sec: 'language', idx })
+          return (
+            <span key={entry.id} data-entry="1"
+              onClick={click({ kind: 'entry', sec: 'language', idx })}
+              style={{
+                cursor: interactive ? 'pointer' : 'default',
+                background: sel ? `${accent}18` : 'transparent',
+                borderRadius: '3px', padding: sel ? '0 2px' : 0,
+              }}>
+              {idx > 0 && <span style={{ color: textC, opacity: 0.35, margin: '0 6px' }}>·</span>}
+              <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
+              {entry.sub && <span style={{ opacity: 0.65 }}> {entry.sub}</span>}
+            </span>
+          )
+        })}
+      </p>
+    )
+
+    const renderList = () => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: s(4) }}>
+        {data.language.map((entry, idx) => {
+          const sel = isSelected({ kind: 'entry', sec: 'language', idx })
+          return (
+            <div key={entry.id} data-entry="1"
+              onClick={click({ kind: 'entry', sec: 'language', idx })}
+              style={{
+                display: 'flex', alignItems: 'baseline', gap: s(8),
+                cursor: interactive ? 'pointer' : 'default',
+                background: sel ? `${accent}10` : 'transparent',
+                borderRadius: '4px', padding: sel ? '2px 4px' : '0',
+                margin: sel ? '-2px -4px' : '0',
+              }}>
+              <span style={{ fontSize: s(12.5), fontWeight: 600, color: onDark ? 'rgba(255,255,255,0.9)' : '#0f172a', minWidth: s(48) }}>{entry.title || '语言'}</span>
+              {entry.sub && <span style={{ fontSize: s(11.5), color: textC, opacity: 0.75 }}>{entry.sub}</span>}
+            </div>
+          )
+        })}
+      </div>
+    )
+
     return (
       <div data-section-start="1" style={{ marginBottom: s(10) }}>
         <SectionTitle onDark={onDark}>{T('language')}</SectionTitle>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {data.language.map((entry, idx) => {
-            const sel = isSelected({ kind: 'entry', sec: 'language', idx })
-            return (
-              <div
-                key={entry.id}
-                data-entry="1"
-                onClick={click({ kind: 'entry', sec: 'language', idx })}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  padding: '4px 12px',
-                  background: sel ? `${accent}20` : pillBg,
-                  border: `1.5px solid ${sel ? accent : pillBorder}`,
-                  borderRadius: '20px',
-                  fontSize: s(12),
-                  color: textC,
-                  cursor: interactive ? 'pointer' : 'default',
-                  transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
-                  boxShadow: sel ? `inset 0 0 0 1.5px ${accent}` : 'none',
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
-                {entry.sub && (
-                  <>
-                    <span style={{ opacity: 0.35 }}>·</span>
-                    <span style={{ opacity: 0.75 }}>{entry.sub}</span>
-                  </>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        {langStyle === 'pills' && renderPills()}
+        {langStyle === 'plain' && renderPlain()}
+        {langStyle === 'list' && renderList()}
       </div>
     )
   }
@@ -518,43 +561,106 @@ export default function ResumeRenderer({
   }
 
   // ============ SKILLS ============
-  const SkillsBlock = ({ onDark = false, asPills = true }: { onDark?: boolean; asPills?: boolean }) => {
+  const SkillsBlock = ({ onDark = false }: { onDark?: boolean }) => {
     const hasPending = !!pendingSkills && pendingSkills.length > 0
+    const hasCategories = (data.skillCategories?.length ?? 0) > 0
+    const hasItems = hasCategories
+      ? data.skillCategories!.some(c => c.items.length > 0)
+      : data.skills.length > 0
     if (!data.hasSkills && !hasPending) return null
-    if (data.skills.length === 0 && !hasPending) return null
+    if (!hasItems && !hasPending) return null
 
-    if (asPills) {
+    const skillStyle = data.skillsStyle ?? 'tags'
+    const textColor = onDark ? 'rgba(255,255,255,0.9)' : '#374151'
+    const sepColor = onDark ? 'rgba(255,255,255,0.35)' : '#9ca3af'
+
+    const renderTag = (sk: string, i: number, isPending = false) => (
+      <span key={i} style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '4px 12px', borderRadius: '4px',
+        fontSize: s(11.5), lineHeight: 1, fontWeight: 500,
+        background: isPending ? 'var(--highlight)' : onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
+        color: isPending ? '#fff' : onDark ? '#fff' : accent,
+        border: isPending ? '1px solid var(--highlight)' : onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
+      }}>{sk}</span>
+    )
+
+    const renderDot = (sk: string, i: number, isPending = false) => (
+      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: s(11.5), color: textColor }}>
+        <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: isPending ? 'var(--highlight)' : onDark ? 'rgba(255,255,255,0.6)' : accent, flexShrink: 0 }} />
+        {isPending
+          ? <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
+          : sk}
+      </span>
+    )
+
+    // plain: merge normal items into one text node to allow natural line-wrap
+    const renderPlainText = (items: string[], pending: string[] = []) => {
+      const normalText = items.join(', ')
+      return (
+        <span style={{ fontSize: s(11.5), color: textColor, lineHeight: 1.6 }}>
+          {normalText}
+          {pending.map((sk, i) => (
+            <span key={i}>
+              {(normalText.length > 0 || i > 0) && ', '}
+              <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
+            </span>
+          ))}
+        </span>
+      )
+    }
+
+    const renderItems = (items: string[], extraPending: string[] = []) => {
+      if (skillStyle === 'plain') return renderPlainText(items, extraPending)
+      const all = [
+        ...items.map(sk => ({ sk, isPending: false })),
+        ...extraPending.map(sk => ({ sk, isPending: true })),
+      ]
+      return all.map(({ sk, isPending }, i) =>
+        skillStyle === 'tags' ? renderTag(sk, i, isPending) : renderDot(sk, i, isPending)
+      )
+    }
+
+    const containerStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+      ...editStyle({ kind: 'skills' }),
+      padding: interactive ? '4px' : 0,
+      margin: interactive ? '-4px' : 0,
+      ...(skillStyle === 'plain'
+        ? { display: 'block', overflowWrap: 'break-word' as const }
+        : { display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }),
+      ...extra,
+    })
+
+    const header = (
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+        <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('skills')}</SectionTitle></div>
+        {interactive && aiSectionSet.has('skills') && <AIChip />}
+      </div>
+    )
+
+    if (hasCategories) {
       return (
         <div data-section-start="1" style={{ marginBottom: s(10) }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('skills')}</SectionTitle></div>
-            {interactive && aiSectionSet.has('skills') && <AIChip />}
-          </div>
-          <div onClick={click({ kind: 'skills' })}
-            style={{
-              ...editStyle({ kind: 'skills' }),
-              display: 'flex', flexWrap: 'wrap', gap: '6px',
-              padding: interactive ? '4px' : 0,
-            }}>
-            {data.skills.map((sk, i) => (
-              <span key={i} style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '4px 12px', borderRadius: '4px',
-                fontSize: s(11.5), lineHeight: 1, fontWeight: 500,
-                background: onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
-                color: onDark ? '#fff' : accent,
-                border: onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
-              }}>{sk}</span>
-            ))}
-            {(pendingSkills ?? []).map((sk, i) => (
-              <span key={`ps_${i}`} style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '4px 12px', borderRadius: '4px',
-                fontSize: s(11.5), lineHeight: 1, fontWeight: 600,
-                background: 'var(--highlight)',
-                color: '#fff',
-                border: '1px solid var(--highlight)',
-              }}>{sk}</span>
+          {header}
+          <div onClick={click({ kind: 'skills' })} style={{ ...editStyle({ kind: 'skills' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
+            {data.skillCategories!.map(cat => cat.items.length === 0 ? null : (
+              <div key={cat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: s(1), marginBottom: skillStyle === 'plain' ? s(2) : s(4) }}>
+                <span style={{
+                  fontSize: s(11.5), fontWeight: 600, flexShrink: 0,
+                  color: onDark ? 'rgba(255,255,255,0.85)' : '#0f172a',
+                  lineHeight: skillStyle === 'tags' ? '23px' : 1.6,
+                }}>{cat.name}：</span>
+                {skillStyle === 'plain' ? (
+                  // plain: block so wrapped lines stay under the items, not the label
+                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: s(11.5), lineHeight: 1.6, color: textColor }}>
+                    {cat.items.join(', ')}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
+                    {renderItems(cat.items)}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -563,21 +669,9 @@ export default function ResumeRenderer({
 
     return (
       <div data-section-start="1" style={{ marginBottom: s(10) }}>
-        <SectionTitle onDark>{T('skills')}</SectionTitle>
-        <div onClick={click({ kind: 'skills' })}
-          style={{ ...editStyle({ kind: 'skills' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
-          {data.skills.map((sk, i) => (
-            <div key={i} style={{ fontSize: s(12), color: 'rgba(255,255,255,0.9)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
-              {sk}
-            </div>
-          ))}
-          {(pendingSkills ?? []).map((sk, i) => (
-            <div key={`ps_${i}`} style={{ fontSize: s(12), marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--highlight)', flexShrink: 0 }} />
-              <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
-            </div>
-          ))}
+        {header}
+        <div onClick={click({ kind: 'skills' })} style={containerStyle()}>
+          {renderItems(data.skills, pendingSkills ?? [])}
         </div>
       </div>
     )
@@ -758,17 +852,31 @@ export default function ResumeRenderer({
   )
 
   // ============ MAIN BODY (sections in order) ============
+  const DEFAULT_SECTION_ORDER: SectionKey[] = ['exp', 'project', 'edu', 'language', 'award', 'cert', 'volunteer', 'interest']
+  const effectiveSectionOrder = (() => {
+    const stored = data.sectionOrder ?? []
+    const storedSet = new Set(stored)
+    return [...stored, ...DEFAULT_SECTION_ORDER.filter(k => !storedSet.has(k))]
+  })()
+
+  const renderSection = (key: SectionKey, onDark = false): React.ReactNode => {
+    switch (key) {
+      case 'exp':       return data.hasExp !== false ? <Section key="exp" sec="exp" label={T('exp')} items={data.exp} onDark={onDark} /> : null
+      case 'edu':       return data.hasEdu !== false ? <Section key="edu" sec="edu" label={T('edu')} items={data.edu} onDark={onDark} /> : null
+      case 'project':   return data.hasProject ? <Section key="project" sec="project" label={T('project')} items={data.project} onDark={onDark} /> : null
+      case 'language':  return data.hasLanguage ? <LanguageSection key="language" onDark={onDark} /> : null
+      case 'award':     return data.hasAward ? <Section key="award" sec="award" label={T('award')} items={data.award} onDark={onDark} /> : null
+      case 'cert':      return data.hasCert ? <Section key="cert" sec="cert" label={T('cert')} items={data.cert} onDark={onDark} /> : null
+      case 'volunteer': return data.hasVolunteer ? <Section key="volunteer" sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} /> : null
+      case 'interest':  return data.hasInterest ? <Section key="interest" sec="interest" label={T('interest')} items={data.interest} onDark={onDark} /> : null
+      default:          return null
+    }
+  }
+
   const MainBody = ({ onDark = false }: { onDark?: boolean }) => (
     <>
       <SummaryBlock onDark={onDark} />
-      <Section sec="exp" label={T('exp')} items={data.exp} onDark={onDark} />
-      {data.hasProject && <Section sec="project" label={T('project')} items={data.project} onDark={onDark} />}
-      <Section sec="edu" label={T('edu')} items={data.edu} onDark={onDark} />
-      {data.hasLanguage && <LanguageSection onDark={onDark} />}
-      {data.hasAward && <Section sec="award" label={T('award')} items={data.award} onDark={onDark} />}
-      {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} onDark={onDark} />}
-      {data.hasVolunteer && <Section sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} />}
-      {data.hasInterest && <Section sec="interest" label={T('interest')} items={data.interest} onDark={onDark} />}
+      {effectiveSectionOrder.map(key => renderSection(key, onDark))}
     </>
   )
 
@@ -812,7 +920,7 @@ export default function ResumeRenderer({
               <ContactInline onDark vertical />
             </div>
 
-            <SkillsBlock onDark asPills={false} />
+            <SkillsBlock onDark />
           </div>
 
           {/* Main */}
@@ -961,10 +1069,9 @@ export default function ResumeRenderer({
         <div style={{ display: 'flex', padding: '28px 48px 40px', gap: '32px' }}>
           <div style={{ flex: 2 }}>
             <SummaryBlock />
-            <Section sec="exp" label={T('exp')} items={data.exp} />
-            {data.hasProject && <Section sec="project" label={T('project')} items={data.project} />}
-            {data.hasVolunteer && <Section sec="volunteer" label={T('volunteer')} items={data.volunteer} />}
-            {data.hasInterest && <Section sec="interest" label={T('interest')} items={data.interest} />}
+            {effectiveSectionOrder
+              .filter(k => (['exp', 'project', 'volunteer', 'interest'] as SectionKey[]).includes(k))
+              .map(key => renderSection(key))}
           </div>
           <div style={{ flex: 1 }}>
             <Section sec="edu" label={T('edu')} items={data.edu} />

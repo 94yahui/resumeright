@@ -104,6 +104,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
             { label: '简历优化✦', href: '#analysis' },
             { label: '模板', href: '#templates' },
             { label: 'AI功能', href: '#ai' },
+            { label: 'ATS检测', href: '#ats' },
             { label: '升级会员', href: '#pricing' },
           ].map(({ label, href }) => (
             <a key={label} href={href} style={{

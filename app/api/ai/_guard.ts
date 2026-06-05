@@ -45,6 +45,7 @@ const FIELD: Record<string, string> = {
   'translate':    'translate',
   'compress':     'compress',
   'parse-resume': 'import',
+  'ats-score':    'ats_score',
 }
 
 // Daily limits per plan (0 = blocked, -1 = uses lifetime counter on users doc)
@@ -54,8 +55,36 @@ const LIMITS: Record<string, { subscriber: number; single: number; free: number;
   'translate':    { subscriber: 5,  single: 0,  free: 0  },
   'compress':     { subscriber: 20, single: 0,  free: 0  },
   'parse-resume': { subscriber: 10, single: 2,  free: 2,  guest: 1 },
+  'ats-score':    { subscriber: 5,  single: -1, free: -1 },
 }
 
+// Config for types that use lifetime counters for non-subscriber plans
+interface LifetimeCfg {
+  guestDocId: (deviceId: string) => string
+  freeField: string; singleField: string
+  guestLimit: number; freeLimit: number; singleLimit: number
+  guestErr: (fl: number) => string; freeErr: (l: number) => string; singleErr: () => string
+}
+const LIFETIME: Record<string, LifetimeCfg> = {
+  'analyze': {
+    guestDocId: d => `guest_analyze_${d}`,
+    freeField: 'free_analyze_used', singleField: 'single_analyze_used',
+    guestLimit: 1, freeLimit: 2, singleLimit: 5,
+    guestErr: fl => `免费次数已用完，登录后可再用 ${fl} 次，升级 Pro 可享每日 20 次。`,
+    freeErr:  l  => `已用完 ${l} 次免费 AI 优化，升级 Pro 可享每天 20 次。`,
+    singleErr:() => `单次购买的 AI 优化（5 次）已用完，升级 Pro 可享每天 20 次。`,
+  },
+  'ats-score': {
+    guestDocId: d => `guest_ats_${d}`,
+    freeField: 'free_ats_used', singleField: 'single_ats_used',
+    guestLimit: 1, freeLimit: 2, singleLimit: 5,
+    guestErr: fl => `ATS检测免费次数已用完，登录后可再用 ${fl} 次，升级 Pro 可享每日 5 次。`,
+    freeErr:  l  => `已用完 ${l} 次免费 ATS 检测，升级 Pro 可享每天 5 次。`,
+    singleErr:() => `单次购买的 ATS 检测（5 次）已用完，升级 Pro 可享每天 5 次。`,
+  },
+}
+
+// Keep legacy constants for external references
 const GUEST_ANALYZE_LIFETIME_LIMIT = 1  // not-logged-in, keyed by deviceId
 const FREE_ANALYZE_LIFETIME_LIMIT  = 2  // logged-in free users
 
@@ -90,18 +119,19 @@ async function getPlanKind(openid: string): Promise<PlanKind> {
 // ── Public read helpers ───────────────────────────────────────────────────────
 
 /** Today's usage for a logged-in user — single document, all features. */
-export async function getDailyUsageCounts(openid: string): Promise<{ analyze: number; translate: number; import: number; compress: number }> {
+export async function getDailyUsageCounts(openid: string): Promise<{ analyze: number; translate: number; import: number; compress: number; ats_score: number }> {
   try {
     const col = await getDailyUsageCollection()
     const doc = await col.findOne({ _id: `u_${openid}_${todayStr()}` }) as Record<string, unknown> | null
     return {
-      analyze:   (doc?.analyze  as number) ?? 0,
+      analyze:   (doc?.analyze   as number) ?? 0,
       translate: (doc?.translate as number) ?? 0,
-      import:    (doc?.import   as number) ?? 0,
-      compress:  (doc?.compress as number) ?? 0,
+      import:    (doc?.import    as number) ?? 0,
+      compress:  (doc?.compress  as number) ?? 0,
+      ats_score: (doc?.ats_score as number) ?? 0,
     }
   } catch {
-    return { analyze: 0, translate: 0, import: 0, compress: 0 }
+    return { analyze: 0, translate: 0, import: 0, compress: 0, ats_score: 0 }
   }
 }
 
@@ -144,40 +174,31 @@ export async function checkServerQuota(req: NextRequest, type: string, deviceId:
     const openid  = payload?.openid as string | undefined
     const plan: PlanKind = openid ? await getPlanKind(openid) : 'free'
 
-    // ── Free / single analyze: lifetime counter on users document ──
-    if (type === 'analyze' && plan !== 'subscriber') {
+    // ── Lifetime-counter types (analyze, ats-score) for non-subscribers ──
+    const ltCfg = LIFETIME[type]
+    if (ltCfg && plan !== 'subscriber') {
       if (!openid) {
         const col = await getDailyUsageCollection()
-        const guestKey = `guest_analyze_${deviceId}`
-        const existing = await col.findOne({ _id: guestKey }) as Record<string, unknown> | null
+        const existing = await col.findOne({ _id: ltCfg.guestDocId(deviceId) }) as Record<string, unknown> | null
         const used = (existing?.count as number) ?? 0
-        if (used >= GUEST_ANALYZE_LIFETIME_LIMIT) {
-          return NextResponse.json(
-            { error: `免费次数已用完，登录后可再用 ${FREE_ANALYZE_LIFETIME_LIMIT} 次，升级 Pro 可享每日 20 次。` },
-            { status: 429 },
-          )
+        if (used >= ltCfg.guestLimit) {
+          return NextResponse.json({ error: ltCfg.guestErr(ltCfg.freeLimit) }, { status: 429 })
         }
         return null
       }
       const users = await getUserCollection()
       if (plan === 'single') {
-        const user = await users.findOne({ openid }, { projection: { single_analyze_used: 1 } })
-        const used = (user?.single_analyze_used as number) ?? 0
-        if (used >= 5) {
-          return NextResponse.json(
-            { error: `单次购买的 AI 优化（5 次）已用完，升级 Pro 可享每天 20 次。` },
-            { status: 429 },
-          )
+        const user = await users.findOne({ openid }, { projection: { [ltCfg.singleField]: 1 } }) as Record<string, unknown> | null
+        const used = (user?.[ltCfg.singleField] as number) ?? 0
+        if (used >= ltCfg.singleLimit) {
+          return NextResponse.json({ error: ltCfg.singleErr() }, { status: 429 })
         }
         return null
       }
-      const user  = await users.findOne({ openid }, { projection: { free_analyze_used: 1 } })
-      const used  = (user?.free_analyze_used as number) ?? 0
-      if (used >= FREE_ANALYZE_LIFETIME_LIMIT) {
-        return NextResponse.json(
-          { error: `已用完 ${FREE_ANALYZE_LIFETIME_LIMIT} 次免费 AI 优化，升级 Pro 可享每天 20 次。` },
-          { status: 429 },
-        )
+      const user = await users.findOne({ openid }, { projection: { [ltCfg.freeField]: 1 } }) as Record<string, unknown> | null
+      const used = (user?.[ltCfg.freeField] as number) ?? 0
+      if (used >= ltCfg.freeLimit) {
+        return NextResponse.json({ error: ltCfg.freeErr(ltCfg.freeLimit) }, { status: 429 })
       }
       return null
     }
@@ -222,12 +243,13 @@ export async function incrementQuota(req: NextRequest, type: string, deviceId: s
     const openid  = payload?.openid as string | undefined
     const plan: PlanKind = openid ? await getPlanKind(openid) : 'free'
 
-    if (type === 'analyze' && plan !== 'subscriber') {
+    const ltCfg = LIFETIME[type]
+    if (ltCfg && plan !== 'subscriber') {
       if (!openid) {
         const col = await getDailyUsageCollection()
-        // Intentionally no createdAt — this record must not be expired by the 7-day TTL index.
+        // No createdAt — must not be expired by 7-day TTL index
         await col.updateOne(
-          { _id: `guest_analyze_${deviceId}` },
+          { _id: ltCfg.guestDocId(deviceId) },
           { $inc: { count: 1 }, $set: { updatedAt: Date.now() } },
           { upsert: true },
         )
@@ -235,10 +257,10 @@ export async function incrementQuota(req: NextRequest, type: string, deviceId: s
       }
       const users = await getUserCollection()
       if (plan === 'single') {
-        await users.updateOne({ openid }, { $inc: { single_analyze_used: 1 }, $set: { updated_at: Date.now() } })
+        await users.updateOne({ openid }, { $inc: { [ltCfg.singleField]: 1 }, $set: { updated_at: Date.now() } })
         return
       }
-      await users.updateOne({ openid }, { $inc: { free_analyze_used: 1 }, $set: { updated_at: Date.now() } })
+      await users.updateOne({ openid }, { $inc: { [ltCfg.freeField]: 1 }, $set: { updated_at: Date.now() } })
       return
     }
 

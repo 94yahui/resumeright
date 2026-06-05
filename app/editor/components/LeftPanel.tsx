@@ -1,16 +1,24 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import {
+  DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
-  Trash2, Lock, Lightbulb, History, X, Check, Copy,
+  Trash2, Lock, Lightbulb, X, Check, Copy, Pencil, GripVertical,
 } from 'lucide-react'
 import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
-import { ResumeData, Entry } from '../../lib/types'
+import { ResumeData, Entry, SectionKey } from '../../lib/types'
 import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
 
 const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
+  exp: 'hasExp',
+  edu: 'hasEdu',
   summary: 'hasSummary',
   skills: 'hasSkills',
   project: 'hasProject',
@@ -21,24 +29,178 @@ const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   interest: 'hasInterest',
 }
 
-const MODULES: { key: string; label: string; icon: React.ReactNode; bg: string; isEntry: boolean }[] = [
-  { key: 'exp',       label: '工作经历', icon: <Briefcase size={14} color="#334155" />,     bg: '#dbeafe', isEntry: true },
-  { key: 'edu',       label: '教育背景', icon: <GraduationCap size={14} color="#334155" />,  bg: '#fef3c7', isEntry: true },
-  { key: 'summary',   label: '个人简介', icon: <FileText size={14} color="#334155" />,       bg: '#f1f5f9', isEntry: false },
-  { key: 'skills',    label: '专业技能', icon: <Zap size={14} color="#334155" />,            bg: '#fee2e2', isEntry: false },
-  { key: 'project',   label: '项目经历', icon: <Globe size={14} color="#334155" />,          bg: '#dbeafe', isEntry: true },
-  { key: 'language',  label: '语言能力', icon: <MessageSquare size={14} color="#334155" />,  bg: '#ede9fe', isEntry: true },
-  { key: 'award',     label: '荣誉奖项', icon: <Trophy size={14} color="#334155" />,         bg: '#fef3c7', isEntry: true },
-  { key: 'cert',      label: '资质证书', icon: <FileCheck size={14} color="#334155" />,      bg: '#dbeafe', isEntry: true },
-  { key: 'volunteer', label: '志愿服务', icon: <HandHelping size={14} color="#334155" />,    bg: '#f1f5f9', isEntry: true },
-  { key: 'interest',  label: '兴趣爱好', icon: <Sparkles size={14} color="#334155" />,       bg: '#fee2e2', isEntry: true },
-]
+const MODULES_META: Record<string, { label: string; icon: React.ReactNode; bg: string; isEntry: boolean }> = {
+  exp:       { label: '工作经历', icon: <Briefcase size={14} color="#334155" />,     bg: '#dbeafe', isEntry: true },
+  edu:       { label: '教育背景', icon: <GraduationCap size={14} color="#334155" />,  bg: '#fef3c7', isEntry: true },
+  summary:   { label: '个人简介', icon: <FileText size={14} color="#334155" />,       bg: '#f1f5f9', isEntry: false },
+  skills:    { label: '专业技能', icon: <Zap size={14} color="#334155" />,            bg: '#fee2e2', isEntry: false },
+  project:   { label: '项目经历', icon: <Globe size={14} color="#334155" />,          bg: '#dbeafe', isEntry: true },
+  language:  { label: '语言能力', icon: <MessageSquare size={14} color="#334155" />,  bg: '#ede9fe', isEntry: true },
+  award:     { label: '荣誉奖项', icon: <Trophy size={14} color="#334155" />,         bg: '#fef3c7', isEntry: true },
+  cert:      { label: '资质证书', icon: <FileCheck size={14} color="#334155" />,      bg: '#dbeafe', isEntry: true },
+  volunteer: { label: '志愿服务', icon: <HandHelping size={14} color="#334155" />,    bg: '#f1f5f9', isEntry: true },
+  interest:  { label: '兴趣爱好', icon: <Sparkles size={14} color="#334155" />,       bg: '#fee2e2', isEntry: true },
+}
+
+const DEFAULT_SECTION_ORDER: SectionKey[] = ['exp', 'project', 'edu', 'language', 'award', 'cert', 'volunteer', 'interest']
+
+// Keys that are orderable per layout type
+function getOrderableKeys(layout: string): SectionKey[] {
+  if (layout === 'two-column-balance') return ['exp', 'project', 'volunteer', 'interest']
+  return DEFAULT_SECTION_ORDER
+}
 
 const COLORS = [
   '#0f172a', '#1e3a8a', '#0789ec', '#d4a017',
   '#dc2626', '#7c3aed', '#ec4899', '#0891b2',
   '#ea580c', '#16a34a',
 ]
+
+interface SortableRowProps {
+  id: string
+  isOrderable: boolean
+  data: ResumeData
+  editingLabelKey: string | null
+  editingLabelValue: string
+  labelInputRef: React.RefObject<HTMLInputElement | null>
+  onStartEdit: (key: string, label: string) => void
+  onCommitEdit: () => void
+  onCancelEdit: () => void
+  onEditValueChange: (v: string) => void
+  onAddModule: (key: string) => void
+  onUpdate: (patch: Partial<ResumeData>) => void
+}
+
+function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabelValue, labelInputRef, onStartEdit, onCommitEdit, onCancelEdit, onEditValueChange, onAddModule, onUpdate }: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !isOrderable })
+  const m = MODULES_META[id]
+  if (!m) return null
+  const flagKey = FLAG_MAP[id]
+  const isEnabled = !flagKey || data[flagKey as keyof ResumeData] !== false
+  const customLabel = data.sectionLabels?.[id]
+  const displayLabel = customLabel ?? m.label
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        display: 'flex', alignItems: 'center',
+        padding: '5px 8px 5px 14px', gap: '6px',
+        opacity: isDragging ? 0.4 : (flagKey && !isEnabled ? 0.55 : 1),
+        background: isDragging ? '#f8fafc' : 'transparent',
+        zIndex: isDragging ? 10 : undefined,
+        position: 'relative',
+      }}
+    >
+      {/* Checkbox or spacer */}
+      {flagKey ? (
+        <input
+          type="checkbox"
+          checked={isEnabled}
+          onChange={e => {
+            if (e.target.checked) {
+              if (m.isEntry) {
+                const existing = data[id as keyof ResumeData]
+                if (!Array.isArray(existing) || (existing as Entry[]).length === 0) { onAddModule(id); return }
+              }
+              if (id === 'summary' && !data.summary) { onAddModule(id); return }
+              if (id === 'skills' && data.skills.length === 0) { onAddModule(id); return }
+              onUpdate({ [flagKey]: true } as Partial<ResumeData>)
+            } else {
+              onUpdate({ [flagKey]: false } as Partial<ResumeData>)
+            }
+          }}
+          style={{ accentColor: '#0789ec', flexShrink: 0, width: '14px', height: '14px', cursor: 'pointer' }}
+        />
+      ) : (
+        <div style={{ width: '14px', flexShrink: 0 }} />
+      )}
+
+      {/* Icon */}
+      <div style={{
+        width: '26px', height: '26px', borderRadius: '6px',
+        background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>{m.icon}</div>
+
+      {/* Label or inline edit */}
+      {editingLabelKey === id ? (
+        <input
+          ref={labelInputRef}
+          value={editingLabelValue}
+          onChange={e => onEditValueChange(e.target.value)}
+          onBlur={onCommitEdit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') onCommitEdit()
+            if (e.key === 'Escape') onCancelEdit()
+          }}
+          style={{
+            flex: 1, fontSize: '12px', fontWeight: 500,
+            border: '1px solid #0789ec', borderRadius: '4px',
+            padding: '2px 5px', outline: 'none',
+            fontFamily: 'var(--font-sans)', color: '#0f172a', minWidth: 0,
+          }}
+        />
+      ) : (
+        <span style={{
+          flex: 1, fontSize: '12.5px',
+          color: isEnabled ? '#0f172a' : '#94a3b8',
+          fontWeight: 500, minWidth: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {displayLabel}
+          {customLabel && <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '3px' }}>*</span>}
+        </span>
+      )}
+
+      {/* Pencil */}
+      {editingLabelKey !== id && (
+        <button
+          onClick={() => onStartEdit(id, displayLabel)}
+          title="重命名"
+          style={{
+            padding: '3px', border: 'none', background: 'transparent',
+            color: '#94a3b8', cursor: 'pointer', flexShrink: 0,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <Pencil size={11} />
+        </button>
+      )}
+
+      {/* Edit/Add button */}
+      {editingLabelKey !== id && (
+        <button
+          onClick={() => onAddModule(id)}
+          style={{
+            padding: '3px 8px', borderRadius: '5px', fontSize: '12px',
+            border: '1px solid #e2e8f0', background: 'white',
+            color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)', flexShrink: 0,
+          }}
+        >
+          {m.isEntry ? '+' : '编辑'}
+        </button>
+      )}
+
+      {/* Drag handle */}
+      <div
+        {...(isOrderable ? { ...attributes, ...listeners } : {})}
+        style={{
+          width: '16px', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: isOrderable ? '#64748b' : 'transparent',
+          cursor: isOrderable ? 'grab' : 'default',
+          touchAction: 'none',
+        }}
+      >
+        <GripVertical size={14} />
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   templateId: string
@@ -78,6 +240,9 @@ export default function LeftPanel({
   loggedIn = false, onShowLogin,
 }: Props) {
   const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
+  const [editingLabelKey, setEditingLabelKey] = useState<string | null>(null)
+  const [editingLabelValue, setEditingLabelValue] = useState('')
+  const labelInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (forceTab) setTab(forceTab)
@@ -88,6 +253,52 @@ export default function LeftPanel({
 
   const freeTpls = TEMPLATES.filter(t => t.free)
   const proTpls = TEMPLATES.filter(t => !t.free)
+
+  const currentLayout = TEMPLATES.find(t => t.id === templateId)?.layout ?? 'single-classic'
+  const orderableKeys = getOrderableKeys(currentLayout)
+
+  // Build effective section order from stored order + missing defaults
+  const effectiveSectionOrder: SectionKey[] = (() => {
+    const stored = data.sectionOrder ?? []
+    const storedSet = new Set(stored)
+    return [...stored, ...DEFAULT_SECTION_ORDER.filter(k => !storedSet.has(k))]
+  })()
+
+  // Displayed module list: summary first, then sections in effectiveSectionOrder, skills last
+  const orderedModuleKeys = ['summary', ...effectiveSectionOrder, 'skills']
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = effectiveSectionOrder.indexOf(active.id as SectionKey)
+    const newIdx = effectiveSectionOrder.indexOf(over.id as SectionKey)
+    if (oldIdx < 0 || newIdx < 0) return
+    onUpdate({ sectionOrder: arrayMove([...effectiveSectionOrder], oldIdx, newIdx) })
+  }
+
+  function commitLabelEdit() {
+    if (!editingLabelKey) return
+    const trimmed = editingLabelValue.trim()
+    const meta = MODULES_META[editingLabelKey]
+    const defaultLabel = meta?.label ?? editingLabelKey
+    const newLabels = { ...(data.sectionLabels ?? {}) }
+    if (!trimmed || trimmed === defaultLabel) {
+      delete newLabels[editingLabelKey]
+    } else {
+      newLabels[editingLabelKey] = trimmed
+    }
+    onUpdate({ sectionLabels: newLabels })
+    setEditingLabelKey(null)
+  }
+
+  useEffect(() => {
+    if (editingLabelKey) {
+      labelInputRef.current?.focus()
+      labelInputRef.current?.select()
+    }
+  }, [editingLabelKey])
 
   useEffect(() => {
     if (tab === 'hist') {
@@ -222,75 +433,32 @@ export default function LeftPanel({
               内容模块
             </div>
 
-            {MODULES.map(m => {
-              const flagKey = FLAG_MAP[m.key]
-              const isEnabled = !flagKey || !!data[flagKey]
-              return (
-                <div key={m.key} style={{
-                  display: 'flex', alignItems: 'center',
-                  padding: '7px 14px', gap: '8px',
-                  opacity: flagKey && !isEnabled ? 0.55 : 1,
-                  transition: 'opacity 0.15s',
-                }}>
-                  {flagKey ? (
-                    <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          // Auto-add first entry if section is entry-based and currently empty
-                          if (m.isEntry) {
-                            const existing = data[m.key as keyof ResumeData]
-                            if (!Array.isArray(existing) || (existing as Entry[]).length === 0) {
-                              onAddModule(m.key)
-                              return
-                            }
-                          }
-                          // Summary: inject default text via onAddModule when empty
-                          if (m.key === 'summary' && !data.summary) {
-                            onAddModule(m.key)
-                            return
-                          }
-                          // Skills: delegate to onAddModule so sample data is injected when empty
-                          if (m.key === 'skills' && data.skills.length === 0) {
-                            onAddModule(m.key)
-                            return
-                          }
-                          onUpdate({ [flagKey]: true } as Partial<ResumeData>)
-                        } else {
-                          onUpdate({ [flagKey]: false } as Partial<ResumeData>)
-                        }
-                      }}
-                      style={{ accentColor: '#0789ec', flexShrink: 0, width: '14px', height: '14px', cursor: 'pointer' }}
-                    />
-                  ) : (
-                    <div style={{ width: '14px', flexShrink: 0 }} />
-                  )}
-                  <div style={{
-                    width: '28px', height: '28px', borderRadius: '6px',
-                    background: m.bg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>{m.icon}</div>
-                  <span style={{
-                    flex: 1, fontSize: '12.5px',
-                    color: isEnabled ? '#0f172a' : '#94a3b8',
-                    fontWeight: 500,
-                  }}>{m.label}</span>
-                  <button
-                    onClick={() => onAddModule(m.key)}
-                    style={{
-                      padding: '3px 10px', borderRadius: '5px', fontSize: '12px',
-                      border: '1px solid #e2e8f0', background: 'white',
-                      color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
-                      fontFamily: 'var(--font-sans)', flexShrink: 0,
-                    }}
-                  >
-                    {m.isEntry ? '+' : '编辑'}
-                  </button>
-                </div>
-              )
-            })}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={effectiveSectionOrder} strategy={verticalListSortingStrategy}>
+                {orderedModuleKeys.map(key => (
+                  <SortableModuleRow
+                    key={key}
+                    id={key}
+                    isOrderable={DEFAULT_SECTION_ORDER.includes(key as SectionKey) && orderableKeys.includes(key as SectionKey)}
+                    data={data}
+                    editingLabelKey={editingLabelKey}
+                    editingLabelValue={editingLabelValue}
+                    labelInputRef={labelInputRef}
+                    onStartEdit={(k, v) => { setEditingLabelKey(k); setEditingLabelValue(v) }}
+                    onCommitEdit={commitLabelEdit}
+                    onCancelEdit={() => setEditingLabelKey(null)}
+                    onEditValueChange={setEditingLabelValue}
+                    onAddModule={onAddModule}
+                    onUpdate={onUpdate}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         )}
 

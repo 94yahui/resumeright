@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
     const daily_analyze_used   = isSubscriber ? dailyCounts.analyze   : 0
     const daily_translate_used = isSubscriber ? dailyCounts.translate : 0
     const daily_import_used    = dailyCounts.import  // correct for all logged-in users
+    const daily_ats_used       = isSubscriber ? dailyCounts.ats_score : 0
 
     const res = NextResponse.json({
       logged_in: true,
@@ -60,6 +61,9 @@ export async function GET(req: NextRequest) {
       daily_analyze_used,
       daily_translate_used,
       daily_import_used,
+      free_ats_used: (user as Record<string, unknown>).free_ats_used as number ?? 0,
+      single_ats_used: isSingle ? ((user as Record<string, unknown>).single_ats_used as number ?? 0) : 0,
+      daily_ats_used,
     })
 
     // Set a JS-readable hint cookie so subsequent page loads can show the correct

@@ -5,6 +5,7 @@ import Hero from './components/Hero'
 import LandingAnalysisSection from './components/LandingAnalysisSection'
 import Templates from './components/Templates'
 import AISection from './components/AISection'
+import ATSSection from './components/ATSSection'
 import ResumeTips from './components/ResumeTips'
 import Pricing from './components/Pricing'
 import Footer from './components/Footer'
@@ -41,6 +42,7 @@ export default function Home() {
         <LandingAnalysisSection onLoginRequest={() => openLogin()} />
         <Templates />
         <AISection />
+        <ATSSection onLoginRequest={() => openLogin()} />
         <ResumeTips />
         <Pricing onLoginRequest={openLogin} />
       </main>

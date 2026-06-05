@@ -2864,13 +2864,14 @@ const SUB_BENEFITS = [
   "全部精美模板随心用",
   "无水印 PDF 下载",
   "AI 简历优化 20 次/天",
+  "ATS 检测 5 次/天",
   "岗位匹配分析 & 面试题预测",
   "一键生成英文简历（5 次/天）",
   "一键 AI 压缩至 1 页",
   "简历智能导入（10 次/天）",
 ];
 
-const SINGLE_BENEFITS = ["本份简历无水印下载", "AI 优化 5次", "永久重新下载"];
+const SINGLE_BENEFITS = ["本份简历无水印下载", "AI 优化 5次", "ATS 检测 5次", "永久重新下载"];
 
 function fmtFen(fen: number): string {
   const y = fen / 100;

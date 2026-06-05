@@ -13,12 +13,14 @@ const FREE_FEATURES = [
   "在线编辑",
   "PDF 下载（带水印）",
   "2 次免费 AI 简历优化",
+  "ATS 检测 2 次",
 ];
 
 const PRO_FEATURES = [
   "全部精美模板随心用",
   "无水印 PDF 下载",
   "AI 简历优化 20 次/天",
+  "ATS 检测 5 次/天",
   "岗位匹配分析 & 面试题预测",
   "一键生成英文简历（5 次/天）",
   "一键 AI 压缩至 1 页",
@@ -30,6 +32,7 @@ const SINGLE_FEATURES = [
   "无水印 PDF 下载",
   "永久重新下载",
   "AI 简历优化 5 次",
+  "ATS 检测 5 次",
 ];
 
 const SUB_PLANS = [

@@ -6,6 +6,7 @@ import {
   SelectionType,
   SectionKey,
   Entry,
+  SkillCategory,
   bulletsToText,
   textToBullets,
 } from "../../lib/types";
@@ -352,75 +353,7 @@ export default function RightPanel({
 
         {/* Skills */}
         {selection.kind === "skills" && (
-          <>
-            <div style={{ marginBottom: "14px" }}>
-              <label style={labelStyle}>技能标签（逗号分隔）</label>
-              <SkillsTextarea skills={data.skills} onCommit={(v) => onUpdate({ skills: v })} />
-            </div>
-            <div style={{ marginBottom: "14px" }}>
-              <label style={labelStyle}>快速添加</label>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <input
-                  id="newSkill"
-                  style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
-                  placeholder="输入技能"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const el = e.target as HTMLInputElement;
-                      if (el.value.trim()) {
-                        onUpdate({ skills: [...data.skills, el.value.trim()] });
-                        el.value = "";
-                      }
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    const el = document.getElementById("newSkill") as HTMLInputElement;
-                    if (el?.value.trim()) {
-                      onUpdate({ skills: [...data.skills, el.value.trim()] });
-                      el.value = "";
-                    }
-                  }}
-                  style={btnSmall}
-                >
-                  添加
-                </button>
-              </div>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "12px" }}>
-              {data.skills.map((s, i) => (
-                <span
-                  key={i}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "4px",
-                    padding: "4px 8px 4px 11px", borderRadius: "20px", fontSize: "12px",
-                    background: "#f1f5f9", color: "#334155",
-                  }}
-                >
-                  {s}
-                  <button
-                    onClick={() => onUpdate({ skills: data.skills.filter((_, j) => j !== i) })}
-                    style={{
-                      border: "none", background: "none", padding: "0 2px",
-                      cursor: "pointer", fontSize: "13px", lineHeight: 1,
-                      color: "#94a3b8", borderRadius: "50%", display: "flex", alignItems: "center",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fee2e2" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "none" }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button
-              onClick={() => { onUpdate({ hasSkills: false, skills: [] }); onClose() }}
-              style={{ ...btnDanger, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-            >
-              <Trash2 size={13} /> 删除"专业技能"模块
-            </button>
-          </>
+          <SkillsPanel data={data} onUpdate={onUpdate} onClose={onClose} />
         )}
 
         {/* Entry */}
@@ -444,6 +377,53 @@ export default function RightPanel({
 
             return (
               <>
+                {/* Language style picker */}
+                {sec === "language" && (
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={labelStyle}>展示样式</label>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {(["pills", "plain", "list"] as const).map((s) => {
+                        const labels = { pills: "胶囊", plain: "纯文字", list: "列表" }
+                        const active = (data.languageStyle ?? "pills") === s
+                        const borderColor = active ? "var(--theme-blue)" : "#94a3b8"
+                        const textClr = active ? "var(--theme-blue)" : "#64748b"
+                        const preview =
+                          s === "pills" ? (
+                            <span style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
+                              {["英语", "日语"].map(t => (
+                                <span key={t} style={{
+                                  padding: "1px 6px", borderRadius: "10px", fontSize: "8px",
+                                  border: `1px solid ${borderColor}`, color: textClr,
+                                  background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f1f5f9",
+                                }}>{t}</span>
+                              ))}
+                            </span>
+                          ) : s === "plain" ? (
+                            <span style={{ fontSize: "9px", color: textClr }}>英语 · 日语 · 法语</span>
+                          ) : (
+                            <span style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "flex-start" }}>
+                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>英语</span>
+                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>日语</span>
+                            </span>
+                          )
+                        return (
+                          <button key={s} onClick={() => onUpdate({ languageStyle: s })}
+                            style={{
+                              flex: 1, padding: "6px 4px", borderRadius: "6px", cursor: "pointer",
+                              border: active ? "1.5px solid var(--theme-blue)" : "1.5px solid #e2e8f0",
+                              background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f8fafc",
+                              fontSize: "11px", fontWeight: active ? 600 : 400,
+                              color: active ? "var(--theme-blue)" : "#64748b",
+                              display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+                            }}>
+                            {preview}
+                            <span>{labels[s]}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 <Field
                   label={meta.title}
                   value={entry.title}
@@ -597,6 +577,270 @@ function ToggleField({ label, value, onChange, hidden, onToggleHide }: {
         onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
       />
+    </div>
+  )
+}
+
+// ─── Skills Panel ────────────────────────────────────────────────────────────
+function SkillsPanel({ data, onUpdate, onClose }: {
+  data: ResumeData
+  onUpdate: (patch: Partial<ResumeData>) => void
+  onClose: () => void
+}) {
+  const isCategoryMode = data.skillCategories !== undefined
+  const cats = data.skillCategories ?? []
+
+  const enableCategories = () => {
+    // Migrate existing flat skills into a first category
+    const initItems = data.skills.length > 0 ? [...data.skills] : []
+    onUpdate({
+      skillCategories: [{ id: Date.now().toString(), name: '技能', items: initItems }],
+    })
+  }
+
+  const disableCategories = () => {
+    // Flatten all category items back into skills
+    const flat = cats.flatMap(c => c.items)
+    onUpdate({ skillCategories: undefined, skills: flat.length > 0 ? flat : data.skills })
+  }
+
+  const updateCat = (id: string, patch: Partial<SkillCategory>) => {
+    onUpdate({ skillCategories: cats.map(c => c.id === id ? { ...c, ...patch } : c) })
+  }
+
+  const deleteCat = (id: string) => {
+    onUpdate({ skillCategories: cats.filter(c => c.id !== id) })
+  }
+
+  const addCat = () => {
+    onUpdate({ skillCategories: [...cats, { id: Date.now().toString(), name: '新分类', items: [] }] })
+  }
+
+  const addItemToCat = (catId: string, item: string) => {
+    const cat = cats.find(c => c.id === catId)!
+    updateCat(catId, { items: [...cat.items, item] })
+  }
+
+  const removeItemFromCat = (catId: string, idx: number) => {
+    const cat = cats.find(c => c.id === catId)!
+    updateCat(catId, { items: cat.items.filter((_, i) => i !== idx) })
+  }
+
+  return (
+    <>
+      {/* 展示样式 */}
+      <div style={{ marginBottom: "14px" }}>
+        <label style={labelStyle}>展示样式</label>
+        <div style={{ display: "flex", gap: "6px" }}>
+          {(["tags", "plain", "dots"] as const).map((s) => {
+            const labels = { tags: "标签框", plain: "纯文字", dots: "圆点" }
+            const active = (data.skillsStyle ?? "tags") === s
+            const borderColor = active ? "var(--theme-blue)" : "#94a3b8"
+            const textClr = active ? "var(--theme-blue)" : "#64748b"
+            const preview =
+              s === "tags" ? (
+                <div style={{ display: "flex", gap: "3px" }}>
+                  {["React", "Vue"].map(t => (
+                    <span key={t} style={{
+                      padding: "1px 5px", borderRadius: "3px", fontSize: "9px",
+                      border: `1px solid ${borderColor}`,
+                      color: textClr,
+                      background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f1f5f9",
+                    }}>{t}</span>
+                  ))}
+                </div>
+              ) : s === "plain" ? (
+                <span style={{ fontSize: "9px", color: textClr, fontFamily: "monospace" }}>React, Vue, Node</span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "9px", color: textClr }}>
+                  {["React", "Vue"].map(t => (
+                    <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                      <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: textClr, flexShrink: 0, display: "inline-block" }} />
+                      {t}
+                    </span>
+                  ))}
+                </span>
+              )
+            return (
+              <button key={s} onClick={() => onUpdate({ skillsStyle: s })}
+                style={{
+                  flex: 1, padding: "6px 4px", borderRadius: "6px", cursor: "pointer",
+                  border: active ? "1.5px solid var(--theme-blue)" : "1.5px solid #e2e8f0",
+                  background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f8fafc",
+                  fontSize: "11px", fontWeight: active ? 600 : 400,
+                  color: active ? "var(--theme-blue)" : "#64748b",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
+                }}>
+                {preview}
+                <span>{labels[s]}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 分类模式切换 */}
+      <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <label style={{ ...labelStyle, marginBottom: 0 }}>按分类整理</label>
+        <div
+          onClick={isCategoryMode ? disableCategories : enableCategories}
+          style={{
+            width: "40px", height: "22px", borderRadius: "11px", flexShrink: 0,
+            background: isCategoryMode ? "var(--theme-blue)" : "#cbd5e1",
+            position: "relative", cursor: "pointer",
+            transition: "background 0.2s",
+          }}
+        >
+          <div style={{
+            width: "18px", height: "18px", borderRadius: "50%",
+            background: "white",
+            position: "absolute", top: "2px",
+            left: isCategoryMode ? "20px" : "2px",
+            transition: "left 0.2s",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+          }} />
+        </div>
+      </div>
+
+      {isCategoryMode ? (
+        /* ── 分类模式 ── */
+        <>
+          {cats.map((cat) => (
+            <div key={cat.id} style={{
+              marginBottom: "12px", border: "1px solid #e2e8f0",
+              borderRadius: "8px", padding: "10px 12px", background: "#f8fafc",
+            }}>
+              {/* 分类名 + 删除 */}
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px", alignItems: "center" }}>
+                <input
+                  value={cat.name}
+                  onChange={(e) => updateCat(cat.id, { name: e.target.value })}
+                  placeholder="分类名称"
+                  style={{ ...inputStyle, flex: 1, fontWeight: 600, fontSize: "12px" } as React.CSSProperties}
+                  onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
+                  onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
+                />
+                <button onClick={() => deleteCat(cat.id)}
+                  style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8", padding: "2px", display: "flex", alignItems: "center" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#dc2626" }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8" }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+
+              {/* 技能 chip 列表 */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "8px" }}>
+                {cat.items.map((item, idx) => (
+                  <span key={idx} style={{
+                    display: "inline-flex", alignItems: "center", gap: "3px",
+                    padding: "3px 7px 3px 9px", borderRadius: "20px", fontSize: "12px",
+                    background: "color-mix(in srgb, var(--theme-blue) 12%, white)", color: "var(--theme-blue)",
+                  }}>
+                    {item}
+                    <button onClick={() => removeItemFromCat(cat.id, idx)}
+                      style={{ border: "none", background: "none", cursor: "pointer", fontSize: "13px", lineHeight: 1, color: "var(--theme-blue)", padding: "0 1px", display: "flex", alignItems: "center" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#dc2626" }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--theme-blue)" }}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+
+              {/* 添加技能 */}
+              <CatItemInput onAdd={(v) => addItemToCat(cat.id, v)} />
+            </div>
+          ))}
+
+          <button onClick={addCat}
+            style={{ ...btnSmall, width: "100%", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}>
+            <Plus size={12} /> 新增分类
+          </button>
+        </>
+      ) : (
+        /* ── 平铺模式 ── */
+        <>
+          <div style={{ marginBottom: "14px" }}>
+            <label style={labelStyle}>技能标签（逗号分隔）</label>
+            <SkillsTextarea skills={data.skills} onCommit={(v) => onUpdate({ skills: v })} />
+          </div>
+          <div style={{ marginBottom: "14px" }}>
+            <label style={labelStyle}>快速添加</label>
+            <FlatSkillInput onAdd={(v) => onUpdate({ skills: [...data.skills, v] })} />
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "12px" }}>
+            {data.skills.map((s, i) => (
+              <span key={i} style={{
+                display: "inline-flex", alignItems: "center", gap: "4px",
+                padding: "4px 8px 4px 11px", borderRadius: "20px", fontSize: "12px",
+                background: "#f1f5f9", color: "#334155",
+              }}>
+                {s}
+                <button onClick={() => onUpdate({ skills: data.skills.filter((_, j) => j !== i) })}
+                  style={{ border: "none", background: "none", padding: "0 2px", cursor: "pointer", fontSize: "13px", lineHeight: 1, color: "#94a3b8", borderRadius: "50%", display: "flex", alignItems: "center" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#dc2626"; (e.currentTarget as HTMLButtonElement).style.background = "#fee2e2" }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; (e.currentTarget as HTMLButtonElement).style.background = "none" }}
+                >×</button>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={() => { onUpdate({ hasSkills: false, skills: [], skillCategories: undefined }); onClose() }}
+        style={{ ...btnDanger, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+      >
+        <Trash2 size={13} /> 删除"专业技能"模块
+      </button>
+    </>
+  )
+}
+
+function CatItemInput({ onAdd }: { onAdd: (v: string) => void }) {
+  const [val, setVal] = useState("")
+  const submit = () => {
+    const t = val.trim()
+    if (!t) return
+    onAdd(t)
+    setVal("")
+  }
+  return (
+    <div style={{ display: "flex", gap: "6px" }}>
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
+        placeholder="添加技能"
+        style={{ ...inputStyle, flex: 1, fontSize: "12px" } as React.CSSProperties}
+        onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
+        onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
+      />
+      <button onClick={submit} style={btnSmall}>添加</button>
+    </div>
+  )
+}
+
+function FlatSkillInput({ onAdd }: { onAdd: (v: string) => void }) {
+  const [val, setVal] = useState("")
+  const submit = () => {
+    const t = val.trim()
+    if (!t) return
+    onAdd(t)
+    setVal("")
+  }
+  return (
+    <div style={{ display: "flex", gap: "6px" }}>
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
+        placeholder="输入技能"
+        style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
+        onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
+        onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
+      />
+      <button onClick={submit} style={btnSmall}>添加</button>
     </div>
   )
 }

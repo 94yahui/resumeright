@@ -41,7 +41,8 @@ If it IS a resume, extract all information and return ONLY valid JSON (no markdo
   "volunteer": [{ "id": string, "title": string, "sub": string, "date": string, "bullets": string[] }],
   "interest": [{ "id": string, "title": string, "sub": string, "date": string, "bullets": string[] }],
   "language": [{ "id": string, "title": string, "sub": string, "date": "", "bullets": [] }],
-  "skills": string[]
+  "skills": string[],
+  "skillCategories": [{ "id": string, "name": string, "items": string[] }] | null
 }
 
 Rules:
@@ -53,7 +54,8 @@ Rules:
 - For language entries, "title" = language name, "sub" = proficiency (精通/流利/基础)
 - Extract all bullet points; if the resume uses paragraph form, split into logical bullet points
 - Use empty string for missing text fields, empty array for missing array fields
-- Preserve original language (Chinese or English) of the resume content`
+- Preserve original language (Chinese or English) of the resume content
+- skillCategories: if skills are organized into named groups (e.g. "Frontend: React, Vue" / "后端：Node.js、Spring Boot"), extract each group as an object with a generated id like "sc1","sc2", the group name, and its items. Also populate "skills" with all items flattened. If skills are just a plain list with no grouping, set skillCategories to null.`
 
 // ── DOCX text extraction (no external deps) ──────────────────────────────────
 // DOCX is a ZIP archive; we scan for 'word/document.xml', decompress it, strip tags.
