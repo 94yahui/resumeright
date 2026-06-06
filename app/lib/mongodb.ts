@@ -140,6 +140,8 @@ export interface ResumeDoc {
   data: ResumeData
   templateId: string
   color?: string
+  accentStyleOverride?: string
+  fontPairOverride?: string
   savedAt: number
   isEnglish?: boolean
 }

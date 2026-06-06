@@ -79,5 +79,5 @@ export async function POST(req: NextRequest) {
     color: { dark: '#0f172a', light: '#ffffff' },
   })
 
-  return NextResponse.json({ qrDataUrl, payUrl: result.url, orderId })
+  return NextResponse.json({ qrDataUrl, payUrl: result.url, orderId, amountFen })
 }

@@ -247,7 +247,7 @@ function EditorInner() {
   const loadedFromHistoryId = useRef<string | null>(null)
   const guestNoResumeRef = useRef(false)  // set synchronously in init to block auto-entry-creation
   // Always reflects the latest editor state for use in cleanup effects
-  const latestForAutoSave = useRef({ data, docTitle, templateId, color })
+  const latestForAutoSave = useRef({ data, docTitle, templateId, color, accentStyleOverride, fontPairOverride })
   // Live refs for use inside event handler closures that can't depend on state
   const isMobileRef = useRef(false)
   const zoomRef = useRef(zoom)
@@ -377,6 +377,8 @@ function EditorInner() {
           setHistoryIdx(0)
           setTemplateId(recent.templateId)
           setColor(recent.color)
+          setAccentStyleOverride(recent.accentStyleOverride)
+          setFontPairOverride(recent.fontPairOverride)
           setDocTitle(recent.name)
           setIsCurrentEnglish(recent.isEnglish === true || looksEnglish(recent.data))
           setHistoryRefreshKey(k => k + 1)
@@ -421,8 +423,8 @@ function EditorInner() {
         return
       }
     } catch {}
-    const { data: d, docTitle: dt, templateId: tid, color: c } = latestForAutoSave.current
-    const newId = saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, savedAt: Date.now() })
+    const { data: d, docTitle: dt, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo } = latestForAutoSave.current
+    const newId = saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
     if (newId) {
       loadedFromHistoryId.current = newId
       setCurrentHistoryId(newId)
@@ -529,11 +531,18 @@ function EditorInner() {
       try {
         const stored = sessionStorage.getItem('rc_ats_import')
         sessionStorage.removeItem('rc_ats_import')
+        console.log('[ATS import] stored value:', stored ? JSON.parse(stored) : null)
         if (stored) {
-          const raw = JSON.parse(stored)
+          const parsed = JSON.parse(stored)
+          // Support both new format { filename, resume: {...} } and old direct-parsedData format
+          const hasNewFormat = parsed && typeof parsed === 'object' && 'resume' in parsed
+          const raw = (hasNewFormat ? parsed.resume : parsed) ?? {}
+          const filename: string | undefined = hasNewFormat ? parsed.filename : undefined
+          console.log('[ATS import] raw resume data:', raw)
           const resumeData = parsedToResumeData(raw)
+          console.log('[ATS import] parsed ResumeData:', { name: resumeData.name, expCount: resumeData.exp?.length, eduCount: resumeData.edu?.length })
           const currentHistory = loadHistory()
-          const newName = uniqueHistoryName(raw.name || '我的简历', currentHistory)
+          const newName = uniqueHistoryName(filename || raw.name || '我的简历', currentHistory)
           const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
           if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
           setHistory([resumeData])
@@ -584,6 +593,8 @@ function EditorInner() {
       setHistoryIdx(0)
       setTemplateId(recent.templateId)
       setColor(recent.color)
+      setAccentStyleOverride(recent.accentStyleOverride)
+      setFontPairOverride(recent.fontPairOverride)
       setDocTitle(recent.name)
       setIsCurrentEnglish(recent.isEnglish === true || looksEnglish(recent.data))
       return
@@ -602,10 +613,10 @@ function EditorInner() {
     const now = Date.now()
     // Persist historyId in the draft so "继续编辑" can restore the correct association
     try {
-      saveDraft({ data, templateId, color, docTitle, savedAt: now, historyId: hid ?? undefined })
+      saveDraft({ data, templateId, color, accentStyleOverride, fontPairOverride, docTitle, savedAt: now, historyId: hid ?? undefined })
       // Keep the history entry in sync — includes name so renaming the doc updates the list
       if (hid && hid !== 'draft' && hid !== 'pending') {
-        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: now })
+        updateHistoryEntry(hid, { data, templateId, color, accentStyleOverride, fontPairOverride, name: docTitle, savedAt: now })
       }
     } catch {
       showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
@@ -618,7 +629,7 @@ function EditorInner() {
         if (entry) upsertCloudResume(entry)
       }, 3000)
     }
-  }, [data, templateId, color, docTitle])
+  }, [data, templateId, color, accentStyleOverride, fontPairOverride, docTitle])
 
   // Populate diff preview whenever new AI analysis arrives
   useEffect(() => {
@@ -637,7 +648,7 @@ function EditorInner() {
 
   // Keep refs in sync with latest state (for event handlers / cleanup effects that can't depend on state)
   useEffect(() => {
-    latestForAutoSave.current = { data, docTitle, templateId, color }
+    latestForAutoSave.current = { data, docTitle, templateId, color, accentStyleOverride, fontPairOverride }
     isMobileRef.current = isMobile
     zoomRef.current = zoom
     loggedInRef.current = auth.loggedIn
@@ -749,8 +760,8 @@ function EditorInner() {
       if (!initialized.current) return
       if (loggingOutRef.current) return
       if (loadedFromHistoryId.current) return
-      const { data: d, docTitle: dt, templateId: tid, color: c } = latestForAutoSave.current
-      saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, savedAt: Date.now() })
+      const { data: d, docTitle: dt, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo } = latestForAutoSave.current
+      saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
       // Re-sort history by savedAt so the most recently edited resume appears first next session
       sortAndSaveHistory()
     }
@@ -1468,6 +1479,8 @@ ${autoprint ? `<script>
     setHistoryIdx(0)
     setTemplateId(entry.templateId)
     setColor(entry.color)
+    setAccentStyleOverride(entry.accentStyleOverride)
+    setFontPairOverride(entry.fontPairOverride)
     setDocTitle(entry.name)
     setSelection({ kind: 'none' })
     // Close AI panel and discard analysis — it belongs to the previous resume

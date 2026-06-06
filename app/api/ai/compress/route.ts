@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
+import { aiFetch } from '../_fetch'
 
 const QWEN_BASE  = process.env.QWEN_BASE_URL  || 'https://api.deepseek.com'
 const QWEN_MODEL = process.env.QWEN_MODEL     || 'deepseek-chat'
 
 async function qwen(prompt: string, apiKey: string): Promise<unknown> {
-  const res = await fetch(`${QWEN_BASE}/chat/completions`, {
+  const res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -2911,6 +2911,8 @@ export function PaywallModal({
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [promoOk, setPromoOk] = useState("");
+  // Server-authoritative amount — overrides client estimate once QR is created
+  const [serverAmountFen, setServerAmountFen] = useState<number | null>(null);
 
   const copy = TRIGGER_COPY[trigger];
   const showFreeOption = trigger === "download_free" && !!onFreeDownload;
@@ -3019,9 +3021,11 @@ export function PaywallModal({
         setQrLoading(false);
         return;
       }
+      const actualFen: number = data.amountFen ?? amountFen;
+      setServerAmountFen(actualFen);
       setQrDataUrl(data.qrDataUrl);
       setQrLoading(false);
-      startPoll(orderId, planType, amountFen);
+      startPoll(orderId, planType, actualFen);
     } catch {
       setQrError("网络错误，请重试");
       setQrLoading(false);
@@ -3128,7 +3132,7 @@ export function PaywallModal({
 
   // ── QR / paying phase ────────────────────────────────────────
   if (phase === "paying") {
-    const payingAmount = !pendingType
+    const clientAmount = !pendingType
       ? 0
       : pendingType === "single"
         ? singlePrice
@@ -3137,6 +3141,8 @@ export function PaywallModal({
           : pendingType === "quarterly"
             ? subPrice("quarterly")
             : subPrice("yearly");
+    // Use server-authoritative amount once available; fall back to client estimate while loading
+    const payingAmount = serverAmountFen ?? clientAmount;
 
     return (
       <ModalWrap
@@ -3156,6 +3162,7 @@ export function PaywallModal({
           <button
             onClick={() => {
               stopPoll();
+              setServerAmountFen(null);
               setPhase("plans");
             }}
             style={{

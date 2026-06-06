@@ -15,9 +15,12 @@ export interface AuthState {
   dailyAnalyzeUsed: number
   dailyTranslateUsed: number
   dailyImportUsed: number
+  freeAtsUsed: number
+  singleAtsUsed: number
+  dailyAtsUsed: number
 }
 
-const EMPTY: AuthState = { loading: false, loggedIn: false, kickedOut: false, openid: null, nickname: null, avatar: null, membership: null, isStudent: false, freeAnalyzeUsed: 0, singleAnalyzeUsed: 0, dailyAnalyzeUsed: 0, dailyTranslateUsed: 0, dailyImportUsed: 0 }
+const EMPTY: AuthState = { loading: false, loggedIn: false, kickedOut: false, openid: null, nickname: null, avatar: null, membership: null, isStudent: false, freeAnalyzeUsed: 0, singleAnalyzeUsed: 0, dailyAnalyzeUsed: 0, dailyTranslateUsed: 0, dailyImportUsed: 0, freeAtsUsed: 0, singleAtsUsed: 0, dailyAtsUsed: 0 }
 
 // ── Auth state cache — lets the UI restore member state instantly on refresh ──
 const CACHE_KEY = 'rc_auth_cache'
@@ -130,6 +133,9 @@ export function useAuth() {
         dailyAnalyzeUsed: data.daily_analyze_used ?? 0,
         dailyTranslateUsed: data.daily_translate_used ?? 0,
         dailyImportUsed: data.daily_import_used ?? 0,
+        freeAtsUsed: data.free_ats_used ?? 0,
+        singleAtsUsed: data.single_ats_used ?? 0,
+        dailyAtsUsed: data.daily_ats_used ?? 0,
       }
       // Only write/clear cache on definitive state changes.
       // Don't clear on logged_in:false — it may be a transient DB error.

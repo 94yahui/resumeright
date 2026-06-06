@@ -66,6 +66,7 @@ export interface ResumeData {
   skillsStyle?: 'tags' | 'plain' | 'dots'
   languageStyle?: 'pills' | 'plain' | 'list'
   skillCategories?: SkillCategory[]
+  skillCategoriesStash?: SkillCategory[]  // preserved when toggling category mode off
 
   resumeLang?: 'zh' | 'en'
   fontScale?: number

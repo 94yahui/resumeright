@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guardAI } from '../_guard'
+import { aiFetch } from '../_fetch'
 
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'deepseek-chat'
@@ -51,7 +52,7 @@ ${context ? `背景：${context}` : ''}
 仅返回JSON（无markdown）：{"summary": "优化后的个人简介"}`
     }
 
-    const res = await fetch(`${QWEN_BASE}/chat/completions`, {
+    const res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

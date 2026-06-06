@@ -161,16 +161,34 @@ function DimCard({ dim }: { dim: ATSDimension }) {
 }
 
 // ── Upload card ───────────────────────────────────────────────────────────────
-function UploadCard({ onFile, hintText }: { onFile: (f: File) => void; hintText: string }) {
+function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLoginRequest }: {
+  onFile: (f: File) => void; hintText: string
+  exhausted?: boolean; exhaustedMsg?: string
+  needLogin?: boolean; onLoginRequest?: () => void
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  // For not-logged-in exhausted: show hint + login button only after first click
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+
+  const handleButtonClick = () => {
+    if (exhausted && needLogin) { setShowLoginPrompt(true); return }
+    if (exhausted) return  // logged-in exhausted: do nothing
+    inputRef.current?.click()
+  }
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false)
+    if (exhausted) { if (needLogin) setShowLoginPrompt(true); return }
     const f = e.dataTransfer.files[0]; if (f) onFile(f)
-  }, [onFile])
+  }, [onFile, exhausted, needLogin])
+
+  // After login prompt is shown, the button becomes "登录/注册"
+  const showLoginButton = showLoginPrompt && needLogin
 
   return (
-    <div onDragOver={e => { e.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={handleDrop}
+    <div onDragOver={e => { e.preventDefault(); if (!exhausted) setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={handleDrop}
+      className="ats-upload-card"
       style={{
         background: dragging ? '#f0f9ff' : 'white', borderRadius: '24px',
         padding: '44px 40px 40px',
@@ -187,15 +205,45 @@ function UploadCard({ onFile, hintText }: { onFile: (f: File) => void; hintText:
       <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 32px' }}>
         从<span style={{ color: '#0789ec', fontWeight: 600 }}>文字提取、编码规范、版面结构、字段识别、文件格式</span>五个 ATS 技术角度检测兼容性
       </p>
-      <button onClick={() => inputRef.current?.click()} style={{
-        width: '100%', padding: '16px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700,
-        background: 'linear-gradient(135deg, #0789ec, #0f5fc2)', color: 'white', border: 'none', cursor: 'pointer',
-        fontFamily: 'var(--font-sans)', boxShadow: '0 4px 14px rgba(7,137,236,0.35)',
-        transition: 'transform 0.15s, box-shadow 0.15s',
-      }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
-      >上传你的简历</button>
+
+      {showLoginButton ? (
+        /* ── After clicking with exhausted guest: login button ── */
+        <button onClick={onLoginRequest} style={{
+          width: '100%', padding: '16px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700,
+          background: 'linear-gradient(135deg, #0789ec, #0f5fc2)', color: 'white', border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-sans)', boxShadow: '0 4px 14px rgba(7,137,236,0.35)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
+        >登录</button>
+      ) : (
+        /* ── Normal / logged-in exhausted: upload button ── */
+        <button onClick={handleButtonClick} style={{
+          width: '100%', padding: '16px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700,
+          background: exhausted && !needLogin ? '#cbd5e1' : 'linear-gradient(135deg, #0789ec, #0f5fc2)',
+          color: 'white', border: 'none',
+          cursor: exhausted && !needLogin ? 'not-allowed' : 'pointer',
+          fontFamily: 'var(--font-sans)',
+          boxShadow: exhausted && !needLogin ? 'none' : '0 4px 14px rgba(7,137,236,0.35)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+          onMouseEnter={e => { if (!(exhausted && !needLogin)) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' } }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; if (!(exhausted && !needLogin)) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
+        >上传你的简历</button>
+      )}
+
+      {/* ── Inline hint: shown after guest clicks with exhausted quota, or always for logged-in exhausted ── */}
+      {((showLoginPrompt && needLogin) || (exhausted && !needLogin)) && exhaustedMsg && (
+        <div style={{
+          marginTop: '12px', padding: '10px 14px', borderRadius: '10px',
+          background: '#fff7ed', border: '1px solid #fed7aa',
+          fontSize: '13px', color: '#9a3412', lineHeight: 1.6, textAlign: 'center',
+        }}>
+          {exhaustedMsg}
+        </div>
+      )}
+
       <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '16px', textAlign: 'center', lineHeight: 1.7 }}>
         支持 PDF、Word（.docx）· 不超过 5 MB<br />{hintText}
       </div>
@@ -278,6 +326,33 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
   )
 }
 
+// ── Quota pre-check ───────────────────────────────────────────────────────────
+function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; msg: string; needLogin: boolean } {
+  if (auth.loading) return { exhausted: false, msg: '', needLogin: false }
+  if (!auth.loggedIn) {
+    try {
+      const deviceId = getDeviceId()
+      if (localStorage.getItem(`rc_ats_exhausted_${deviceId}`) === '1') {
+        return { exhausted: true, msg: 'ATS 检测免费次数已用完，登录后可再用 2 次，升级 Pro 可享每日 5 次。', needLogin: true }
+      }
+    } catch {}
+    return { exhausted: false, msg: '', needLogin: false }
+  }
+  const mem = auth.membership as { plan?: string; expires_at?: number } | null | undefined
+  const isPro = isActiveSub(mem?.plan, mem?.expires_at)
+  if (isPro) {
+    if (auth.dailyAtsUsed >= 5)
+      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（5 次/天），明天再来吧。', needLogin: false }
+  } else if (mem?.plan === 'single') {
+    if (auth.singleAtsUsed >= 5)
+      return { exhausted: true, msg: '单次购买的 ATS 检测（5 次）已用完，升级 Pro 可享每天 5 次。', needLogin: false }
+  } else {
+    if (auth.freeAtsUsed >= 2)
+      return { exhausted: true, msg: '已用完 2 次免费 ATS 检测，升级 Pro 可享每天 5 次。', needLogin: false }
+  }
+  return { exhausted: false, msg: '', needLogin: false }
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => void }) {
   const auth = useAuth()
@@ -308,12 +383,28 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
       const res = await fetch('/api/ai/ats-score', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) {
+        // Mark guest as exhausted so next click is caught immediately
+        if (res.status === 429 && !auth.loggedIn) {
+          try { localStorage.setItem(`rc_ats_exhausted_${deviceId}`, '1') } catch {}
+        }
         pendingError.current = { msg: data.error || '分析失败，请重试', needLogin: res.status === 429 }
       } else {
         pendingResult.current = data
-        // Store parsed resume immediately so editor can use it without a second API call
-        if (data.parsedData) {
-          try { sessionStorage.setItem('rc_ats_import', JSON.stringify(data.parsedData)) } catch {}
+        // Store parsed resume so editor can pre-fill without a second API call.
+        // Always write the entry (even when AI parse failed) so the editor's from_ats
+        // handler always runs. Include original filename for use as document title.
+        const resumeForEditor = data.parsedData ?? (data.name ? { name: data.name, jobtitle: data.jobtitle || '' } : null)
+        console.log('[ATS] parsedData:', data.parsedData, '| resumeForEditor:', resumeForEditor)
+        if (resumeForEditor) {
+          try {
+            sessionStorage.setItem('rc_ats_import', JSON.stringify({
+              filename: file.name.replace(/\.[^.]+$/, ''),
+              resume: resumeForEditor,
+            }))
+            console.log('[ATS] sessionStorage written, filename:', file.name)
+          } catch {}
+        } else {
+          console.warn('[ATS] Nothing to store — parsedData null and no name from heuristic')
         }
       }
     } catch {
@@ -369,8 +460,20 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
                 超过 90% 的大公司使用 ATS 自动过滤简历，绝大多数求职者在这一环节出局，却浑然不知。上传简历，AI 实时给出评分与改进建议。
               </p>
             </div>
-            <div style={{ flex: '0 0 420px', minWidth: '280px', maxWidth: '460px', width: '100%' }}>
-              <UploadCard onFile={handleFile} hintText={hintText} />
+            <div style={{ flex: '0 1 420px', minWidth: '0', maxWidth: '460px', width: '100%' }}>
+              {(() => {
+                const check = getQuotaCheck(auth)
+                return (
+                  <UploadCard
+                    onFile={handleFile}
+                    hintText={hintText}
+                    exhausted={check.exhausted}
+                    exhaustedMsg={check.msg}
+                    needLogin={check.needLogin}
+                    onLoginRequest={onLoginRequest}
+                  />
+                )
+              })()}
             </div>
           </div>
         )}
@@ -388,7 +491,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
             <div style={{ fontSize: '17px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>{errorMsg}</div>
             {needLogin && (
-              <button onClick={onLoginRequest} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, background: '#0789ec', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>登录 / 注册</button>
+              <button onClick={onLoginRequest} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, background: 'var(--highlight)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>登录 / 注册</button>
             )}
             <button onClick={() => { setPhase('upload'); setApiDone(false) }} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 600, background: 'white', color: '#334155', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>重新上传</button>
           </div>
@@ -399,6 +502,9 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
         @media (max-width: 680px) {
           #ats { padding: 56px 0 !important; }
           #ats h2 { font-size: 28px !important; }
+        }
+        @media (max-width: 480px) {
+          .ats-upload-card { padding: 32px 24px 28px !important; }
         }
       `}</style>
     </section>

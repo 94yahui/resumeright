@@ -30,12 +30,15 @@ function cleanTombstones(t: Record<string, number>): Record<string, number> {
 }
 
 import type { ResumeData } from './types'
+import type { AccentStyle, FontPair } from './templates-config'
 import { getFreeAnalyzeUsed, setFreeAnalyzeUsed, getPayments, setPayments, PLAN_DURATION_MS, type PaymentRecord } from './payment'
 
 export interface DraftState {
   data: ResumeData
   templateId: string
   color: string | undefined
+  accentStyleOverride?: AccentStyle
+  fontPairOverride?: FontPair
   docTitle: string
   savedAt: number
   historyId?: string  // id of the history entry being edited when this draft was written
@@ -47,6 +50,8 @@ export interface HistoryEntry {
   data: ResumeData
   templateId: string
   color: string | undefined
+  accentStyleOverride?: AccentStyle
+  fontPairOverride?: FontPair
   savedAt: number
   isEnglish?: boolean
 }
@@ -223,6 +228,8 @@ export async function upsertCloudResume(entry: HistoryEntry): Promise<void> {
         data: entry.data,
         templateId: entry.templateId,
         color: entry.color,
+        accentStyleOverride: entry.accentStyleOverride,
+        fontPairOverride: entry.fontPairOverride,
         savedAt: entry.savedAt,
         isEnglish: entry.isEnglish,
       }),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
+import { aiFetch } from '../_fetch'
 
 const inflateRawAsync = promisify(inflateRaw)
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
@@ -149,7 +150,8 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
 
   // ── Dim 4: 关键字段可识别率 ───────────────────────────────────────────────
   const hasEmail    = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(text)
-  const hasPhone    = /1[3-9]\d{9}/.test(text.replace(/[\s\-]/g, ''))
+  const normalizedPhone = text.replace(/[\s\-–—·.()]/g, '')
+  const hasPhone    = /1[3-9]\d{9}/.test(normalizedPhone) || /0\d{2,3}\d{7,8}/.test(normalizedPhone)
   const hasWork     = /工作经历|工作经验|职业经历|work experience|employment/i.test(text)
   const hasEdu      = /教育背景|教育经历|education|学历|毕业/i.test(text)
   const hasSkill    = /技能|skills?|专业技能|expertise/i.test(text)
@@ -158,7 +160,7 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
 
   let d4Score = 0
   if (hasEmail) d4Score += 5; else misses.push('邮箱')
-  if (hasPhone) d4Score += 5; else misses.push('手机号')
+  if (hasPhone) d4Score += 5
   if (hasWork)  d4Score += 4; else misses.push('工作经历标题')
   if (hasEdu)   d4Score += 3; else misses.push('教育背景标题')
   if (hasSkill) d4Score += 1
@@ -278,7 +280,7 @@ export async function POST(req: NextRequest) {
     if (resumeText.length >= 30) {
       try {
         const parseText = resumeText.slice(0, 12000)
-        const parseRes = await fetch(`${QWEN_BASE}/chat/completions`, {
+        const parseRes = await aiFetch(`${QWEN_BASE}/chat/completions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
           body: JSON.stringify({

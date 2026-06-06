@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
+import { aiFetch } from '../_fetch'
 
 const inflateRawAsync = promisify(inflateRaw)
 
@@ -159,7 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Send extracted text to qwen3.6-plus
-    const res = await fetch(`${QWEN_BASE}/chat/completions`, {
+    const res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

@@ -22,6 +22,8 @@ export async function GET(req: NextRequest) {
     data: d.data,
     templateId: d.templateId,
     color: d.color,
+    accentStyleOverride: d.accentStyleOverride,
+    fontPairOverride: d.fontPairOverride,
     savedAt: d.savedAt,
     isEnglish: d.isEnglish,
   })))
@@ -33,13 +35,13 @@ export async function POST(req: NextRequest) {
   if (!openid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { id, name, data, templateId, color, savedAt, isEnglish } = body
+  const { id, name, data, templateId, color, accentStyleOverride, fontPairOverride, savedAt, isEnglish } = body
   if (!id || !data) return NextResponse.json({ error: 'missing id or data' }, { status: 400 })
 
   const col = await getResumeCollection()
   await col.updateOne(
     { _id: id, openid },
-    { $set: { openid, name, data, templateId, color, savedAt, isEnglish } },
+    { $set: { openid, name, data, templateId, color, accentStyleOverride, fontPairOverride, savedAt, isEnglish } },
     { upsert: true }
   )
   return NextResponse.json({ ok: true })

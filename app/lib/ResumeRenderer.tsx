@@ -399,9 +399,9 @@ export default function ResumeRenderer({
                 const isPureDeletion = hasDiff && /^\[\[~.*~\]\]$/.test(b.trim())
                 const segments = hasDiff ? parseDiffBullet(b) : null
                 return (
-                  <li key={i} style={{ fontSize: s(12), lineHeight: 1.55, paddingLeft: '14px', position: 'relative', marginBottom: '1px', color: bodyC }}>
+                  <li key={i} style={{ fontSize: s(12), lineHeight: 1.55, paddingLeft: s(14), position: 'relative', marginBottom: '1px', color: bodyC }}>
                     {!isPureDeletion && (
-                      <span style={{ position: 'absolute', left: 0, top: '8px', width: '4px', height: '4px', borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--highlight)' : accent) }} />
+                      <span style={{ position: 'absolute', left: 0, top: s(8), width: s(4), height: s(4), borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--highlight)' : '#9ca3af') }} />
                     )}
                     {segments ? (
                       segments.map((seg, si) => (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
+import { aiFetch } from '../_fetch'
 
 export const maxDuration = 60 // Vercel Hobby plan max (seconds)
 
@@ -13,7 +14,7 @@ async function qwen(prompt: string, apiKey: string, timeoutMs = 90_000, systemMs
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetch(`${QWEN_BASE}/chat/completions`, {
+    const res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -48,7 +49,7 @@ async function distillJobDesc(raw: string, apiKey: string): Promise<string> {
     const timer = setTimeout(() => ctrl.abort(), 15_000)
     let res: Response
     try {
-      res = await fetch(`${QWEN_BASE}/chat/completions`, {
+      res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({

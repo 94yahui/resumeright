@@ -591,17 +591,23 @@ function SkillsPanel({ data, onUpdate, onClose }: {
   const cats = data.skillCategories ?? []
 
   const enableCategories = () => {
-    // Migrate existing flat skills into a first category
-    const initItems = data.skills.length > 0 ? [...data.skills] : []
-    onUpdate({
-      skillCategories: [{ id: Date.now().toString(), name: '技能', items: initItems }],
-    })
+    // Restore stashed categories if available; otherwise migrate flat skills
+    if (data.skillCategoriesStash && data.skillCategoriesStash.length > 0) {
+      onUpdate({ skillCategories: data.skillCategoriesStash, skillCategoriesStash: undefined })
+    } else {
+      const initItems = data.skills.length > 0 ? [...data.skills] : []
+      onUpdate({ skillCategories: [{ id: Date.now().toString(), name: '技能', items: initItems }] })
+    }
   }
 
   const disableCategories = () => {
-    // Flatten all category items back into skills
+    // Stash current categories so they can be restored on re-enable
     const flat = cats.flatMap(c => c.items)
-    onUpdate({ skillCategories: undefined, skills: flat.length > 0 ? flat : data.skills })
+    onUpdate({
+      skillCategories: undefined,
+      skillCategoriesStash: cats,
+      skills: flat.length > 0 ? flat : data.skills,
+    })
   }
 
   const updateCat = (id: string, patch: Partial<SkillCategory>) => {
@@ -616,9 +622,9 @@ function SkillsPanel({ data, onUpdate, onClose }: {
     onUpdate({ skillCategories: [...cats, { id: Date.now().toString(), name: '新分类', items: [] }] })
   }
 
-  const addItemToCat = (catId: string, item: string) => {
+  const addItemsToCat = (catId: string, newItems: string[]) => {
     const cat = cats.find(c => c.id === catId)!
-    updateCat(catId, { items: [...cat.items, item] })
+    updateCat(catId, { items: [...cat.items, ...newItems] })
   }
 
   const removeItemFromCat = (catId: string, idx: number) => {
@@ -748,7 +754,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
               </div>
 
               {/* 添加技能 */}
-              <CatItemInput onAdd={(v) => addItemToCat(cat.id, v)} />
+              <CatItemInput onAdd={(items) => addItemsToCat(cat.id, items)} />
             </div>
           ))}
 
@@ -797,12 +803,12 @@ function SkillsPanel({ data, onUpdate, onClose }: {
   )
 }
 
-function CatItemInput({ onAdd }: { onAdd: (v: string) => void }) {
+function CatItemInput({ onAdd }: { onAdd: (items: string[]) => void }) {
   const [val, setVal] = useState("")
   const submit = () => {
-    const t = val.trim()
-    if (!t) return
-    onAdd(t)
+    const items = val.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+    if (items.length === 0) return
+    onAdd(items)
     setVal("")
   }
   return (
@@ -811,7 +817,7 @@ function CatItemInput({ onAdd }: { onAdd: (v: string) => void }) {
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
-        placeholder="添加技能"
+        placeholder="添加技能，逗号分隔可批量添加"
         style={{ ...inputStyle, flex: 1, fontSize: "12px" } as React.CSSProperties}
         onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
