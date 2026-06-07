@@ -43,7 +43,8 @@ If it IS a resume, extract all information and return ONLY valid JSON (no markdo
   "interest": [{ "id": string, "title": string, "sub": string, "date": string, "bullets": string[] }],
   "language": [{ "id": string, "title": string, "sub": string, "date": "", "bullets": [] }],
   "skills": string[],
-  "skillCategories": [{ "id": string, "name": string, "items": string[] }] | null
+  "skillCategories": [{ "id": string, "name": string, "items": string[] }] | null,
+  "basicInfo": [{ "label": string, "value": string }]
 }
 
 Rules:
@@ -56,7 +57,8 @@ Rules:
 - Extract all bullet points; if the resume uses paragraph form, split into logical bullet points
 - Use empty string for missing text fields, empty array for missing array fields
 - Preserve original language (Chinese or English) of the resume content
-- skillCategories: if skills are organized into named groups (e.g. "Frontend: React, Vue" / "后端：Node.js、Spring Boot"), extract each group as an object with a generated id like "sc1","sc2", the group name, and its items. Also populate "skills" with all items flattened. If skills are just a plain list with no grouping, set skillCategories to null.`
+- skillCategories: if skills are organized into named groups (e.g. "Frontend: React, Vue" / "后端：Node.js、Spring Boot"), extract each group as an object with a generated id like "sc1","sc2", the group name, and its items. Also populate "skills" with all items flattened. If skills are just a plain list with no grouping, set skillCategories to null.
+- basicInfo: extract personal demographic fields NOT already captured in name/email/phone/city/website. Common examples: 年龄, 性别, 出生年月, 出生日期, 籍贯, 政治面貌, 民族, 婚姻状况, 国籍. Each entry is { "label": field name, "value": field value }. Use the original language of the resume for both label and value. If none present, return empty array [].`
 
 // ── DOCX text extraction (no external deps) ──────────────────────────────────
 // DOCX is a ZIP archive; we scan for 'word/document.xml', decompress it, strip tags.

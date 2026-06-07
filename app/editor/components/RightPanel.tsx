@@ -323,7 +323,7 @@ export default function RightPanel({
               </div>
             ))}
             <button
-              onClick={() => onUpdate({ customContacts: [...(data.customContacts || []), { label: '', value: '', hidden: false }] })}
+              onClick={() => onUpdate({ customContacts: [...(data.customContacts || []), { label: '', value: '', hidden: false, isInfo: true }] })}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-blue)', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)', marginTop: '4px' }}
             >
               <Plus size={12} /> 添加自定义字段

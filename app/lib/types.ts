@@ -346,6 +346,16 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
   const keyTexts = [String(raw.jobtitle ?? ''), String(raw.summary ?? ''), ...exp.flatMap(e => e.bullets).slice(0, 4)].filter(Boolean)
   const resumeLang: 'en' | 'zh' = keyTexts.length > 0 && !keyTexts.some(t => CJK.test(t)) ? 'en' : 'zh'
 
+  const basicInfoContacts: { label: string; value: string; hidden: boolean; isInfo: boolean }[] =
+    Array.isArray(raw.basicInfo)
+      ? (raw.basicInfo as unknown[])
+          .map((b: unknown) => {
+            const item = b as Record<string, unknown>
+            return { label: String(item.label ?? '').trim(), value: String(item.value ?? '').trim(), hidden: false, isInfo: true }
+          })
+          .filter(b => b.label.length > 0 && b.value.length > 0)
+      : []
+
   return {
     name: String(raw.name ?? ''),
     jobtitle: String(raw.jobtitle ?? ''),
@@ -367,6 +377,7 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     resumeLang,
     exp, edu, project, award, cert, volunteer, interest, language, skills,
     ...(skillCategories !== undefined ? { skillCategories } : {}),
+    ...(basicInfoContacts.length > 0 ? { customContacts: basicInfoContacts } : {}),
   }
 }
 
