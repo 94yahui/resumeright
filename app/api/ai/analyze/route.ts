@@ -272,21 +272,21 @@ ${diffExample}
       "label": <如"工作经历·职位@公司">,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；每条50字内>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
     },
     {
       "id": "exp_1", "section": "exp", "entryIndex": 1, "field": "bullets",
       "label": <第二段工作经历>,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
     },
     {
       "id": "project_0", "section": "project", "entryIndex": 0, "field": "bullets",
       "label": <如"项目经历·项目名">,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
     }
   ]
 }

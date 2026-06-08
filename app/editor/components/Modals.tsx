@@ -19,9 +19,16 @@ import {
   Lightbulb,
   GraduationCap,
   Star,
+  Briefcase,
+  Rocket,
+  Code2,
+  Layers,
+  Megaphone,
+  TrendingUp,
 } from "lucide-react";
-import type { AISuggestion } from "../../lib/types";
-import { hasDiffMarkup, parseDiffBullet } from "../../lib/types";
+import type { AISuggestion, ResumeData } from "../../lib/types";
+import { hasDiffMarkup, parseDiffBullet, DEMO_DATA } from "../../lib/types";
+import { getStarterData, type UserType, type Industry } from "../../lib/starter-templates";
 const STRAY_RE = /\[\[[\+~]|[\+~]\]\]|\[\[|\]\]/g;
 const stripStray = (s: string) => s.replace(STRAY_RE, "");
 
@@ -1027,7 +1034,7 @@ export function AIPanel({
                 transition: "background 0.3s, box-shadow 0.3s",
               }}
             >
-              {jobDesc.trim() ? <>开始精准定向优化</> : "开始常规智能解析"}
+              {jobDesc.trim() ? <>开始精准定向优化</> : "开始常规智能优化"}
             </button>
 
             {/* Quota exhausted hint — upgrade CTA (non-subscriber) */}
@@ -1863,8 +1870,8 @@ export function AIPanel({
                               }}
                             >
                               改动预览（
-                              <span style={{ color: "var(--highlight)" }}>
-                                橙色
+                              <span style={{ color: "var(--ai-highlight)" }}>
+                                紫色
                               </span>
                               新增 ·{" "}
                               <span
@@ -1921,7 +1928,7 @@ export function AIPanel({
                                                       key={pi}
                                                       style={{
                                                         color:
-                                                          "var(--highlight)",
+                                                          "var(--ai-highlight)",
                                                         fontWeight: 600,
                                                         ...(isTechWord(
                                                           part,
@@ -1929,7 +1936,7 @@ export function AIPanel({
                                                         )
                                                           ? {
                                                               border:
-                                                                "1px solid var(--highlight)",
+                                                                "1px solid var(--ai-highlight)",
                                                               borderRadius:
                                                                 "3px",
                                                               padding: "0 3px",
@@ -4253,4 +4260,146 @@ function ModalWrap({
       </div>
     </div>
   );
+}
+
+// ── New Resume Wizard ─────────────────────────────────────────────────────────
+const USER_TYPES: { key: UserType; icon: React.ReactNode; label: string; desc: string }[] = [
+  { key: 'student',     icon: <GraduationCap size={20} />, label: '在校学生',   desc: '实习 · 校园项目 · 求职初探' },
+  { key: 'fresh',       icon: <Rocket size={20} />,        label: '应届毕业',   desc: '校招 · 初入职场 · 全新起点' },
+  { key: 'experienced', icon: <Briefcase size={20} />,     label: '有工作经验', desc: '跳槽 · 晋升 · 职场进阶' },
+]
+
+const INDUSTRIES: { key: Industry; icon: React.ReactNode; label: string }[] = [
+  { key: 'tech',      icon: <Code2 size={18} />,      label: '技术 / 开发' },
+  { key: 'product',   icon: <Layers size={18} />,     label: '产品 / 设计' },
+  { key: 'marketing', icon: <Megaphone size={18} />,  label: '市场 / 运营' },
+  { key: 'finance',   icon: <TrendingUp size={18} />, label: '金融 / 财务' },
+]
+
+export function NewResumeWizardModal({
+  onConfirm,
+  onClose,
+}: {
+  onConfirm: (data: ResumeData) => void
+  onClose: () => void
+}) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [userType, setUserType] = useState<UserType | null>(null)
+  const [industry, setIndustry] = useState<Industry | null>(null)
+
+  function confirm(ind: Industry | null) {
+    if (!userType) return
+    const data = ind ? getStarterData(userType, ind) : DEMO_DATA
+    onConfirm(data)
+  }
+
+  const cardBase: React.CSSProperties = {
+    border: '1.5px solid #e2e8f0', borderRadius: '14px',
+    padding: '16px 14px', cursor: 'pointer', transition: 'all 0.15s',
+    background: 'white', textAlign: 'left' as const,
+    display: 'flex', flexDirection: 'column' as const, gap: '4px',
+  }
+  const cardSelected: React.CSSProperties = { border: '1.5px solid #0789ec', background: '#f0f9ff' }
+
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="no-print"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+    >
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px 28px 28px', width: '480px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(15,23,42,0.25)', animation: 'fadeUp 0.2s ease' }}>
+        <style>{`@keyframes fadeUp{from{opacity:0;transform:scale(0.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>第 {step} 步 / 共 2 步</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px', lineHeight: 1 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {step === 1 && (
+          <>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>你现在的情况是？</div>
+            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>根据你的阶段提供合适的模板内容</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {USER_TYPES.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setUserType(t.key)}
+                  style={{ ...cardBase, ...(userType === t.key ? cardSelected : {}) }}
+                  onMouseEnter={e => { if (userType !== t.key) (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1' }}
+                  onMouseLeave={e => { if (userType !== t.key) (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ color: userType === t.key ? '#0789ec' : '#475569', flexShrink: 0 }}>{t.icon}</span>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: userType === t.key ? '#0789ec' : '#0f172a' }}>{t.label}</div>
+                      <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '1px' }}>{t.desc}</div>
+                    </div>
+                    {userType === t.key && (
+                      <div style={{ marginLeft: 'auto', width: '18px', height: '18px', borderRadius: '50%', background: '#0789ec', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => userType && setStep(2)}
+              disabled={!userType}
+              style={{ width: '100%', padding: '13px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, border: 'none', cursor: userType ? 'pointer' : 'not-allowed', background: userType ? 'linear-gradient(135deg, #0789ec, #0f5fc2)' : '#e2e8f0', color: userType ? 'white' : '#94a3b8', transition: 'all 0.15s', fontFamily: 'var(--font-sans)' }}
+            >
+              下一步 →
+            </button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>目标方向是？</div>
+            <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>会注入对应行业的示例内容，随时可以修改</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+              {INDUSTRIES.map(ind => (
+                <button
+                  key={ind.key}
+                  onClick={() => setIndustry(ind.key)}
+                  style={{ ...cardBase, alignItems: 'center', flexDirection: 'row' as const, gap: '10px', ...(industry === ind.key ? cardSelected : {}) }}
+                  onMouseEnter={e => { if (industry !== ind.key) (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1' }}
+                  onMouseLeave={e => { if (industry !== ind.key) (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0' }}
+                >
+                  <span style={{ color: industry === ind.key ? '#0789ec' : '#475569', flexShrink: 0 }}>{ind.icon}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: industry === ind.key ? '#0789ec' : '#0f172a' }}>{ind.label}</span>
+                  {industry === ind.key && (
+                    <div style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', background: '#0789ec', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => confirm(null)}
+              style={{ width: '100%', padding: '10px', borderRadius: '9999px', fontSize: '13px', fontWeight: 500, border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', cursor: 'pointer', marginBottom: '10px', fontFamily: 'var(--font-sans)' }}
+            >
+              跳过，使用通用模板
+            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setStep(1)} style={{ padding: '13px 20px', borderRadius: '9999px', fontSize: '14px', fontWeight: 600, border: '1.5px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                返回
+              </button>
+              <button
+                onClick={() => confirm(industry)}
+                disabled={!industry}
+                style={{ flex: 1, padding: '13px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, border: 'none', cursor: industry ? 'pointer' : 'not-allowed', background: industry ? 'linear-gradient(135deg, #0789ec, #0f5fc2)' : '#e2e8f0', color: industry ? 'white' : '#94a3b8', transition: 'all 0.15s', fontFamily: 'var(--font-sans)' }}
+              >
+                开始创建 ✓
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }

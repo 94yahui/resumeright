@@ -23,6 +23,15 @@ export async function POST(req: NextRequest) {
 
     let prompt: string
     if (type === 'bullets') {
+      const bulletLines = text.split('\n').filter((l: string) => l.trim().length > 0)
+      const isShort = text.trim().length < 120 || bulletLines.length < 2
+      const countInstruction = isShort
+        ? '返回4-5条优化后的描述（原文较简短，请充分展开）'
+        : '返回3-5条优化后的描述'
+      const lengthInstruction = isShort
+        ? '每条可到70-90字，原描述过短时请基于职位性质与行业惯例充分补充行为细节与结果'
+        : '每条控制在50字以内'
+
       prompt = `请优化以下工作/项目描述，使其更清晰、更具体、更吸引招聘官。
 
 背景信息：${context || '无'}
@@ -31,11 +40,11 @@ ${text}
 
 改写要求（STAR原则）：
 1. Action：每条句首用强力动词（主导/设计/推动/实现/重构/搭建），替换弱动词（参与/负责/协助/支持）
-2. Result：每条尽量呈现可衡量的结果或业务影响；若原文无数字，可基于Action合理推断结果，但严禁虚构具体数字
-3. 禁止使用"显著""大幅""极大""极大改善"等模糊程度词，改用具体事实替代
+2. Result：每条尽量呈现可衡量的结果或业务影响；若原文无数字，可基于Action合理推断结果方向，但严禁虚构具体数字
+3. 禁止使用"显著""大幅""极大"等模糊程度词，改用具体事实替代
 4. 保留原有核心信息，不删减关键技术或项目名称
-5. 每条控制在50字以内
-6. 返回3-5条优化后的描述
+5. ${lengthInstruction}
+6. ${countInstruction}
 
 仅返回JSON（无markdown）：{"bullets": ["描述1", "描述2", "描述3"]}`
     } else {

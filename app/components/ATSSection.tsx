@@ -200,7 +200,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
       <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 14px', lineHeight: 1.35 }}>
-        测一测你的简历能否通过<br />大厂自动筛选？
+        测一测你的简历能否通过ATS筛选？
       </h3>
       <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 32px' }}>
         从<span style={{ color: '#0789ec', fontWeight: 600 }}>文字提取、编码规范、版面结构、字段识别、文件格式</span>五个 ATS 技术角度检测兼容性
@@ -353,6 +353,50 @@ function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; 
   return { exhausted: false, msg: '', needLogin: false }
 }
 
+// ── Resume tile background ────────────────────────────────────────────────────
+function ResumeBgPattern() {
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, filter: 'blur(1.5px)' }}>
+      <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
+        <defs>
+          <pattern id="rc-resume-tile" x="0" y="0" width="140" height="185"
+            patternUnits="userSpaceOnUse" patternTransform="rotate(-15)">
+            {/* card */}
+            <rect x="12" y="10" width="116" height="163" rx="0"
+              fill="rgba(7,137,236,0.045)" stroke="rgba(7,137,236,0.14)" strokeWidth="1.2"/>
+            {/* photo circle */}
+            <circle cx="29" cy="30" r="10" fill="rgba(7,137,236,0.1)"/>
+            {/* name + title */}
+            <rect x="46" y="22" width="60" height="5" rx="2.5" fill="rgba(7,137,236,0.16)"/>
+            <rect x="46" y="31" width="42" height="3" rx="1.5" fill="rgba(7,137,236,0.1)"/>
+            {/* divider */}
+            <line x1="16" y1="49" x2="124" y2="49" stroke="rgba(7,137,236,0.11)" strokeWidth="1"/>
+            {/* section 1 label */}
+            <rect x="16" y="55" width="40" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            {/* lines */}
+            <rect x="16" y="65" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.09)"/>
+            <rect x="16" y="72" width="74" height="3" rx="1.5" fill="rgba(7,137,236,0.07)"/>
+            <rect x="16" y="79" width="84" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
+            {/* section 2 label */}
+            <rect x="16" y="90" width="36" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            {/* lines */}
+            <rect x="16" y="100" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
+            <rect x="16" y="107" width="58" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
+            <rect x="16" y="114" width="76" height="3" rx="1.5" fill="rgba(7,137,236,0.07)"/>
+            {/* section 3 label */}
+            <rect x="16" y="125" width="44" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            {/* lines */}
+            <rect x="16" y="135" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
+            <rect x="16" y="142" width="64" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
+            <rect x="16" y="149" width="80" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#rc-resume-tile)"/>
+      </svg>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => void }) {
   const auth = useAuth()
@@ -446,13 +490,12 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
 
   return (
     <section id="ats" style={{ padding: '88px 0', position: 'relative', overflow: 'hidden', background: 'white' }}>
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(7,137,236,0.07) 0%, rgba(7,137,236,0.03) 50%, transparent 100%)' }} />
-      <div style={{ position: 'absolute', top: '-80px', right: '-120px', width: '500px', height: '500px', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, background: 'radial-gradient(circle, rgba(99,179,237,0.12) 0%, transparent 70%)' }} />
+      <ResumeBgPattern />
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         {phase === 'upload' && (
           <div style={{ maxWidth: '1060px', margin: '0 auto', padding: '0 24px', display: 'flex', gap: '56px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 280px', minWidth: '240px' }}>
+            <div style={{ flex: '1 1 280px', minWidth: '240px', position: 'relative' }}>
               <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 800, color: '#0f172a', margin: '0 0 20px', lineHeight: 1.15 }}>
                 你的简历<br />能过大厂筛选吗？
               </h2>
@@ -460,7 +503,10 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
                 超过 90% 的大公司使用 ATS 自动过滤简历，绝大多数求职者在这一环节出局，却浑然不知。上传简历，AI 实时给出评分与改进建议。
               </p>
             </div>
-            <div style={{ flex: '0 1 420px', minWidth: '0', maxWidth: '460px', width: '100%' }}>
+            <div style={{ flex: '0 1 420px', minWidth: '0', maxWidth: '460px', width: '100%', position: 'relative' }}>
+              <div className="ats-wave-ring ats-wave-ring-1" />
+              <div className="ats-wave-ring ats-wave-ring-2" />
+              <div className="ats-wave-ring ats-wave-ring-3" />
               {(() => {
                 const check = getQuotaCheck(auth)
                 return (
@@ -499,6 +545,16 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
       </div>
 
       <style>{`
+        .ats-wave-ring {
+          position: absolute;
+          border-radius: 26px;
+          border: 1.5px solid rgba(7, 137, 236, 0.45);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .ats-wave-ring-1 { inset: -10px; opacity: 0.45; transform: rotate(2deg); }
+        .ats-wave-ring-2 { inset: -22px; opacity: 0.25; transform: rotate(-3.5deg); }
+        .ats-wave-ring-3 { inset: -36px; opacity: 0.12; transform: rotate(5deg); }
         @media (max-width: 680px) {
           #ats { padding: 56px 0 !important; }
           #ats h2 { font-size: 28px !important; }

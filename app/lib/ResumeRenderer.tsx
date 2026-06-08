@@ -401,12 +401,12 @@ export default function ResumeRenderer({
                 return (
                   <li key={i} style={{ fontSize: s(12), lineHeight: 1.55, paddingLeft: s(14), position: 'relative', marginBottom: '1px', color: bodyC }}>
                     {!isPureDeletion && (
-                      <span style={{ position: 'absolute', left: 0, top: s(8), width: s(4), height: s(4), borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--highlight)' : '#9ca3af') }} />
+                      <span style={{ position: 'absolute', left: 0, top: s(8), width: s(4), height: s(4), borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--ai-highlight)' : '#9ca3af') }} />
                     )}
                     {segments ? (
                       segments.map((seg, si) => (
                         <span key={si} style={{
-                          color: seg.type === 'add' ? 'var(--highlight)' : seg.type === 'del' ? (onDark ? 'rgba(255,255,255,0.35)' : '#94a3b8') : bodyC,
+                          color: seg.type === 'add' ? 'var(--ai-highlight)' : seg.type === 'del' ? (onDark ? 'rgba(255,255,255,0.35)' : '#94a3b8') : bodyC,
                           textDecoration: seg.type === 'del' ? 'line-through' : 'none',
                         }}>{seg.text}</span>
                       ))
@@ -579,17 +579,17 @@ export default function ResumeRenderer({
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         padding: '4px 12px', borderRadius: '4px',
         fontSize: s(11.5), lineHeight: 1, fontWeight: 500,
-        background: isPending ? 'var(--highlight)' : onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
+        background: isPending ? 'var(--ai-highlight)' : onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
         color: isPending ? '#fff' : onDark ? '#fff' : accent,
-        border: isPending ? '1px solid var(--highlight)' : onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
+        border: isPending ? '1px solid var(--ai-highlight)' : onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
       }}>{sk}</span>
     )
 
     const renderDot = (sk: string, i: number, isPending = false) => (
       <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: s(11.5), color: textColor }}>
-        <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: isPending ? 'var(--highlight)' : onDark ? 'rgba(255,255,255,0.6)' : accent, flexShrink: 0 }} />
+        <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: isPending ? 'var(--ai-highlight)' : onDark ? 'rgba(255,255,255,0.6)' : accent, flexShrink: 0 }} />
         {isPending
-          ? <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
+          ? <span style={{ background: 'var(--ai-highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
           : sk}
       </span>
     )
@@ -603,7 +603,7 @@ export default function ResumeRenderer({
           {pending.map((sk, i) => (
             <span key={i}>
               {(normalText.length > 0 || i > 0) && ', '}
-              <span style={{ background: 'var(--highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
+              <span style={{ background: 'var(--ai-highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
             </span>
           ))}
         </span>

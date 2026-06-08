@@ -1,11 +1,12 @@
 'use client'
 import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
+import { flushSync } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import { Menu, Undo2, Redo2, Globe, Check } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
-import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal } from './components/Modals'
+import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal, NewResumeWizardModal } from './components/Modals'
 import WechatLoginModal from '../components/WechatLoginModal'
 import ImportLoadingBar from '../components/ImportLoadingBar'
 import { KickedOutModal } from '../components/UserProfile'
@@ -1518,14 +1519,24 @@ ${autoprint ? `<script>
   }, [auth.loggedIn])
 
   // ============ Create new resume / Import resume ============
+  const [showNewResumeWizard, setShowNewResumeWizard] = useState(false)
+
   const handleCreateNewResume = useCallback(() => {
     const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
     if (loadHistory().length >= resumeLimit) {
       showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
       return
     }
+    setShowNewResumeWizard(true)
+  }, [])
+
+  const handleWizardConfirm = useCallback((starterData: ResumeData) => {
+    setShowNewResumeWizard(false)
+    // flushSync resets forceTab to undefined first so the useEffect in LeftPanel
+    // always fires even if the previous value was already 'tpl'
+    flushSync(() => setLeftPanelTab(null))
+    setLeftPanelTab('tpl')
     if (!noResumeOpen) {
-      // Persist current state before switching (skip if no resume is open)
       const hid = loadedFromHistoryId.current
       if (hid && hid !== 'draft') {
         updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
@@ -1537,19 +1548,20 @@ ${autoprint ? `<script>
         saveToHistory({ name: docTitle || '我的简历', data, templateId, color, savedAt: Date.now() })
       }
     }
-    // Create fresh resume with default free template
     const newHistorySnap = loadHistory()
     const newName = uniqueHistoryName('我的简历', newHistorySnap)
-    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: starterData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
     if (auth.loggedIn && newId) {
       const entry = loadHistory().find(h => h.id === newId)
       if (entry) upsertCloudResume(entry)
     }
-    setHistory([DEMO_DATA])
+    setHistory([starterData])
     setHistoryIdx(0)
     setTemplateId('classic-pro')
+    setAccentStyleOverride(undefined)
+    setFontPairOverride(undefined)
     setColor(undefined)
     setDocTitle(newName)
     setSelection({ kind: 'none' })
@@ -1872,6 +1884,11 @@ ${autoprint ? `<script>
       setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
     }
     importingFileObjRef.current = null
+    setAiAnalysis(null)
+    setAiPanelPhase('entry')
+    setAiPanelOpen(false)
+    setPendingSkills([])
+    setBulletDiffs({})
     setImportModalState('none')
     setSelection({ kind: 'none' })
     setNoResumeOpen(false)
@@ -2565,6 +2582,13 @@ ${autoprint ? `<script>
             setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
             auth.refresh()
           }}
+        />
+      )}
+
+      {showNewResumeWizard && (
+        <NewResumeWizardModal
+          onConfirm={handleWizardConfirm}
+          onClose={() => setShowNewResumeWizard(false)}
         />
       )}
 

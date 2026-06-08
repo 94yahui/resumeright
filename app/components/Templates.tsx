@@ -27,9 +27,9 @@ export default function Templates() {
   const showCount = defaultCount + extraLoads * step
 
   const catKey = CATEGORY_MAP[activeFilter]
-  const filtered = TEMPLATES.filter(t =>
-    catKey === 'all' || t.categories.includes(catKey)
-  )
+  const filtered = TEMPLATES
+    .filter(t => catKey === 'all' || t.categories.includes(catKey))
+    .sort((a, b) => (b.showPhoto ? 1 : 0) - (a.showPhoto ? 1 : 0))
   const visible = filtered.slice(0, showCount)
   const hasMore = filtered.length > showCount
 
@@ -40,7 +40,9 @@ export default function Templates() {
 
   return (
     <section id="templates" className="templates-section" style={{
-      background: 'var(--paper2)',
+      backgroundColor: '#e8ecf0',
+      backgroundImage: 'linear-gradient(rgba(148,163,184,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.3) 1px, transparent 1px)',
+      backgroundSize: '24px 24px',
       padding: '80px 32px',
       borderBottom: '1px solid #e2e8f0',
     }}>

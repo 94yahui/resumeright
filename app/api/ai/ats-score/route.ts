@@ -154,7 +154,7 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   const digitChunks = (text.match(/\d+/g) || []).join('')
   const hasPhone    = /1[3-9]\d{9}/.test(normalizedPhone) || /0\d{2,3}\d{7,8}/.test(normalizedPhone)
                    || /1[3-9]\d{9}/.test(digitChunks)
-  const hasWork     = /工作经历|工作经验|职业经历|work experience|employment/i.test(text)
+  const hasWork     = /工作经历|工作经验|职业经历|实习经历|实习经验|项目经历|work experience|employment|internship/i.test(text)
   const hasEdu      = /教育背景|教育经历|education|学历|毕业/i.test(text)
   const hasSkill    = /技能|skills?|专业技能|expertise/i.test(text)
   const hasDate     = /\d{4}[.\-/年]\d{1,2}|\d{4}\s*[~–\-至]\s*(\d{4}|至今|present)/i.test(text)
