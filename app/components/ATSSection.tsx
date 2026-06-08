@@ -356,39 +356,39 @@ function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; 
 // ── Resume tile background ────────────────────────────────────────────────────
 function ResumeBgPattern() {
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, filter: 'blur(1.5px)' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0, filter: 'blur(2px)' }}>
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
         <defs>
           <pattern id="rc-resume-tile" x="0" y="0" width="140" height="185"
             patternUnits="userSpaceOnUse" patternTransform="rotate(-15)">
             {/* card */}
             <rect x="12" y="10" width="116" height="163" rx="0"
-              fill="rgba(7,137,236,0.045)" stroke="rgba(7,137,236,0.14)" strokeWidth="1.2"/>
+              fill="rgba(100,116,139,0.045)" stroke="rgba(100,116,139,0.18)" strokeWidth="1.2"/>
             {/* photo circle */}
-            <circle cx="29" cy="30" r="10" fill="rgba(7,137,236,0.1)"/>
+            <circle cx="29" cy="30" r="10" fill="rgba(100,116,139,0.12)"/>
             {/* name + title */}
-            <rect x="46" y="22" width="60" height="5" rx="2.5" fill="rgba(7,137,236,0.16)"/>
-            <rect x="46" y="31" width="42" height="3" rx="1.5" fill="rgba(7,137,236,0.1)"/>
+            <rect x="46" y="22" width="60" height="5" rx="2.5" fill="rgba(100,116,139,0.18)"/>
+            <rect x="46" y="31" width="42" height="3" rx="1.5" fill="rgba(100,116,139,0.12)"/>
             {/* divider */}
-            <line x1="16" y1="49" x2="124" y2="49" stroke="rgba(7,137,236,0.11)" strokeWidth="1"/>
+            <line x1="16" y1="49" x2="124" y2="49" stroke="rgba(100,116,139,0.13)" strokeWidth="1"/>
             {/* section 1 label */}
-            <rect x="16" y="55" width="40" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            <rect x="16" y="55" width="40" height="4" rx="2" fill="rgba(100,116,139,0.16)"/>
             {/* lines */}
-            <rect x="16" y="65" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.09)"/>
-            <rect x="16" y="72" width="74" height="3" rx="1.5" fill="rgba(7,137,236,0.07)"/>
-            <rect x="16" y="79" width="84" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
+            <rect x="16" y="65" width="96" height="3" rx="1.5" fill="rgba(100,116,139,0.1)"/>
+            <rect x="16" y="72" width="74" height="3" rx="1.5" fill="rgba(100,116,139,0.08)"/>
+            <rect x="16" y="79" width="84" height="3" rx="1.5" fill="rgba(100,116,139,0.09)"/>
             {/* section 2 label */}
-            <rect x="16" y="90" width="36" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            <rect x="16" y="90" width="36" height="4" rx="2" fill="rgba(100,116,139,0.16)"/>
             {/* lines */}
-            <rect x="16" y="100" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
-            <rect x="16" y="107" width="58" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
-            <rect x="16" y="114" width="76" height="3" rx="1.5" fill="rgba(7,137,236,0.07)"/>
+            <rect x="16" y="100" width="96" height="3" rx="1.5" fill="rgba(100,116,139,0.09)"/>
+            <rect x="16" y="107" width="58" height="3" rx="1.5" fill="rgba(100,116,139,0.07)"/>
+            <rect x="16" y="114" width="76" height="3" rx="1.5" fill="rgba(100,116,139,0.08)"/>
             {/* section 3 label */}
-            <rect x="16" y="125" width="44" height="4" rx="2" fill="rgba(7,137,236,0.14)"/>
+            <rect x="16" y="125" width="44" height="4" rx="2" fill="rgba(100,116,139,0.16)"/>
             {/* lines */}
-            <rect x="16" y="135" width="96" height="3" rx="1.5" fill="rgba(7,137,236,0.08)"/>
-            <rect x="16" y="142" width="64" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
-            <rect x="16" y="149" width="80" height="3" rx="1.5" fill="rgba(7,137,236,0.06)"/>
+            <rect x="16" y="135" width="96" height="3" rx="1.5" fill="rgba(100,116,139,0.09)"/>
+            <rect x="16" y="142" width="64" height="3" rx="1.5" fill="rgba(100,116,139,0.07)"/>
+            <rect x="16" y="149" width="80" height="3" rx="1.5" fill="rgba(100,116,139,0.07)"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#rc-resume-tile)"/>
