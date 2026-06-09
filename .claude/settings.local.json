@@ -11,7 +11,24 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/editor)",
+      "Bash(awk '/LeftPanel\\\\.tsx$/,0')",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(npm list *)",
+      "Bash(sed -i '' -e 's/borderRadius: \"8px\"/borderRadius: \"12px\"/g' -e 's/borderRadius: \"6px\"/borderRadius: \"10px\"/g' /Users/xuwilliam/Downloads/resumecraft-v3/app/editor/components/Modals.tsx)",
+      "Bash(sed -i '' -e 's/borderRadius: \"5px\"/borderRadius: \"8px\"/g' /Users/xuwilliam/Downloads/resumecraft-v3/app/editor/components/RightPanel.tsx)",
+      "Bash(sed -i '' -e '4248s/borderRadius: \"20px\"/borderRadius: \"24px\"/' -e '4297s/borderRadius: '\\\\''16px'\\\\''/borderRadius: '\\\\''20px'\\\\''/' /Users/xuwilliam/Downloads/resumecraft-v3/app/editor/components/Modals.tsx)",
+      "Bash(sed -i '' -e '753s/borderRadius: '\\\\''5px'\\\\''/borderRadius: '\\\\''8px'\\\\''/' /Users/xuwilliam/Downloads/resumecraft-v3/app/editor/components/LeftPanel.tsx)",
+      "Bash(sed -i '' -e '1985s/borderRadius: '\\\\''5px'\\\\''/borderRadius: '\\\\''8px'\\\\''/' -e '2099s/borderRadius: '\\\\''6px'\\\\''/borderRadius: '\\\\''10px'\\\\''/' /Users/xuwilliam/Downloads/resumecraft-v3/app/editor/page.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/editor?template=pro-linkedin-blue\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/editor?template=pro-namecard-slate\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/editor?template=pro-portrait-minimal\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/editor?template=pro-diagonal-navy\")",
+      "Bash(python3 -c \"import sys, json; [print\\(json.loads\\(l\\).get\\('message',''\\)[:300]\\) for l in sys.stdin]\")",
+      "Bash(python3 -c \"import sys, json; [print\\(json.loads\\(l\\).get\\('message',''\\)[:200]\\) for l in sys.stdin]\")",
+      "Bash(xxd)"
     ]
   }
 }

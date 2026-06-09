@@ -243,6 +243,7 @@ export default function LeftPanel({
   const [editingLabelKey, setEditingLabelKey] = useState<string | null>(null)
   const [editingLabelValue, setEditingLabelValue] = useState('')
   const labelInputRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (forceTab) setTab(forceTab)
@@ -313,6 +314,24 @@ export default function LeftPanel({
     }
   }, [historyRefreshKey])
 
+  // Scroll active template card to center of the template list
+  useEffect(() => {
+    if (tab !== 'tpl') return
+    const isPro = proTpls.some(t => t.id === templateId)
+    if (isPro) setShowPro(true)
+    const timer = setTimeout(() => {
+      const container = scrollContainerRef.current
+      if (!container) return
+      const card = container.querySelector(`[data-tpl-id="${templateId}"]`) as HTMLElement | null
+      if (!card) return
+      const cardRect = card.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      const target = container.scrollTop + cardRect.top - containerRect.top - container.clientHeight / 2 + card.offsetHeight / 2
+      container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [tab, templateId])
+
   function formatDate(ts: number): string {
     const d = new Date(ts)
     const month = d.getMonth() + 1
@@ -357,7 +376,7 @@ export default function LeftPanel({
         )}
       </div>
 
-      <div className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <div ref={scrollContainerRef} className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
         {/* ===== TEMPLATE TAB ===== */}
         {tab === 'tpl' && (
@@ -825,7 +844,7 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
   tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; isLocked?: boolean
 }) {
   return (
-    <div onClick={onClick} style={{
+    <div data-tpl-id={tpl.id} onClick={onClick} style={{
       borderRadius: '12px',
       border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`,
       cursor: 'pointer', overflow: 'hidden',

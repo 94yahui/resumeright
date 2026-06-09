@@ -1304,17 +1304,41 @@ function _seededShuffle<T>(arr: T[], seed: number): T[] {
   return result
 }
 
-const SINGLE_COL_LAYOUTS = new Set<LayoutType>([
-  'single-classic', 'single-centered', 'linkedin-banner', 'namecard-header', 'diagonal-photo',
-])
+// Hand-curated front row: true visual diversity across layout × accentStyle × fontPair.
+// Ordered to surface genuinely different-looking templates before the long tail of variants.
+const PRO_FRONT_ROW_IDS = [
+  // Unique structural layouts first
+  'pro-diagonal-navy',        // diagonal-photo: 斜切装饰块
+  'pro-diagonal-violet',      // diagonal-photo: 紫色版
+  'pro-linkedin-blue',        // linkedin-banner: 悬挂头像
+  'pro-namecard-slate',       // namecard-header: 横向名片
+  'pro-namecard-serif',       // namecard-header: 衬线版
+  // single-classic — one representative per accent style
+  'pro-hl-cls-sans',          // highlight-mark: 荧光底衬
+  'pro-hl-cls-serif-ph',      // highlight-mark serif + photo
+  'pro-slash-cls-mono',       // slash-prefix: 斜杠代码风
+  'pro-slash-cls-sans',       // slash-prefix sans: 极简现代
+  'pro-flanked-cls-sans',     // flanked-line: 双侧线ATS
+  'pro-flanked-cls-serif',    // flanked-line serif: 典雅
+  'pro-classic-mono',         // side-icon mono-accent: 开发者
+  'pro-classic-serif',        // left-bar serif + photo: 金融传统
+  'pro-classic-double',       // double-line: 商务严谨
+  'pro-triple-classic',       // triple-bar: 极简律动
+  'pro-gradient-classic',     // gradient-band: 渐变创意
+  // single-centered — varied head arrangements
+  'pro-centered-serif',       // double-line serif photo-right: 横版典雅
+  'pro-centered-photo',       // underline photo-left-beside: 名片并排
+]
 
 function _buildTemplates(arr: TemplateConfig[]): TemplateConfig[] {
   const free = arr.filter(t => t.free)
   const pro = arr.filter(t => !t.free)
-  // Single-column photo templates first (definition order, for variety), then rest shuffled
-  const singlePhoto = pro.filter(t => SINGLE_COL_LAYOUTS.has(t.layout) && t.showPhoto)
-  const rest = _seededShuffle(pro.filter(t => !(SINGLE_COL_LAYOUTS.has(t.layout) && t.showPhoto)), 0x4A1B9F3E)
-  return [...free, ...singlePhoto, ...rest]
+  const frontRowSet = new Set(PRO_FRONT_ROW_IDS)
+  const frontRow = PRO_FRONT_ROW_IDS.map(id => pro.find(t => t.id === id)).filter(Boolean) as TemplateConfig[]
+  const nonFront = pro.filter(t => !frontRowSet.has(t.id))
+  const restPhoto   = _seededShuffle(nonFront.filter(t => t.showPhoto),  0x4A1B9F3E)
+  const restNoPhoto = _seededShuffle(nonFront.filter(t => !t.showPhoto), 0x4A1B9F3E)
+  return [...free, ...frontRow, ...restPhoto, ...restNoPhoto]
 }
 
 export const TEMPLATES: TemplateConfig[] = _buildTemplates(_ALL_TEMPLATES)

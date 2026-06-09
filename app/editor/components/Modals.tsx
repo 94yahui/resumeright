@@ -2672,7 +2672,7 @@ export function PhotoCropModal({
             width: previewW,
             height: previewH,
             borderRadius:
-              shape === "rounded" ? `${Math.round(previewW * 0.15)}px` : "50%",
+              shape === "rounded" ? "0" : "50%",
             overflow: "hidden",
             position: "relative",
             cursor: loading ? "default" : dragging ? "grabbing" : "grab",
