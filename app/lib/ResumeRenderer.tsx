@@ -4,24 +4,6 @@ import { ResumeData, SelectionType, SectionKey, Entry, hasDiffMarkup, parseDiffB
 import { TemplateConfig } from './templates-config'
 import { Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
 
-function SquircleBadge({ children, bg, style }: { children: React.ReactNode; bg: string; style?: React.CSSProperties }) {
-  const ref = React.useRef<HTMLSpanElement>(null)
-  React.useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const apply = () => {
-      const w = el.offsetWidth, h = el.offsetHeight
-      if (!w || !h) return
-      const r = 4, l = r * 1.528, k = r * 0.569
-      el.style.clipPath = `path('M ${l} 0 H ${w-l} C ${w-k} 0 ${w} ${k} ${w} ${l} V ${h-l} C ${w} ${h-k} ${w-k} ${h} ${w-l} ${h} H ${l} C ${k} ${h} 0 ${h-k} 0 ${h-l} V ${l} C 0 ${k} ${k} 0 ${l} 0 Z')`
-    }
-    apply()
-    const ro = new ResizeObserver(apply)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return <span ref={ref} style={{ display: 'inline-block', background: bg, ...style }}>{children}</span>
-}
 
 // ============================================================
 // Unified Resume Renderer
@@ -181,16 +163,20 @@ export default function ResumeRenderer({
         )
       case 'background-pill':
         return (
-          <div style={{ textAlign: 'left', marginBottom: s(7) }}>
-            <SquircleBadge bg={onDark ? 'rgba(255,255,255,0.22)' : titleColor} style={{
+          <div style={{ textAlign: 'left' }}>
+            <div style={{
+              display: 'inline-block',
+              background: onDark ? 'rgba(255,255,255,0.22)' : titleColor,
               color: '#fff',
               padding: '4px 12px',
+              borderRadius: '4px',
               fontFamily: headingFont,
               fontSize: s(12),
               fontWeight: 700,
               letterSpacing: '1px',
               textTransform: 'uppercase',
-            }}>{children}</SquircleBadge>
+              marginBottom: s(7),
+            }}>{children}</div>
           </div>
         )
       case 'thin-line':
