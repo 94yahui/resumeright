@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import {
   DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -733,6 +733,25 @@ const ACCENT_STYLES: { value: AccentStyle; label: string }[] = [
   { value: 'plain-bold',    label: '粗体简洁' },
 ]
 
+function SquirclePill({ children, bg }: { children: React.ReactNode; bg: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const apply = () => {
+      const w = el.offsetWidth, h = el.offsetHeight
+      if (!w || !h) return
+      const r = 2, l = r * 1.528, k = r * 0.569
+      el.style.clipPath = `path('M ${l} 0 H ${w-l} C ${w-k} 0 ${w} ${k} ${w} ${l} V ${h-l} C ${w} ${h-k} ${w-k} ${h} ${w-l} ${h} H ${l} C ${k} ${h} 0 ${h-k} 0 ${h-l} V ${l} C 0 ${k} ${k} 0 ${l} 0 Z')`
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return <span ref={ref} style={{ display: 'inline-block', background: bg, padding: '3px 7px' }}>{children}</span>
+}
+
 function AccentStylePreview({ style, color }: { style: AccentStyle; color: string }) {
   const c = color || '#0f172a'
   const text = '工作经历'
@@ -769,9 +788,9 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
     case 'background-pill':
       return (
         <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ background: c, borderRadius: '4px', padding: '3px 7px' }}>
-            <span style={{ ...baseText, color: '#fff', verticalAlign: 'middle' }}>{text}</span>
-          </div>
+          <SquirclePill bg={c}>
+            <span style={{ ...baseText, color: '#fff' }}>{text}</span>
+          </SquirclePill>
         </div>
       )
     case 'thin-line':
