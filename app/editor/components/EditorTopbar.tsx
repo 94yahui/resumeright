@@ -93,7 +93,7 @@ export default function EditorTopbar({
             outline: 'none',
             width: isMobile ? '90px' : '140px',
             cursor: 'text',
-            padding: '0 8px', borderRadius: '4px',
+            padding: '0 8px', borderRadius: '8px',
             transition: 'background 0.15s, border-color 0.15s',
           }}
           onFocus={e => { e.target.style.background = 'rgba(255,255,255,0.12)'; e.target.style.borderColor = 'rgba(255,255,255,0.25)' }}
@@ -106,7 +106,7 @@ export default function EditorTopbar({
             onClick={() => setDropOpen(v => !v)}
             title="创建 / 导入简历"
             style={{
-              width: '26px', height: '26px', borderRadius: '5px',
+              width: '26px', height: '26px', borderRadius: '10px',
               border: '1px solid rgba(255,255,255,0.1)',
               background: dropOpen ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
               color: 'rgba(255,255,255,0.9)',
@@ -119,7 +119,7 @@ export default function EditorTopbar({
           {dropOpen && (
             <div style={{
               position: 'absolute', top: 'calc(100% + 8px)', left: 0,
-              background: 'white', borderRadius: '6px',
+              background: 'white', borderRadius: '14px',
               boxShadow: '0 8px 24px rgba(15,23,42,0.18)',
               border: '1px solid #e2e8f0',
               padding: '5px',
@@ -153,7 +153,7 @@ export default function EditorTopbar({
       <div style={{ display: isMobile ? 'none' : 'flex', gap: '2px' }}>
         <button onClick={onUndo} disabled={!canUndo} title="撤销"
           style={{
-            padding: '6px 10px', borderRadius: '5px',
+            padding: '6px 10px', borderRadius: '10px',
             fontSize: '12px', fontFamily: 'var(--font-sans)',
             cursor: canUndo ? 'pointer' : 'not-allowed',
             border: '1px solid rgba(255,255,255,0.15)',
@@ -164,7 +164,7 @@ export default function EditorTopbar({
           }}><Undo2 size={12} /></button>
         <button onClick={onRedo} disabled={!canRedo} title="重做"
           style={{
-            padding: '6px 10px', borderRadius: '5px',
+            padding: '6px 10px', borderRadius: '10px',
             fontSize: '12px', fontFamily: 'var(--font-sans)',
             cursor: canRedo ? 'pointer' : 'not-allowed',
             border: '1px solid rgba(255,255,255,0.15)',
@@ -226,7 +226,7 @@ export default function EditorTopbar({
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   height: '28px', padding: '0 12px',
                   background: '#374151', color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: '5px',
+                  border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px',
                   fontSize: '12px', fontWeight: 500, cursor: 'pointer',
                   fontFamily: 'var(--font-sans)',
                   transition: 'background 0.15s',
@@ -246,7 +246,7 @@ export default function EditorTopbar({
 }
 
 const tbBtn: React.CSSProperties = {
-  height: '28px', padding: '0 12px', borderRadius: '5px',
+  height: '28px', padding: '0 12px', borderRadius: '10px',
   fontSize: '12px', fontWeight: 500, boxSizing: 'border-box',
   cursor: 'pointer', fontFamily: 'var(--font-sans)',
   border: '1px solid rgba(255,255,255,0.15)',
@@ -259,7 +259,7 @@ const dropItem: React.CSSProperties = {
   display: 'block', width: '100%',
   padding: '9px 13px', textAlign: 'left',
   background: 'transparent', border: 'none',
-  borderRadius: '5px', cursor: 'pointer',
+  borderRadius: '10px', cursor: 'pointer',
   fontSize: '13px', color: '#334155',
   fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap',
   transition: 'background 0.1s',
