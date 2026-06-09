@@ -6,6 +6,7 @@ import { parsedToResumeData } from '../lib/types'
 import { getDeviceId, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, GUEST_ANALYZE_LIMIT } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
 import LogoSweepLoader from './LogoSweepLoader'
+import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveParsedDataToCache, getCachedParsedData, RESUME_CACHED_EVENT } from '../lib/resumeCache'
 
 interface AnalysisResult {
   hasOfferRate: boolean
@@ -96,12 +97,23 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
   const [error, setError] = useState('')
   const [deviceId, setDeviceId] = useState('')
   const [usedToday, setUsedToday] = useState(0)  // guest-only localStorage counter, populated after mount
+  const [cachedFilename, setCachedFilename] = useState<string | null>(null)
   const analyzeAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const did = getDeviceId()
     setDeviceId(did)
     setUsedToday(getFreeAnalyzeUsed())
+    setCachedFilename(getCachedResumeName())
+
+    const handler = (e: Event) => {
+      const { name, source } = (e as CustomEvent<{ name: string; source: string }>).detail
+      if (source === 'analysis') return
+      setCachedFilename(name)
+      setFile(null)  // clear so next analyze uses the new cached file
+    }
+    window.addEventListener(RESUME_CACHED_EVENT, handler)
+    return () => window.removeEventListener(RESUME_CACHED_EVENT, handler)
   }, [])
 
   // Derived quota state — always from DB (auth) for logged-in, localStorage for guests
@@ -134,7 +146,7 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleGoToEditor = () => {
-    const filename = file?.name.replace(/\.[^.]+$/, '') || '上传简历'
+    const filename = (file?.name ?? cachedFilename)?.replace(/\.[^.]+$/, '') || '上传简历'
     sessionStorage.setItem('resumecraft_landing_import', JSON.stringify({
       data: parsedRawData,
       filename,
@@ -152,11 +164,15 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const f = e.dataTransfer.files[0]
-    if (f) { setFile(f); setError('') }
+    if (f) {
+      setFile(f); setError(''); saveResumeToCache(f); setCachedFilename(f.name)
+      window.dispatchEvent(new CustomEvent(RESUME_CACHED_EVENT, { detail: { name: f.name, source: 'analysis' } }))
+    }
   }
 
   const handleAnalyze = async () => {
-    if (!file) { setError('请上传简历文件'); return }
+    const fileToUse = file ?? getCachedResumeFile()
+    if (!fileToUse) { setError('请上传简历文件'); return }
 
     // Quota pre-check (server enforces authoritatively; this avoids wasted round-trips)
     if (auth.loggedIn && analyzeExhausted) {
@@ -182,30 +198,41 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
     setError('')
     setLoading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('deviceId', deviceId)
-      fd.append('skipImportQuota', 'true')
-      const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: fd, signal: controller.signal })
-      if (controller.signal.aborted) return
-      if (parseRes.status === 422) {
-        setError('未检测到简历内容，请上传简历文件')
-        return
-      }
-      if (!parseRes.ok) {
-        if (parseRes.status === 429) {
-          const errJson = await parseRes.json().catch(() => null)
-          setError(errJson?.error || '导入次数已达上限，请升级 Pro')
-        } else {
-          setError('AI 开小差了，请稍后重试')
+      // If no new file was selected, try using cached parsed data to skip the parse API call
+      const cachedParsed = !file ? getCachedParsedData() : null
+      let parsedRaw: unknown
+
+      if (cachedParsed) {
+        parsedRaw = cachedParsed
+        setParsedRawData(parsedRaw)
+      } else {
+        const fd = new FormData()
+        fd.append('file', fileToUse)
+        fd.append('deviceId', deviceId)
+        fd.append('skipImportQuota', 'true')
+        const parseRes = await fetch('/api/ai/parse-resume', { method: 'POST', body: fd, signal: controller.signal })
+        if (controller.signal.aborted) return
+        if (parseRes.status === 422) {
+          setError('未检测到简历内容，请上传简历文件')
+          return
         }
-        return
+        if (!parseRes.ok) {
+          if (parseRes.status === 429) {
+            const errJson = await parseRes.json().catch(() => null)
+            setError(errJson?.error || '导入次数已达上限，请升级 Pro')
+          } else {
+            setError('AI 开小差了，请稍后重试')
+          }
+          return
+        }
+        const parseJson = await parseRes.json()
+        if (controller.signal.aborted) return
+        parsedRaw = parseJson.data ?? {}
+        setParsedRawData(parsedRaw)
+        saveParsedDataToCache(parsedRaw)
       }
-      const parseJson = await parseRes.json()
-      if (controller.signal.aborted) return
-      const parsedRaw = parseJson.data ?? {}
-      setParsedRawData(parsedRaw)
-      const resumeData = parsedToResumeData(parsedRaw)
+
+      const resumeData = parsedToResumeData(parsedRaw as Parameters<typeof parsedToResumeData>[0])
 
       const analyzeRes = await fetch('/api/ai/analyze', {
         method: 'POST',
@@ -318,7 +345,14 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
 
       <input
         ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
-        onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setError('') }; e.target.value = '' }}
+        onChange={e => {
+          const f = e.target.files?.[0]
+          if (f) {
+            setFile(f); setError(''); saveResumeToCache(f); setCachedFilename(f.name)
+            window.dispatchEvent(new CustomEvent(RESUME_CACHED_EVENT, { detail: { name: f.name, source: 'analysis' } }))
+          }
+          e.target.value = ''
+        }}
       />
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', width: '100%', padding: '80px 0' }}>
@@ -483,35 +517,50 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
                 <label style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
                   上传简历 <span style={{ color: '#7c3aed', fontWeight: 400 }}>*</span>
                 </label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={e => e.preventDefault()}
-                  style={{
-                    border: `1.5px dashed ${file ? 'rgba(109,40,217,0.7)' : error ? 'rgba(239,68,68,0.5)' : '#cbd5e1'}`,
-                    borderRadius: '10px', padding: '22px 16px',
-                    textAlign: 'center', cursor: 'pointer',
-                    background: file ? '#faf5ff' : '#f8fafc',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => { if (!file) { e.currentTarget.style.borderColor = 'rgba(109,40,217,0.6)'; e.currentTarget.style.background = '#faf5ff' } }}
-                  onMouseLeave={e => { if (!file) { e.currentTarget.style.borderColor = error ? 'rgba(239,68,68,0.5)' : '#cbd5e1'; e.currentTarget.style.background = '#f8fafc' } }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                    <FileUp size={24} color={file ? '#7c3aed' : '#94a3b8'} />
-                  </div>
-                  {file ? (
-                    <div style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 500 }}>
-                      {file.name}
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', fontWeight: 400 }}>点击重新选择</div>
+                {(() => {
+                  const showCached = !file && !!cachedFilename
+                  return (
+                    <div
+                      onClick={() => { if (!showCached) fileInputRef.current?.click() }}
+                      onDrop={handleDrop}
+                      onDragOver={e => e.preventDefault()}
+                      style={{
+                        border: `1.5px dashed ${file ? 'rgba(109,40,217,0.7)' : showCached ? 'rgba(109,40,217,0.45)' : error ? 'rgba(239,68,68,0.5)' : '#cbd5e1'}`,
+                        borderRadius: '10px', padding: '22px 16px',
+                        textAlign: 'center', cursor: showCached ? 'default' : 'pointer',
+                        background: (file || showCached) ? '#faf5ff' : '#f8fafc',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => { if (!file && !showCached) { e.currentTarget.style.borderColor = 'rgba(109,40,217,0.6)'; e.currentTarget.style.background = '#faf5ff' } }}
+                      onMouseLeave={e => { if (!file && !showCached) { e.currentTarget.style.borderColor = error ? 'rgba(239,68,68,0.5)' : '#cbd5e1'; e.currentTarget.style.background = '#f8fafc' } }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                        <FileUp size={24} color={(file || showCached) ? '#7c3aed' : '#94a3b8'} />
+                      </div>
+                      {file ? (
+                        <div style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 500 }}>
+                          {file.name}
+                          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', fontWeight: 400 }}>点击重新选择</div>
+                        </div>
+                      ) : showCached ? (
+                        <div style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 500 }}>
+                          <span style={{ color: '#64748b', fontWeight: 400 }}>上次上传：</span>{cachedFilename}
+                          <div style={{ fontSize: '11px', marginTop: '4px', fontWeight: 400 }}>
+                            <button
+                              onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}
+                              style={{ textDecoration: 'underline', cursor: 'pointer', color: '#94a3b8', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit' }}
+                            >重新上传</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '13px', color: '#64748b' }}>
+                          <span style={{ color: '#7c3aed', fontWeight: 600 }}>点击选择文件</span> 或拖拽到此处
+                          <div style={{ fontSize: '11px', marginTop: '4px', color: '#94a3b8' }}>支持 PDF、Word (.docx)，最大 10MB</div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      <span style={{ color: '#7c3aed', fontWeight: 600 }}>点击选择文件</span> 或拖拽到此处
-                      <div style={{ fontSize: '11px', marginTop: '4px', color: '#94a3b8' }}>支持 PDF、Word (.docx)，最大 10MB</div>
-                    </div>
-                  )}
-                </div>
+                  )
+                })()}
                 {error && <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '6px' }}>{error}</div>}
               </div>
 

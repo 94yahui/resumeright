@@ -55,15 +55,18 @@ const LIMITS: Record<string, { subscriber: number; single: number; free: number;
   'translate':    { subscriber: 5,  single: 0,  free: 0  },
   'compress':     { subscriber: 20, single: 0,  free: 0  },
   'parse-resume': { subscriber: 10, single: 2,  free: 2,  guest: 1 },
-  'ats-score':    { subscriber: 5,  single: -1, free: -1 },
+  'ats-score':    { subscriber: 5,  single: 3,  free: 2  },
 }
 
 // Config for types that use lifetime counters for non-subscriber plans
+// freePlanDaily: true means free users use daily counter instead of lifetime
 interface LifetimeCfg {
   guestDocId: (deviceId: string) => string
   freeField: string; singleField: string
   guestLimit: number; freeLimit: number; singleLimit: number
   guestErr: (fl: number) => string; freeErr: (l: number) => string; singleErr: () => string
+  freePlanDaily?: boolean
+  singlePlanDaily?: boolean
 }
 const LIFETIME: Record<string, LifetimeCfg> = {
   'analyze': {
@@ -78,9 +81,11 @@ const LIFETIME: Record<string, LifetimeCfg> = {
     guestDocId: d => `guest_ats_${d}`,
     freeField: 'free_ats_used', singleField: 'single_ats_used',
     guestLimit: 1, freeLimit: 2, singleLimit: 5,
-    guestErr: fl => `ATS检测免费次数已用完，登录后可再用 ${fl} 次，升级 Pro 可享每日 5 次。`,
+    guestErr: fl => `ATS检测免费次数已用完，登录后每天可用 ${fl} 次，升级 Pro 可享每日 5 次。`,
     freeErr:  l  => `已用完 ${l} 次免费 ATS 检测，升级 Pro 可享每天 5 次。`,
     singleErr:() => `单次购买的 ATS 检测（5 次）已用完，升级 Pro 可享每天 5 次。`,
+    freePlanDaily: true,
+    singlePlanDaily: true,
   },
 }
 
@@ -187,7 +192,7 @@ export async function checkServerQuota(req: NextRequest, type: string, deviceId:
         return null
       }
       const users = await getUserCollection()
-      if (plan === 'single') {
+      if (plan === 'single' && !ltCfg.singlePlanDaily) {
         const user = await users.findOne({ openid }, { projection: { [ltCfg.singleField]: 1 } }) as Record<string, unknown> | null
         const used = (user?.[ltCfg.singleField] as number) ?? 0
         if (used >= ltCfg.singleLimit) {
@@ -195,12 +200,17 @@ export async function checkServerQuota(req: NextRequest, type: string, deviceId:
         }
         return null
       }
-      const user = await users.findOne({ openid }, { projection: { [ltCfg.freeField]: 1 } }) as Record<string, unknown> | null
-      const used = (user?.[ltCfg.freeField] as number) ?? 0
-      if (used >= ltCfg.freeLimit) {
-        return NextResponse.json({ error: ltCfg.freeErr(ltCfg.freeLimit) }, { status: 429 })
+      if (plan === 'single') {
+        // singlePlanDaily: fall through to daily limits below
+      } else if (!ltCfg.freePlanDaily) {
+        const user = await users.findOne({ openid }, { projection: { [ltCfg.freeField]: 1 } }) as Record<string, unknown> | null
+        const used = (user?.[ltCfg.freeField] as number) ?? 0
+        if (used >= ltCfg.freeLimit) {
+          return NextResponse.json({ error: ltCfg.freeErr(ltCfg.freeLimit) }, { status: 429 })
+        }
+        return null
       }
-      return null
+      // freePlanDaily: fall through to daily limits below
     }
 
     // ── Daily limits ──
@@ -256,12 +266,15 @@ export async function incrementQuota(req: NextRequest, type: string, deviceId: s
         return
       }
       const users = await getUserCollection()
-      if (plan === 'single') {
+      if (plan === 'single' && !ltCfg.singlePlanDaily) {
         await users.updateOne({ openid }, { $inc: { [ltCfg.singleField]: 1 }, $set: { updated_at: Date.now() } })
         return
       }
-      await users.updateOne({ openid }, { $inc: { [ltCfg.freeField]: 1 }, $set: { updated_at: Date.now() } })
-      return
+      if (plan !== 'single' && !ltCfg.freePlanDaily) {
+        await users.updateOne({ openid }, { $inc: { [ltCfg.freeField]: 1 }, $set: { updated_at: Date.now() } })
+        return
+      }
+      // freePlanDaily: fall through to daily increment below
     }
 
     const limit = plan === 'subscriber' ? cfg.subscriber

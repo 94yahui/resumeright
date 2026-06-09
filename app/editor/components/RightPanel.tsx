@@ -98,7 +98,7 @@ export default function RightPanel({
           onClick={onClose}
           style={{
             width: "24px", height: "24px",
-            borderRadius: "6px", border: "1px solid #e2e8f0",
+            borderRadius: "10px", border: "1px solid #e2e8f0",
             background: "transparent", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", color: "#94a3b8", lineHeight: 1,
@@ -204,7 +204,7 @@ export default function RightPanel({
                 />
                 <button
                   onClick={() => onUpdate({ extraWebsites: (data.extraWebsites || []).filter((_, j) => j !== i) })}
-                  style={{ padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
+                  style={{ padding: "8px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
                 >
                   <X size={13} color="#94a3b8" />
                 </button>
@@ -232,18 +232,18 @@ export default function RightPanel({
             {showCustomHelp && (
               <div style={{
                 background: '#f0f7ff', border: '1px solid #bfdbfe',
-                borderRadius: '8px', padding: '10px 12px', marginBottom: '10px',
+                borderRadius: '12px', padding: '10px 12px', marginBottom: '10px',
                 fontSize: '12px', color: '#334155', lineHeight: 1.6,
               }}>
                 <div style={{ fontWeight: 600, marginBottom: '6px', color: '#1e40af' }}>如何使用自定义字段</div>
                 <div style={{ marginBottom: '5px' }}>自定义字段会显示在简历的联系信息区域，可分为两种类型：</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '6px' }}>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <span style={{ padding: '1px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700, background: '#eff6ff', color: 'var(--theme-blue)', border: '1px solid var(--theme-blue)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>联系方式</span>
+                    <span style={{ padding: '1px 6px', borderRadius: '12px', fontSize: '10px', fontWeight: 700, background: '#eff6ff', color: 'var(--theme-blue)', border: '1px solid var(--theme-blue)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>联系方式</span>
                     <span>与邮箱、电话等并排显示，适合 GitHub、个人网站等链接。</span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <span style={{ padding: '1px 6px', borderRadius: '8px', fontSize: '10px', fontWeight: 700, background: '#f5f3ff', color: '#7c3aed', border: '1px solid #8b5cf6', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>基本信息</span>
+                    <span style={{ padding: '1px 6px', borderRadius: '12px', fontSize: '10px', fontWeight: 700, background: '#f5f3ff', color: '#7c3aed', border: '1px solid #8b5cf6', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>基本信息</span>
                     <span>单独成组显示，适合年龄、性别、政治面貌等个人信息（部分模板会在此处显示"基本信息"小标题）。</span>
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export default function RightPanel({
                     onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
                     onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
                   />
-                  <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', flexShrink: 0 }}>
                     {([
                       { label: '联系方式', active: !cc.isInfo, value: false as boolean },
                       { label: '基本信息', active: !!cc.isInfo, value: true as boolean },
@@ -303,7 +303,7 @@ export default function RightPanel({
                   </button>
                   <button
                     onClick={() => onUpdate({ customContacts: (data.customContacts || []).filter((_, j) => j !== i) })}
-                    style={{ padding: '6px', borderRadius: '6px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    style={{ padding: '6px', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                   >
                     <X size={12} color="#94a3b8" />
                   </button>
@@ -392,7 +392,7 @@ export default function RightPanel({
                             <span style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
                               {["英语", "日语"].map(t => (
                                 <span key={t} style={{
-                                  padding: "1px 6px", borderRadius: "10px", fontSize: "8px",
+                                  padding: "1px 6px", borderRadius: "14px", fontSize: "8px",
                                   border: `1px solid ${borderColor}`, color: textClr,
                                   background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f1f5f9",
                                 }}>{t}</span>
@@ -409,7 +409,7 @@ export default function RightPanel({
                         return (
                           <button key={s} onClick={() => onUpdate({ languageStyle: s })}
                             style={{
-                              flex: 1, padding: "6px 4px", borderRadius: "6px", cursor: "pointer",
+                              flex: 1, padding: "6px 4px", borderRadius: "10px", cursor: "pointer",
                               border: active ? "1.5px solid var(--theme-blue)" : "1.5px solid #e2e8f0",
                               background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f8fafc",
                               fontSize: "11px", fontWeight: active ? 600 : 400,
@@ -527,13 +527,13 @@ const labelStyle: React.CSSProperties = {
 };
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "9px 11px",
-  border: "1.5px solid #e2e8f0", borderRadius: "7px",
+  border: "1.5px solid #e2e8f0", borderRadius: "10px",
   fontFamily: "var(--font-sans)", fontSize: "13px",
   color: "#0f172a", background: "#f8fafc",
   outline: "none", transition: "border-color 0.15s, background 0.15s",
 };
 const btnSmall: React.CSSProperties = {
-  padding: "8px 14px", borderRadius: "7px",
+  padding: "8px 14px", borderRadius: "10px",
   border: "1px solid #e2e8f0", background: "white",
   fontSize: "12px", cursor: "pointer", fontWeight: 500,
   fontFamily: "var(--font-sans)", color: "#334155",
@@ -541,7 +541,7 @@ const btnSmall: React.CSSProperties = {
 };
 const btnSmallFull: React.CSSProperties = { ...btnSmall, width: "100%", justifyContent: "center" };
 const btnDanger: React.CSSProperties = {
-  width: "100%", padding: "9px", borderRadius: "7px",
+  width: "100%", padding: "9px", borderRadius: "10px",
   border: "1px solid rgba(220, 38, 38, 0.3)",
   background: "transparent", color: "#dc2626",
   fontFamily: "var(--font-sans)", fontSize: "12px",
@@ -550,7 +550,7 @@ const btnDanger: React.CSSProperties = {
 };
 const tipBox: React.CSSProperties = {
   marginTop: "14px", padding: "10px 12px",
-  background: "#f8fafc", borderRadius: "6px",
+  background: "#f8fafc", borderRadius: "10px",
   fontSize: "11.5px", color: "#64748b", lineHeight: 1.5,
 };
 
@@ -648,7 +648,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
                 <div style={{ display: "flex", gap: "3px" }}>
                   {["React", "Vue"].map(t => (
                     <span key={t} style={{
-                      padding: "1px 5px", borderRadius: "3px", fontSize: "9px",
+                      padding: "1px 5px", borderRadius: "8px", fontSize: "9px",
                       border: `1px solid ${borderColor}`,
                       color: textClr,
                       background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f1f5f9",
@@ -670,7 +670,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
             return (
               <button key={s} onClick={() => onUpdate({ skillsStyle: s })}
                 style={{
-                  flex: 1, padding: "6px 4px", borderRadius: "6px", cursor: "pointer",
+                  flex: 1, padding: "6px 4px", borderRadius: "10px", cursor: "pointer",
                   border: active ? "1.5px solid var(--theme-blue)" : "1.5px solid #e2e8f0",
                   background: active ? "color-mix(in srgb, var(--theme-blue) 10%, white)" : "#f8fafc",
                   fontSize: "11px", fontWeight: active ? 600 : 400,
@@ -714,7 +714,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
           {cats.map((cat) => (
             <div key={cat.id} style={{
               marginBottom: "12px", border: "1px solid #e2e8f0",
-              borderRadius: "8px", padding: "10px 12px", background: "#f8fafc",
+              borderRadius: "12px", padding: "10px 12px", background: "#f8fafc",
             }}>
               {/* 分类名 + 删除 */}
               <div style={{ display: "flex", gap: "6px", marginBottom: "8px", alignItems: "center" }}>
@@ -740,7 +740,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
                 {cat.items.map((item, idx) => (
                   <span key={idx} style={{
                     display: "inline-flex", alignItems: "center", gap: "3px",
-                    padding: "3px 7px 3px 9px", borderRadius: "20px", fontSize: "12px",
+                    padding: "3px 7px 3px 9px", borderRadius: "24px", fontSize: "12px",
                     background: "color-mix(in srgb, var(--theme-blue) 12%, white)", color: "var(--theme-blue)",
                   }}>
                     {item}
@@ -778,7 +778,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
             {data.skills.map((s, i) => (
               <span key={i} style={{
                 display: "inline-flex", alignItems: "center", gap: "4px",
-                padding: "4px 8px 4px 11px", borderRadius: "20px", fontSize: "12px",
+                padding: "4px 8px 4px 11px", borderRadius: "24px", fontSize: "12px",
                 background: "#f1f5f9", color: "#334155",
               }}>
                 {s}

@@ -13,7 +13,7 @@ const FREE_FEATURES = [
   "在线编辑",
   "PDF 下载（带水印）",
   "2 次免费 AI 简历优化",
-  "ATS 检测 2 次",
+  "ATS 检测 2 次/天",
 ];
 
 const PRO_FEATURES = [
@@ -32,7 +32,7 @@ const SINGLE_FEATURES = [
   "无水印 PDF 下载",
   "永久重新下载",
   "AI 简历优化 5 次",
-  "ATS 检测 5 次",
+  "ATS 检测 3 次/天",
 ];
 
 const SUB_PLANS = [

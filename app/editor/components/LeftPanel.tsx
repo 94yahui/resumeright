@@ -51,9 +51,9 @@ function getOrderableKeys(layout: string): SectionKey[] {
 }
 
 const COLORS = [
-  '#0f172a', '#1e3a8a', '#0789ec', '#d4a017',
-  '#dc2626', '#7c3aed', '#ec4899', '#0891b2',
-  '#ea580c', '#16a34a',
+  '#0f172a', '#1e3a8a', '#0789ec', '#475569',
+  '#991b1b', '#4f46e5', '#be185d', '#0e7490',
+  '#c2410c', '#15803d',
 ]
 
 interface SortableRowProps {
@@ -120,7 +120,7 @@ function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabe
 
       {/* Icon */}
       <div style={{
-        width: '26px', height: '26px', borderRadius: '6px',
+        width: '26px', height: '26px', borderRadius: '10px',
         background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
       }}>{m.icon}</div>
@@ -138,7 +138,7 @@ function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabe
           }}
           style={{
             flex: 1, fontSize: '12px', fontWeight: 500,
-            border: '1px solid #0789ec', borderRadius: '4px',
+            border: '1px solid #0789ec', borderRadius: '6px',
             padding: '2px 5px', outline: 'none',
             fontFamily: 'var(--font-sans)', color: '#0f172a', minWidth: 0,
           }}
@@ -175,7 +175,7 @@ function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabe
         <button
           onClick={() => onAddModule(id)}
           style={{
-            padding: '3px 8px', borderRadius: '5px', fontSize: '12px',
+            padding: '3px 8px', borderRadius: '8px', fontSize: '12px',
             border: '1px solid #e2e8f0', background: 'white',
             color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
             fontFamily: 'var(--font-sans)', flexShrink: 0,
@@ -376,7 +376,7 @@ export default function LeftPanel({
                 width: '100%', padding: '10px',
                 background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
                 border: '1px solid #f59e0b',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 fontSize: '12px', fontWeight: 600, color: '#92400e',
                 cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
@@ -487,13 +487,13 @@ export default function LeftPanel({
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
               <input type="color" defaultValue={currentColor} id="customColor"
-                style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: '2px', background: '#f8fafc' }}
+                style={{ width: '36px', height: '36px', border: 'none', borderRadius: '12px', cursor: 'pointer', padding: '2px', background: '#f8fafc' }}
               />
               <button onClick={() => {
                 const el = document.getElementById('customColor') as HTMLInputElement
                 if (el) onColorChange(el.value)
               }} style={{
-                padding: '7px 14px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                padding: '7px 14px', borderRadius: '12px', border: '1px solid #e2e8f0',
                 background: 'white', fontSize: '12px', cursor: 'pointer',
                 fontFamily: 'var(--font-sans)', color: '#334155', fontWeight: 500,
               }}>应用</button>
@@ -507,13 +507,13 @@ export default function LeftPanel({
               {FONT_PAIRS.map(fp => (
                 <button key={fp.value} onClick={() => onFontPairChange?.(fp.value)} style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '9px 12px', borderRadius: '8px', cursor: 'pointer',
+                  padding: '9px 12px', borderRadius: '12px', cursor: 'pointer',
                   border: `1.5px solid ${currentFontPair === fp.value ? '#0f172a' : '#e2e8f0'}`,
                   background: currentFontPair === fp.value ? '#f8fafc' : 'white',
                   fontFamily: 'var(--font-sans)', textAlign: 'left', width: '100%',
                   transition: 'all 0.15s',
                 }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f1f5f9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: '#f1f5f9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontFamily: fp.cssFont, fontSize: '16px', fontWeight: 700, color: '#334155', lineHeight: 1 }}>A</span>
                   </div>
                   <div>
@@ -536,7 +536,7 @@ export default function LeftPanel({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '20px' }}>
               {ACCENT_STYLES.map(as => (
                 <button key={as.value} onClick={() => onAccentStyleChange?.(as.value)} style={{
-                  padding: '8px 10px 8px', borderRadius: '8px', cursor: 'pointer',
+                  padding: '8px 10px 8px', borderRadius: '12px', cursor: 'pointer',
                   border: `1.5px solid ${currentAccentStyle === as.value ? '#0f172a' : '#e2e8f0'}`,
                   background: currentAccentStyle === as.value ? '#f8fafc' : 'white',
                   fontFamily: 'var(--font-sans)', textAlign: 'left',
@@ -555,7 +555,7 @@ export default function LeftPanel({
 
             <div style={{
               padding: '12px',
-              background: '#f8fafc', borderRadius: '8px',
+              background: '#f8fafc', borderRadius: '12px',
               fontSize: '11.5px', color: '#64748b', lineHeight: 1.6,
               display: 'flex', alignItems: 'flex-start', gap: '6px',
             }}>
@@ -579,13 +579,23 @@ export default function LeftPanel({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {historyEntries.map(entry => (
-                  <div key={entry.id} style={{
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: `1px solid ${confirmDeleteId === entry.id ? '#fca5a5' : '#e2e8f0'}`,
-                    background: confirmDeleteId === entry.id ? '#fff5f5' : '#f8fafc',
-                    transition: 'all 0.15s',
-                  }}>
+                  <div
+                    key={entry.id}
+                    onClick={() => {
+                      if (confirmDeleteId === entry.id || entry.id === currentHistoryId) return
+                      const fresh = loadHistory().find(h => h.id === entry.id) ?? entry
+                      setHistoryEntries(loadHistory())
+                      onLoadHistory?.(fresh)
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '12px',
+                      border: `1px solid ${confirmDeleteId === entry.id ? '#fca5a5' : entry.id === currentHistoryId ? 'rgba(7,137,236,0.3)' : '#e2e8f0'}`,
+                      background: confirmDeleteId === entry.id ? '#fff5f5' : entry.id === currentHistoryId ? '#f0f8ff' : '#f8fafc',
+                      transition: 'all 0.15s',
+                      cursor: confirmDeleteId === entry.id || entry.id === currentHistoryId ? 'default' : 'pointer',
+                    }}
+                  >
                     {confirmDeleteId === entry.id ? (
                       <div>
                         <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600, marginBottom: '8px', wordBreak: 'break-word' }}>
@@ -593,23 +603,24 @@ export default function LeftPanel({
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
-                            onClick={() => {
+                            onClick={e => {
+                              e.stopPropagation()
                               deleteHistory(entry.id)
                               setHistoryEntries(loadHistory())
                               setConfirmDeleteId(null)
                               onHistoryDelete?.(entry.id)
                             }}
                             style={{
-                              flex: 1, padding: '5px', borderRadius: '5px', fontSize: '12px',
+                              flex: 1, padding: '5px', borderRadius: '8px', fontSize: '12px',
                               border: 'none', background: '#dc2626',
                               color: 'white', fontWeight: 600, cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
                             }}
                           >删除</button>
                           <button
-                            onClick={() => setConfirmDeleteId(null)}
+                            onClick={e => { e.stopPropagation(); setConfirmDeleteId(null) }}
                             style={{
-                              flex: 1, padding: '5px', borderRadius: '5px', fontSize: '12px',
+                              flex: 1, padding: '5px', borderRadius: '8px', fontSize: '12px',
                               border: '1px solid #e2e8f0', background: 'white',
                               color: '#64748b', cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
@@ -629,9 +640,9 @@ export default function LeftPanel({
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                          {entry.id === currentHistoryId ? (
+                          {entry.id === currentHistoryId && (
                             <div style={{
-                              padding: '4px 8px', borderRadius: '5px', fontSize: '11px',
+                              padding: '4px 8px', borderRadius: '8px', fontSize: '11px',
                               background: '#e0f0fd', color: 'var(--theme-blue)', fontWeight: 600,
                               border: '1px solid rgba(13,148,136,0.3)',
                               display: 'flex', alignItems: 'center', gap: '3px',
@@ -639,32 +650,17 @@ export default function LeftPanel({
                             }}>
                               ✦ 当前编辑
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                const fresh = loadHistory().find(h => h.id === entry.id) ?? entry
-                                setHistoryEntries(loadHistory())
-                                onLoadHistory?.(fresh)
-                              }}
-                              style={{
-                                padding: '4px 10px', borderRadius: '5px', fontSize: '12px',
-                                border: '1px solid var(--theme-blue)', background: 'white',
-                                color: 'var(--theme-blue)', fontWeight: 600, cursor: 'pointer',
-                                fontFamily: 'var(--font-sans)',
-                              }}
-                            >
-                              加载
-                            </button>
                           )}
                           <button
-                            onClick={() => {
+                            onClick={e => {
+                              e.stopPropagation()
                               const fresh = loadHistory().find(h => h.id === entry.id) ?? entry
                               onDuplicateHistory?.(fresh)
                               setHistoryEntries(loadHistory())
                             }}
                             title="复制简历"
                             style={{
-                              padding: '4px 7px', borderRadius: '5px', fontSize: '12px',
+                              padding: '4px 7px', borderRadius: '8px', fontSize: '12px',
                               border: '1px solid #e2e8f0', background: 'white',
                               color: '#64748b', cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -673,9 +669,9 @@ export default function LeftPanel({
                             <Copy size={12} />
                           </button>
                           <button
-                            onClick={() => setConfirmDeleteId(entry.id)}
+                            onClick={e => { e.stopPropagation(); setConfirmDeleteId(entry.id) }}
                             style={{
-                              padding: '4px 7px', borderRadius: '5px', fontSize: '12px',
+                              padding: '4px 7px', borderRadius: '8px', fontSize: '12px',
                               border: '1px solid #e2e8f0', background: 'white',
                               color: '#94a3b8', cursor: 'pointer',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -754,7 +750,7 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
     case 'background-pill':
       return (
         <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ background: c, borderRadius: '3px', padding: '3px 7px' }}>
+          <div style={{ background: c, borderRadius: '8px', padding: '3px 7px' }}>
             <span style={{ ...baseText, color: '#fff' }}>{text}</span>
           </div>
         </div>
@@ -830,7 +826,7 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
 }) {
   return (
     <div onClick={onClick} style={{
-      borderRadius: '8px',
+      borderRadius: '12px',
       border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`,
       cursor: 'pointer', overflow: 'hidden',
       transition: 'all 0.2s',
@@ -851,7 +847,7 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
         <div style={{
           position: 'absolute', top: '4px', right: '4px',
           background: isLocked ? '#94a3b8' : '#f59e0b', color: 'white',
-          fontSize: '8px', padding: '2px 5px', borderRadius: '3px',
+          fontSize: '8px', padding: '2px 5px', borderRadius: '5px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
           fontWeight: 700,
         }}>
@@ -870,7 +866,7 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
 
 const infoBtn: React.CSSProperties = {
   width: '100%', padding: '8px 12px',
-  borderRadius: '7px', border: '1px solid #e2e8f0',
+  borderRadius: '10px', border: '1px solid #e2e8f0',
   background: '#f8fafc', fontSize: '12.5px',
   color: '#334155', fontWeight: 500,
   cursor: 'pointer', fontFamily: 'var(--font-sans)',

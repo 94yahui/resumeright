@@ -662,6 +662,26 @@ export default function ResumeRenderer({
                 )}
               </div>
             ))}
+            {hasPending && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: s(1), marginBottom: skillStyle === 'plain' ? s(2) : s(4) }}>
+                <span style={{
+                  fontSize: s(11.5), fontWeight: 600, flexShrink: 0,
+                  color: onDark ? 'rgba(255,255,255,0.85)' : '#0f172a',
+                  lineHeight: skillStyle === 'tags' ? '23px' : 1.6,
+                }}>新增技能：</span>
+                {skillStyle === 'plain' ? (
+                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: s(11.5), lineHeight: 1.6 }}>
+                    {renderPlainText([], pendingSkills!)}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
+                    {pendingSkills!.map((sk, i) =>
+                      skillStyle === 'tags' ? renderTag(sk, i, true) : renderDot(sk, i, true)
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )
@@ -900,7 +920,7 @@ export default function ResumeRenderer({
           {/* Dark sidebar */}
           <div style={{
             width: '252px',
-            background: accent,
+            backgroundColor: accent,
             padding: '36px 24px',
             flexShrink: 0,
             color: '#fff',
@@ -940,7 +960,7 @@ export default function ResumeRenderer({
           {/* Light sidebar with thin border */}
           <div style={{
             width: '210px',
-            background: `${accent}08`,
+            backgroundColor: `${accent}08`,
             borderRight: `2px solid ${accent}`,
             padding: '36px 22px',
             flexShrink: 0,
@@ -981,7 +1001,7 @@ export default function ResumeRenderer({
           </div>
           <div style={{
             width: '210px',
-            background: `${accent}08`,
+            backgroundColor: `${accent}08`,
             borderLeft: `2px solid ${accent}`,
             padding: '40px 22px',
             flexShrink: 0,
@@ -1003,7 +1023,7 @@ export default function ResumeRenderer({
     return (
       <div style={rootStyle}>
         <div style={{
-          background: accent,
+          backgroundColor: accent,
           padding: '36px 48px',
           display: 'flex', alignItems: 'center', gap: '24px',
         }}>
@@ -1028,7 +1048,7 @@ export default function ResumeRenderer({
       <div style={rootStyle}>
         <div style={{ padding: '36px 48px 0' }}>
           <div style={{
-            background: '#f8fafc',
+            backgroundColor: '#f8fafc',
             border: `2px solid ${accent}`,
             borderRadius: '8px',
             padding: '24px',
@@ -1110,16 +1130,16 @@ export default function ResumeRenderer({
       )
     }
 
-    // ── left-beside: photo avatar on left, name+contact centered in remaining space ──
+    // ── left-beside: photo + name centered as a unit on the page ──
     if (template.photoPlacement === 'left-beside') {
       return (
         <div style={rootStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', padding: '36px 48px 20px' }}>
-            <PhotoBlock size={76} />
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <NameBlock big centered />
-              <div style={{ height: '8px' }} />
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 48px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <PhotoBlock size={76} />
+              <div>
+                <NameBlock big />
+                <div style={{ height: '8px' }} />
                 <ContactInline />
               </div>
             </div>
@@ -1139,7 +1159,7 @@ export default function ResumeRenderer({
         <div style={rootStyle}>
           <div style={{
             padding: '28px 48px',
-            background: `${accent}08`,
+            backgroundColor: `${accent}08`,
             borderBottom: `1.5px solid ${accent}25`,
             display: 'flex', alignItems: 'center', gap: '24px',
           }}>
@@ -1153,6 +1173,31 @@ export default function ResumeRenderer({
             <PhotoBlock size={88} />
           </div>
           <div style={{ padding: '24px 48px 40px' }}>
+            <MainBody />
+            <SkillsBlock />
+          </div>
+        </div>
+      )
+    }
+
+    // ── large-center: oversized photo centered, generous spacing ──
+    if (template.photoPlacement === 'large-center') {
+      return (
+        <div style={rootStyle}>
+          <div style={{ padding: '52px 48px 32px', textAlign: 'center' }}>
+            {template.showPhoto && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+                <PhotoBlock size={120} />
+              </div>
+            )}
+            <NameBlock centered big />
+            <div style={{ height: '12px' }} />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <ContactInline />
+            </div>
+            <div style={{ width: '40px', height: '3px', background: accent, margin: '24px auto 0', borderRadius: '2px' }} />
+          </div>
+          <div style={{ padding: '4px 48px 40px' }}>
             <MainBody />
             <SkillsBlock />
           </div>
@@ -1176,6 +1221,110 @@ export default function ResumeRenderer({
           </div>
         </div>
         <div style={{ padding: '4px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: LINKEDIN BANNER ============
+  if (template.layout === 'linkedin-banner') {
+    return (
+      <div style={rootStyle}>
+        {/* Colored band — overflow visible so photo hangs below */}
+        <div style={{ backgroundColor: accent, height: '110px', position: 'relative', overflow: 'visible', zIndex: 1 }}>
+          {template.showPhoto && (
+            <div style={{ position: 'absolute', bottom: '-44px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
+              <PhotoBlock size={88} />
+            </div>
+          )}
+        </div>
+
+        {/* Header: spacer for hanging photo + name side-by-side */}
+        <div style={{ padding: '12px 48px 0' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
+            {template.showPhoto && <div style={{ width: '88px', height: '44px', flexShrink: 0 }} />}
+            <div style={{ flex: 1, paddingBottom: '6px' }}>
+              <NameBlock big />
+            </div>
+          </div>
+          <div style={{ height: '10px' }} />
+          <ContactInline />
+          <div style={{ height: '1.5px', background: `${accent}30`, marginTop: '18px' }} />
+        </div>
+
+        <div style={{ padding: '14px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: NAMECARD HEADER ============
+  if (template.layout === 'namecard-header') {
+    return (
+      <div style={rootStyle}>
+        {/* Three-segment namecard: photo | name+title | contact */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '20px',
+          padding: '28px 40px',
+          background: `${accent}07`,
+          borderBottom: `1.5px solid ${accent}30`,
+        }}>
+          {template.showPhoto && (
+            <div style={{ flexShrink: 0 }}>
+              <PhotoBlock size={80} />
+            </div>
+          )}
+          <div style={{ flex: 1.2 }}>
+            <NameBlock big />
+          </div>
+          <div style={{ width: '1px', height: '60px', background: `${accent}25`, flexShrink: 0 }} />
+          <div style={{ flexShrink: 0, maxWidth: '210px' }}>
+            <ContactInline vertical />
+          </div>
+        </div>
+        <div style={{ padding: '28px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: DIAGONAL PHOTO ============
+  if (template.layout === 'diagonal-photo') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          {/* Diagonal accent shape in top-right */}
+          {template.showPhoto && (
+            <div style={{
+              position: 'absolute', top: 0, right: 0,
+              width: '260px', height: '220px',
+              background: `linear-gradient(135deg, ${accent}00 30%, ${accent}18 100%)`,
+              clipPath: 'polygon(35% 0, 100% 0, 100% 100%, 0 100%)',
+              pointerEvents: 'none',
+            }} />
+          )}
+          {/* Header: name+contact left, photo right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '28px', padding: '40px 48px 24px', position: 'relative' }}>
+            <div style={{ flex: 1 }}>
+              <NameBlock big />
+              <div style={{ height: '12px' }} />
+              <ContactInline />
+            </div>
+            {template.showPhoto && (
+              <div style={{ flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                <PhotoBlock size={96} />
+              </div>
+            )}
+          </div>
+          <div style={{ height: '2px', background: accent, margin: '0 48px 0', position: 'relative' }} />
+        </div>
+        <div style={{ padding: '14px 48px 40px' }}>
           <MainBody />
           <SkillsBlock />
         </div>

@@ -110,7 +110,7 @@ export default function AboutPage() {
                 fontSize: "14px",
               }}
             >
-              ← 返回首页
+              返回首页
             </Link>
           </div>
         </div>

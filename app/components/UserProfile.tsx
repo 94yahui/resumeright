@@ -246,6 +246,7 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
   const PRO_TRANSLATE_LIMIT = 5
   const PRO_IMPORT_LIMIT = 10
   const PRO_ATS_LIMIT = 5
+  const SINGLE_ATS_LIMIT = 3
   const FREE_ATS_LIMIT = 2
 
   // Live-first display counts: use fresh DB value once loaded, fall back to props then localStorage
@@ -260,10 +261,10 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
   const aiLimit = isPro ? null : FREE_ANALYZE_LIMIT
   const aiPct = aiUsed !== null && aiLimit ? Math.min(1, aiUsed / aiLimit) : 1
 
-  // ATS counts
-  const effectiveFreeAts = liveFreeAts ?? freeAtsUsed ?? 0
-  const atsUsedFree = isPro ? null : effectiveFreeAts
-  const atsLimitFree = isPro ? null : FREE_ATS_LIMIT
+  // ATS counts — all plans now use daily counter
+  const atsLimitNonPro = isSingle ? SINGLE_ATS_LIMIT : FREE_ATS_LIMIT
+  const atsUsedFree = isPro ? null : displayAtsUsed
+  const atsLimitFree = isPro ? null : atsLimitNonPro
   const atsPctFree = atsUsedFree !== null && atsLimitFree ? Math.min(1, atsUsedFree / atsLimitFree) : 1
 
   // Import counts — use DB-sourced displayImportUsed for all plans
@@ -530,7 +531,7 @@ export function ProfileModal({ onClose, openid, nickname, avatar, membership, is
                 {/* ATS stat (free users) */}
                 <div style={{ marginBottom: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>ATS 简历检测</span>
+                    <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>ATS 简历检测 <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: '11px' }}>今日</span></span>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
                       {atsUsedFree} / {atsLimitFree}
                     </span>

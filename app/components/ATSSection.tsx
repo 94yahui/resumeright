@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { getDeviceId } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
+import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveATSResultToCache, getCachedATSResult, RESUME_CACHED_EVENT } from '../lib/resumeCache'
 
 const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
 function isActiveSub(plan?: string | null, expiresAt?: number): boolean {
@@ -161,19 +162,23 @@ function DimCard({ dim }: { dim: ATSDimension }) {
 }
 
 // ── Upload card ───────────────────────────────────────────────────────────────
-function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLoginRequest }: {
+function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLoginRequest, cachedFilename, onUseCached }: {
   onFile: (f: File) => void; hintText: string
   exhausted?: boolean; exhaustedMsg?: string
   needLogin?: boolean; onLoginRequest?: () => void
+  cachedFilename?: string | null; onUseCached?: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   // For not-logged-in exhausted: show hint + login button only after first click
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
+  const hasCached = !!cachedFilename && !exhausted
+
   const handleButtonClick = () => {
     if (exhausted && needLogin) { setShowLoginPrompt(true); return }
     if (exhausted) return  // logged-in exhausted: do nothing
+    if (hasCached) { onUseCached?.(); return }  // use cached file directly
     inputRef.current?.click()
   }
 
@@ -202,9 +207,21 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
       <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 14px', lineHeight: 1.35 }}>
         测一测你的简历能否通过ATS筛选？
       </h3>
-      <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 32px' }}>
+      <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 24px' }}>
         从<span style={{ color: '#0789ec', fontWeight: 600 }}>文字提取、编码规范、版面结构、字段识别、文件格式</span>五个 ATS 技术角度检测兼容性
       </p>
+
+      {/* ── Cached file indicator ── */}
+      {hasCached && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', fontSize: '13px', color: '#64748b' }}>
+          <span>上次上传：</span>
+          <span style={{ color: '#0f172a', fontWeight: 500, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cachedFilename}</span>
+          <button
+            onClick={e => { e.stopPropagation(); inputRef.current?.click() }}
+            style={{ textDecoration: 'underline', cursor: 'pointer', color: '#94a3b8', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', flexShrink: 0 }}
+          >重新上传</button>
+        </div>
+      )}
 
       {showLoginButton ? (
         /* ── After clicking with exhausted guest: login button ── */
@@ -218,7 +235,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
         >登录</button>
       ) : (
-        /* ── Normal / logged-in exhausted: upload button ── */
+        /* ── Normal / logged-in exhausted / cached: primary action button ── */
         <button onClick={handleButtonClick} style={{
           width: '100%', padding: '16px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700,
           background: exhausted && !needLogin ? '#cbd5e1' : 'linear-gradient(135deg, #0789ec, #0f5fc2)',
@@ -230,7 +247,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
         }}
           onMouseEnter={e => { if (!(exhausted && !needLogin)) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' } }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; if (!(exhausted && !needLogin)) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
-        >上传你的简历</button>
+        >{hasCached ? '开始 ATS 检测' : '上传你的简历'}</button>
       )}
 
       {/* ── Inline hint: shown after guest clicks with exhausted quota, or always for logged-in exhausted ── */}
@@ -333,7 +350,7 @@ function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; 
     try {
       const deviceId = getDeviceId()
       if (localStorage.getItem(`rc_ats_exhausted_${deviceId}`) === '1') {
-        return { exhausted: true, msg: 'ATS 检测免费次数已用完，登录后可再用 2 次，升级 Pro 可享每日 5 次。', needLogin: true }
+        return { exhausted: true, msg: 'ATS 检测免费次数已用完，登录后每天可用 2 次，升级 Pro 可享每日 5 次。', needLogin: true }
       }
     } catch {}
     return { exhausted: false, msg: '', needLogin: false }
@@ -344,11 +361,11 @@ function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; 
     if (auth.dailyAtsUsed >= 5)
       return { exhausted: true, msg: '今日 ATS 检测次数已达上限（5 次/天），明天再来吧。', needLogin: false }
   } else if (mem?.plan === 'single') {
-    if (auth.singleAtsUsed >= 5)
-      return { exhausted: true, msg: '单次购买的 ATS 检测（5 次）已用完，升级 Pro 可享每天 5 次。', needLogin: false }
+    if (auth.dailyAtsUsed >= 3)
+      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（3 次/天），明天再来吧。', needLogin: false }
   } else {
-    if (auth.freeAtsUsed >= 2)
-      return { exhausted: true, msg: '已用完 2 次免费 ATS 检测，升级 Pro 可享每天 5 次。', needLogin: false }
+    if (auth.dailyAtsUsed >= 2)
+      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（2 次/天），明天再来吧。', needLogin: false }
   }
   return { exhausted: false, msg: '', needLogin: false }
 }
@@ -406,12 +423,40 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
   const [filename, setFilename] = useState('')
   const [needLogin, setNeedLogin] = useState(false)
   const [goingToEditor, setGoingToEditor] = useState(false)
+  const [cachedFilename, setCachedFilename] = useState<string | null>(null)
   // Track API completion separately from UI phase so progress bar can animate
   const [apiDone, setApiDone] = useState(false)
   const pendingResult = useRef<ATSResult | null>(null)
   const pendingError = useRef<{ msg: string; needLogin: boolean } | null>(null)
 
+  useEffect(() => {
+    setCachedFilename(getCachedResumeName())
+
+    const handler = (e: Event) => {
+      const { name, source } = (e as CustomEvent<{ name: string; source: string }>).detail
+      if (source === 'ats') return
+      setCachedFilename(name)
+    }
+    window.addEventListener(RESUME_CACHED_EVENT, handler)
+    return () => window.removeEventListener(RESUME_CACHED_EVENT, handler)
+  }, [])
+
+  function handleUseCached() {
+    const cached = getCachedATSResult() as ATSResult | null
+    if (cached) {
+      setResult(cached)
+      setFilename(cachedFilename ?? '')
+      setPhase('result')
+      return
+    }
+    const f = getCachedResumeFile()
+    if (f) handleFile(f)
+  }
+
   async function handleFile(file: File) {
+    saveResumeToCache(file)
+    setCachedFilename(file.name)
+    window.dispatchEvent(new CustomEvent(RESUME_CACHED_EVENT, { detail: { name: file.name, source: 'ats' } }))
     setFilename(file.name)
     setPhase('loading')
     setApiDone(false)
@@ -434,6 +479,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
         pendingError.current = { msg: data.error || '分析失败，请重试', needLogin: res.status === 429 }
       } else {
         pendingResult.current = data
+        saveATSResultToCache(data)
         // Store parsed resume so editor can pre-fill without a second API call.
         // Always write the entry (even when AI parse failed) so the editor's from_ats
         // handler always runs. Include original filename for use as document title.
@@ -481,12 +527,12 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
   const hintText = auth.loading
     ? '支持 PDF、Word（.docx）· 不超过 5 MB'
     : !auth.loggedIn
-      ? '未登录免费 1 次 · 登录后可用 2 次'
+      ? '未登录免费 1 次 · 登录后每天可用 2 次'
       : isPro
         ? '会员账户 · 每天 5 次 ATS 检测'
         : isSingle
-          ? '单次购买 · 共 5 次 ATS 检测'
-          : '免费账户 · 共 2 次 ATS 检测（终身）'
+          ? '单次购买 · 每天 3 次 ATS 检测'
+          : '免费账户 · 每天 2 次 ATS 检测'
 
   return (
     <section id="ats" style={{ padding: '88px 0', position: 'relative', overflow: 'hidden', background: 'white' }}>
@@ -517,6 +563,8 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
                     exhaustedMsg={check.msg}
                     needLogin={check.needLogin}
                     onLoginRequest={onLoginRequest}
+                    cachedFilename={cachedFilename}
+                    onUseCached={handleUseCached}
                   />
                 )
               })()}

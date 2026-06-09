@@ -94,7 +94,7 @@ export function ContinueModal({
       <div
         style={{
           padding: "14px 16px",
-          borderRadius: "10px",
+          borderRadius: "14px",
           background: "#f8fafc",
           border: "1px solid #e2e8f0",
           marginBottom: "20px",
@@ -124,7 +124,7 @@ export function ContinueModal({
             background: "#0f172a",
             color: "white",
             border: "none",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: "pointer",
@@ -145,7 +145,7 @@ export function ContinueModal({
             background: "white",
             color: "#334155",
             border: "1.5px solid #e2e8f0",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: "pointer",
@@ -219,7 +219,7 @@ export function DownloadModal({
           gap: "14px",
           padding: "14px 16px",
           border: "2px solid var(--theme-blue)",
-          borderRadius: "10px",
+          borderRadius: "14px",
           cursor: "pointer",
           marginBottom: "10px",
           background: "#e0f0fd",
@@ -245,7 +245,7 @@ export function DownloadModal({
             alignItems: "center",
             gap: "10px",
             padding: "10px 14px",
-            borderRadius: "8px",
+            borderRadius: "12px",
             background: "#fef3c7",
             border: "1px solid #fbbf24",
             marginBottom: "10px",
@@ -258,7 +258,7 @@ export function DownloadModal({
             onClick={onUnlockPro}
             style={{
               padding: "4px 12px",
-              borderRadius: "6px",
+              borderRadius: "10px",
               fontSize: "12px",
               background: "#d4a017",
               color: "#1a1814",
@@ -286,7 +286,7 @@ export function DownloadModal({
               gap: "14px",
               padding: "14px 16px",
               border: `1.5px solid ${enabled ? "#e2e8f0" : "#f1f5f9"}`,
-              borderRadius: "10px",
+              borderRadius: "14px",
               marginBottom: "10px",
               background: "white",
               cursor: enabled ? "pointer" : "default",
@@ -326,7 +326,7 @@ export function DownloadModal({
                   color: "#94a3b8",
                   background: "#f1f5f9",
                   padding: "2px 8px",
-                  borderRadius: "4px",
+                  borderRadius: "10px",
                 }}
               >
                 🔒 Pro
@@ -344,7 +344,7 @@ export function DownloadModal({
           padding: "11px",
           border: "1px solid #e2e8f0",
           background: "transparent",
-          borderRadius: "8px",
+          borderRadius: "12px",
           fontFamily: "var(--font-sans)",
           fontSize: "13px",
           cursor: "pointer",
@@ -626,7 +626,7 @@ export function AIPanel({
           style={{
             width: "22px",
             height: "22px",
-            borderRadius: "6px",
+            borderRadius: "10px",
             background:
               "linear-gradient(135deg,var(--ai-color-1),var(--ai-color-2))",
             display: "flex",
@@ -652,7 +652,7 @@ export function AIPanel({
           style={{
             width: "24px",
             height: "24px",
-            borderRadius: "6px",
+            borderRadius: "10px",
             border: "1px solid #e2e8f0",
             background: "transparent",
             cursor: "pointer",
@@ -722,7 +722,7 @@ export function AIPanel({
                 height: "124px",
                 margin: "0 auto 22px",
                 border: "1.5px solid #e2e8f0",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 overflow: "hidden",
                 background: "#f8fafc",
               }}
@@ -818,7 +818,7 @@ export function AIPanel({
                     paddingBottom: "20px",
                     boxSizing: "border-box",
                     border: `1.5px solid ${jobDesc.length > 3000 ? "#ef4444" : "#e2e8f0"}`,
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                     fontFamily: "var(--font-sans)",
                     fontSize: "12.5px",
                     color: "#0f172a",
@@ -924,7 +924,7 @@ export function AIPanel({
                       onClick={() => onJobDescChange(jd.text)}
                       style={{
                         padding: "3px 9px",
-                        borderRadius: "20px",
+                        borderRadius: "24px",
                         border: "1px solid #e2e8f0",
                         background:
                           jobDesc === jd.text
@@ -964,7 +964,7 @@ export function AIPanel({
               style={{
                 background: "linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 100%)",
                 border: "1px solid #ede9fe",
-                borderRadius: "10px",
+                borderRadius: "14px",
                 padding: "11px 13px",
               }}
             >
@@ -1013,7 +1013,7 @@ export function AIPanel({
                     ? "#94a3b8"
                     : "white",
                 border: "none",
-                borderRadius: "10px",
+                borderRadius: "14px",
                 fontFamily: "var(--font-sans)",
                 fontSize: "13px",
                 fontWeight: 700,
@@ -1048,7 +1048,7 @@ export function AIPanel({
                   padding: "10px 12px",
                   background: "#fef9c3",
                   border: "1px solid #fde047",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                 }}
               >
                 <span
@@ -1064,7 +1064,7 @@ export function AIPanel({
                   onClick={onAnalyzeExhaustedCTA}
                   style={{
                     padding: "4px 12px",
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     border: "none",
                     background: "#0f172a",
                     color: "white",
@@ -1088,7 +1088,7 @@ export function AIPanel({
                   padding: "9px 12px",
                   background: "#f0f9ff",
                   border: "1px solid #bae6fd",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                 }}
               >
                 <span style={{ fontSize: "12px", color: "#0369a1" }}>
@@ -1258,7 +1258,7 @@ export function AIPanel({
                   margin: 0,
                   padding: "10px 12px",
                   background: "#f8fafc",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   border: "1px solid #e2e8f0",
                 }}
               >
@@ -1297,7 +1297,7 @@ export function AIPanel({
                           background: "#fef2f2",
                           border: "1px solid #fecaca",
                           padding: "3px 9px",
-                          borderRadius: "5px",
+                          borderRadius: "12px",
                           fontFamily: "var(--font-sans)",
                         }}
                       >
@@ -1330,7 +1330,7 @@ export function AIPanel({
                         ? "#f8fafc"
                         : "rgba(13,148,136,0.06)",
                       border: `1px solid ${interviewLoading ? "#e2e8f0" : "rgba(13,148,136,0.3)"}`,
-                      borderRadius: "8px",
+                      borderRadius: "12px",
                       cursor: interviewLoading ? "default" : "pointer",
                       fontFamily: "var(--font-sans)",
                       transition: "all 0.2s",
@@ -1380,7 +1380,7 @@ export function AIPanel({
                         padding: "10px 12px",
                         background: "#f8fafc",
                         border: "1px solid #e2e8f0",
-                        borderRadius: showInterviewQ ? "8px 8px 0 0" : "8px",
+                        borderRadius: showInterviewQ ? "12px 12px 0 0" : "12px",
                         cursor: "pointer",
                         transition: "all 0.2s",
                         fontFamily: "var(--font-sans)",
@@ -1397,7 +1397,7 @@ export function AIPanel({
                           style={{
                             width: "18px",
                             height: "18px",
-                            borderRadius: "5px",
+                            borderRadius: "12px",
                             background: "var(--teal)",
                             display: "flex",
                             alignItems: "center",
@@ -1431,7 +1431,7 @@ export function AIPanel({
                         style={{
                           border: "1px solid #e2e8f0",
                           borderTop: "none",
-                          borderRadius: "0 0 8px 8px",
+                          borderRadius: "0 0 12px 12px",
                           background: "#f8fafc",
                           maxHeight: "320px",
                           overflowY: "auto",
@@ -1528,7 +1528,7 @@ export function AIPanel({
                                     margin: "0 12px 8px 37px",
                                     padding: "8px 10px",
                                     background: "rgba(13,148,136,0.07)",
-                                    borderRadius: "6px",
+                                    borderRadius: "10px",
                                     borderLeft: "2px solid var(--teal)",
                                     animation: "answerSlide 0.2s ease",
                                   }}
@@ -1605,7 +1605,7 @@ export function AIPanel({
                         key={s.id}
                         style={{
                           padding: "10px 12px",
-                          borderRadius: "10px",
+                          borderRadius: "14px",
                           border: applied
                             ? "1px solid #bbf7d0"
                             : "1px solid rgba(28,53,240,0.12)",
@@ -1697,7 +1697,7 @@ export function AIPanel({
                                             alignItems: "center",
                                             gap: "8px",
                                             padding: "5px 8px",
-                                            borderRadius: "6px",
+                                            borderRadius: "10px",
                                             cursor: !applied
                                               ? "pointer"
                                               : "default",
@@ -1797,7 +1797,7 @@ export function AIPanel({
                                           ? "white"
                                           : "#94a3b8",
                                       border: "none",
-                                      borderRadius: "6px",
+                                      borderRadius: "10px",
                                       fontFamily: "var(--font-sans)",
                                       fontSize: "12px",
                                       cursor:
@@ -1822,7 +1822,7 @@ export function AIPanel({
                               lineHeight: 1.65,
                               padding: "8px 10px",
                               background: "rgba(0,0,0,0.03)",
-                              borderRadius: "6px",
+                              borderRadius: "10px",
                             }}
                           >
                             {Array.isArray(s.optimizedContent)
@@ -1854,7 +1854,7 @@ export function AIPanel({
                                   lineHeight: 1.55,
                                   padding: "6px 10px",
                                   background: "rgba(0,0,0,0.03)",
-                                  borderRadius: "6px",
+                                  borderRadius: "10px",
                                 }}
                               >
                                 {s.changeDescription}
@@ -2017,7 +2017,7 @@ export function AIPanel({
                                 : "#e2e8f0",
                               color: canApply ? "white" : "#94a3b8",
                               border: "none",
-                              borderRadius: "6px",
+                              borderRadius: "10px",
                               fontFamily: "var(--font-sans)",
                               fontSize: "12px",
                               cursor: canApply ? "pointer" : "not-allowed",
@@ -2046,7 +2046,7 @@ export function AIPanel({
                     "linear-gradient(135deg, var(--ai-color-1), var(--ai-color-2))",
                   color: "white",
                   border: "none",
-                  borderRadius: "10px",
+                  borderRadius: "14px",
                   fontFamily: "var(--font-sans)",
                   fontSize: "13px",
                   fontWeight: 600,
@@ -2067,7 +2067,7 @@ export function AIPanel({
               style={{
                 width: "100%",
                 padding: "10px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 border: "1.5px solid #e2e8f0",
                 background: "transparent",
                 fontFamily: "var(--font-sans)",
@@ -2128,7 +2128,7 @@ export function ImportModal({
             style={{
               marginTop: "24px",
               padding: "8px 24px",
-              borderRadius: "8px",
+              borderRadius: "12px",
               border: "1.5px solid #e2e8f0",
               background: "transparent",
               color: "#64748b",
@@ -2154,7 +2154,7 @@ export function ImportModal({
               style={{
                 width: "30px",
                 height: "30px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 background: "#e0f0fd",
                 border: "1px solid rgba(13,148,136,0.3)",
                 display: "flex",
@@ -2176,7 +2176,7 @@ export function ImportModal({
             style={{
               background: "#f8fafc",
               border: "1px solid #e2e8f0",
-              borderRadius: "10px",
+              borderRadius: "14px",
               padding: "14px 16px",
               marginBottom: "20px",
               display: "flex",
@@ -2209,7 +2209,7 @@ export function ImportModal({
               style={{
                 flex: 1,
                 padding: "12px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 border: "1.5px solid #e2e8f0",
                 background: "transparent",
                 fontFamily: "var(--font-sans)",
@@ -2225,7 +2225,7 @@ export function ImportModal({
               style={{
                 flex: 2,
                 padding: "12px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 border: "none",
                 background:
                   "linear-gradient(135deg, var(--theme-blue), #0c5cbd)",
@@ -2302,7 +2302,7 @@ export function PaymentModal({
               style={{
                 width: "100%",
                 padding: "12px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 background: "var(--theme-blue)",
                 color: "white",
                 border: "none",
@@ -2372,7 +2372,7 @@ export function PaymentModal({
                 height: "140px",
                 background: "white",
                 border: "1px solid #e2e8f0",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2399,7 +2399,7 @@ export function PaymentModal({
             style={{
               width: "100%",
               padding: "12px",
-              borderRadius: "8px",
+              borderRadius: "12px",
               background: loading ? "#94a3b8" : "#07c160",
               color: "white",
               border: "none",
@@ -2417,7 +2417,7 @@ export function PaymentModal({
             style={{
               width: "100%",
               padding: "10px",
-              borderRadius: "8px",
+              borderRadius: "12px",
               border: "1px solid #e2e8f0",
               background: "transparent",
               fontSize: "13px",
@@ -2559,7 +2559,7 @@ export function PhotoCropModal({
 
   const btnBase: React.CSSProperties = {
     padding: "10px 14px",
-    borderRadius: "8px",
+    borderRadius: "12px",
     fontSize: "13px",
     fontWeight: 500,
     cursor: "pointer",
@@ -2625,7 +2625,7 @@ export function PhotoCropModal({
               alignItems: "center",
               gap: "6px",
               padding: "10px 18px",
-              borderRadius: "10px",
+              borderRadius: "14px",
               cursor: "pointer",
               border: `2px solid ${shape === opt.key ? "#6366f1" : "#e2e8f0"}`,
               background: shape === opt.key ? "#f5f3ff" : "white",
@@ -2843,7 +2843,7 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
     sub: "分析简历与目标职位的匹配度，获得针对性建议",
   },
   compress: {
-    title: "一键压缩至 1 页",
+    title: "压缩至 1 页",
     sub: "订阅 Pro 会员，AI 自动精简描述 · 智能字号缩放",
   },
   import_limit: {
@@ -3175,7 +3175,7 @@ export function PaywallModal({
             style={{
               width: "32px",
               height: "32px",
-              borderRadius: "8px",
+              borderRadius: "12px",
               flexShrink: 0,
               border: "1.5px solid #e2e8f0",
               background: "transparent",
@@ -3301,7 +3301,7 @@ export function PaywallModal({
           style={{
             width: "100%",
             padding: "10px",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1.5px solid #e2e8f0",
             background: "white",
             fontFamily: "var(--font-sans)",
@@ -3350,7 +3350,7 @@ export function PaywallModal({
             height: "28px",
             flexShrink: 0,
             marginLeft: "12px",
-            borderRadius: "8px",
+            borderRadius: "12px",
             border: "1.5px solid #e2e8f0",
             background: "transparent",
             cursor: "pointer",
@@ -3374,7 +3374,7 @@ export function PaywallModal({
             gap: "6px",
             marginBottom: "20px",
             background: "#f1f5f9",
-            borderRadius: "10px",
+            borderRadius: "14px",
             padding: "4px",
           }}
         >
@@ -3385,7 +3385,7 @@ export function PaywallModal({
               style={{
                 flex: 1,
                 padding: "9px",
-                borderRadius: "8px",
+                borderRadius: "12px",
                 cursor: "pointer",
                 fontFamily: "var(--font-sans)",
                 fontSize: "13px",
@@ -3435,7 +3435,7 @@ export function PaywallModal({
                     fontWeight: 700,
                     color: "white",
                     background: "#ef4444",
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     padding: "2px 8px",
                   }}
                 >
@@ -3449,7 +3449,7 @@ export function PaywallModal({
                     fontWeight: 700,
                     color: "white",
                     background: "var(--teal)",
-                    borderRadius: "6px",
+                    borderRadius: "10px",
                     padding: "2px 8px",
                   }}
                 >
@@ -3488,7 +3488,7 @@ export function PaywallModal({
               style={{
                 width: "100%",
                 padding: "13px",
-                borderRadius: "10px",
+                borderRadius: "14px",
                 border: "none",
                 background: "#07c160",
                 color: "white",
@@ -3616,7 +3616,7 @@ export function PaywallModal({
                             fontWeight: 700,
                             color: "white",
                             background: "var(--theme-blue)",
-                            borderRadius: "5px",
+                            borderRadius: "12px",
                             padding: "1px 7px",
                             display: "inline-flex",
                             alignItems: "center",
@@ -3634,7 +3634,7 @@ export function PaywallModal({
                             fontWeight: 700,
                             color: "white",
                             background: "var(--teal)",
-                            borderRadius: "5px",
+                            borderRadius: "12px",
                             padding: "1px 7px",
                           }}
                         >
@@ -3681,7 +3681,7 @@ export function PaywallModal({
           <div
             style={{
               background: "#f8fafc",
-              borderRadius: "10px",
+              borderRadius: "14px",
               border: "1px solid #e2e8f0",
               padding: "14px",
               marginBottom: "14px",
@@ -3730,7 +3730,7 @@ export function PaywallModal({
               style={{
                 width: "100%",
                 padding: "13px",
-                borderRadius: "10px",
+                borderRadius: "14px",
                 border: "none",
                 background: "#07c160",
                 color: "white",
@@ -3818,7 +3818,7 @@ export function PaywallModal({
               <div
                 style={{
                   padding: "10px 12px",
-                  borderRadius: "8px",
+                  borderRadius: "12px",
                   background: "#f0fdf4",
                   border: "1px solid #bbf7d0",
                   fontSize: "13px",
@@ -3842,7 +3842,7 @@ export function PaywallModal({
                     style={{
                       flex: 1,
                       padding: "9px 12px",
-                      borderRadius: "8px",
+                      borderRadius: "12px",
                       border: `1.5px solid ${promoError ? "#fca5a5" : "#e2e8f0"}`,
                       fontFamily: "var(--font-sans)",
                       fontSize: "13px",
@@ -3869,7 +3869,7 @@ export function PaywallModal({
                     disabled={promoLoading || !promoCode.trim()}
                     style={{
                       padding: "9px 16px",
-                      borderRadius: "8px",
+                      borderRadius: "12px",
                       border: "none",
                       flexShrink: 0,
                       background: promoCode.trim()
@@ -3962,7 +3962,7 @@ export function StudentModal({
       <label
         style={{
           display: "flex", alignItems: "flex-start", gap: "10px",
-          padding: "14px", borderRadius: "10px",
+          padding: "14px", borderRadius: "14px",
           border: `1.5px solid ${checked ? "var(--theme-blue)" : "#e2e8f0"}`,
           background: checked ? "rgba(0,175,185,0.05)" : "#f8fafc",
           cursor: "pointer", marginBottom: "16px",
@@ -3984,7 +3984,7 @@ export function StudentModal({
         onClick={confirm}
         disabled={!checked}
         style={{
-          width: "100%", padding: "13px", borderRadius: "10px", border: "none",
+          width: "100%", padding: "13px", borderRadius: "14px", border: "none",
           marginBottom: "14px",
           background: checked ? "var(--theme-blue)" : "#e2e8f0",
           color: checked ? "white" : "#94a3b8",
@@ -3996,7 +3996,7 @@ export function StudentModal({
         立即认证
       </button>
 
-      <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0", fontSize: "12px", color: "#15803d", lineHeight: 1.8 }}>
+      <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "12px", border: "1px solid #bbf7d0", fontSize: "12px", color: "#15803d", lineHeight: 1.8 }}>
         ✓ 全场 5 折&nbsp;·&nbsp;✓ 月卡 ¥14.9&nbsp;·&nbsp;年卡 ¥84&nbsp;·&nbsp;✓ 一次认证有效期 1 年
       </div>
     </ModalWrap>
@@ -4036,7 +4036,7 @@ export function GuestModeModal({
             background: "white",
             color: "#334155",
             border: "1.5px solid #e2e8f0",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: "pointer",
@@ -4053,7 +4053,7 @@ export function GuestModeModal({
             background: "#0f172a",
             color: "white",
             border: "none",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: "pointer",
@@ -4129,7 +4129,7 @@ export function SyncModal({
               alignItems: "center",
               gap: "10px",
               padding: "10px 12px",
-              borderRadius: "8px",
+              borderRadius: "12px",
               border: `1.5px solid ${checked.has(e.id) ? "#0f172a" : "#e2e8f0"}`,
               background: checked.has(e.id) ? "#f8fafc" : "white",
               cursor: "pointer",
@@ -4180,7 +4180,7 @@ export function SyncModal({
             background: checked.size > 0 ? "#0f172a" : "#e2e8f0",
             color: checked.size > 0 ? "white" : "#94a3b8",
             border: "none",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: checked.size > 0 ? "pointer" : "not-allowed",
@@ -4197,7 +4197,7 @@ export function SyncModal({
             background: "white",
             color: "#64748b",
             border: "1.5px solid #e2e8f0",
-            borderRadius: "10px",
+            borderRadius: "14px",
             fontSize: "13.5px",
             fontWeight: 600,
             cursor: "pointer",
@@ -4245,7 +4245,7 @@ function ModalWrap({
       <div
         style={{
           background: "white",
-          borderRadius: "16px",
+          borderRadius: "24px",
           padding: "28px",
           width: wide ? "480px" : "420px",
           maxWidth: "100%",
@@ -4294,7 +4294,7 @@ export function NewResumeWizardModal({
   }
 
   const cardBase: React.CSSProperties = {
-    border: '1.5px solid #e2e8f0', borderRadius: '14px',
+    border: '1.5px solid #e2e8f0', borderRadius: '20px',
     padding: '16px 14px', cursor: 'pointer', transition: 'all 0.15s',
     background: 'white', textAlign: 'left' as const,
     display: 'flex', flexDirection: 'column' as const, gap: '4px',
@@ -4307,7 +4307,7 @@ export function NewResumeWizardModal({
       className="no-print"
       style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
     >
-      <div style={{ background: 'white', borderRadius: '20px', padding: '32px 28px 28px', width: '480px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(15,23,42,0.25)', animation: 'fadeUp 0.2s ease' }}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '32px 28px 28px', width: '480px', maxWidth: '100%', boxShadow: '0 20px 60px rgba(15,23,42,0.25)', animation: 'fadeUp 0.2s ease' }}>
         <style>{`@keyframes fadeUp{from{opacity:0;transform:scale(0.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
 
         {/* Header */}
@@ -4351,7 +4351,7 @@ export function NewResumeWizardModal({
               disabled={!userType}
               style={{ width: '100%', padding: '13px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, border: 'none', cursor: userType ? 'pointer' : 'not-allowed', background: userType ? 'linear-gradient(135deg, #0789ec, #0f5fc2)' : '#e2e8f0', color: userType ? 'white' : '#94a3b8', transition: 'all 0.15s', fontFamily: 'var(--font-sans)' }}
             >
-              下一步 →
+              下一步
             </button>
           </>
         )}
@@ -4394,7 +4394,7 @@ export function NewResumeWizardModal({
                 disabled={!industry}
                 style={{ flex: 1, padding: '13px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, border: 'none', cursor: industry ? 'pointer' : 'not-allowed', background: industry ? 'linear-gradient(135deg, #0789ec, #0f5fc2)' : '#e2e8f0', color: industry ? 'white' : '#94a3b8', transition: 'all 0.15s', fontFamily: 'var(--font-sans)' }}
               >
-                开始创建 ✓
+                开始创建
               </button>
             </div>
           </>

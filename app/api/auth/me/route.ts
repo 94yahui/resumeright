@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     const daily_analyze_used   = isSubscriber ? dailyCounts.analyze   : 0
     const daily_translate_used = isSubscriber ? dailyCounts.translate : 0
     const daily_import_used    = dailyCounts.import  // correct for all logged-in users
-    const daily_ats_used       = isSubscriber ? dailyCounts.ats_score : 0
+    const daily_ats_used       = dailyCounts.ats_score
 
     const res = NextResponse.json({
       logged_in: true,

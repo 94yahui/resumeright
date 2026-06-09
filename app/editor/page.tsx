@@ -80,7 +80,7 @@ function cleanDataForPrint(d: ResumeData): ResumeData {
 
 function EditorInner() {
   const searchParams = useSearchParams()
-  const initTemplate = searchParams.get('template') || 'classic-pro'
+  const initTemplate = searchParams.get('template') || 'banner-warm'
   const auth = useAuth()
 
   // ============ Undo/Redo history stack ============
@@ -348,9 +348,17 @@ function EditorInner() {
 
     // Sync free AI-analyze count (max(local, server))
     syncFreeAnalyzeOnLogin(auth.freeAnalyzeUsed)
-    // Sync paid orders into localStorage so getProStatus works cross-device
+    // Sync paid orders into localStorage so getProStatus works cross-device.
+    // After syncing, only fall back to localStorage-derived status if the server
+    // hasn't already confirmed an active subscription — avoids overriding the
+    // server-authoritative state with stale or device-mismatched local data.
+    const membershipAtSync = auth.membership
     syncOrdersFromServer().then(() => {
-      setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+      const isServerSub = !!(membershipAtSync && membershipAtSync.plan !== 'single' &&
+        (!membershipAtSync.expires_at || membershipAtSync.expires_at > Date.now()))
+      if (!isServerSub) {
+        setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
+      }
     })
     // Sync resume history; auto-load most recent entry when nothing is currently open,
     // or when the current entry is an unedited blank (DEMO_DATA, user logged in without making edits)
@@ -462,18 +470,19 @@ function EditorInner() {
             return
           }
           const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
-          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
           setCurrentHistoryId(newId || null)
           setDocTitle(uniqueName)
           setHistory([parsed])
           setHistoryIdx(0)
-          setTemplateId('classic-pro')
+          setTemplateId('banner-warm')
           setColor(undefined)
           setHistoryRefreshKey(k => k + 1)
           setIsCurrentEnglish(looksEnglish(parsed))
           setImportModalState('none')
           setImportingFile('')
+          setLeftPanelTab('tpl')
         })
         .catch((e: Error) => {
           if (importCancelledRef.current) return
@@ -499,16 +508,17 @@ function EditorInner() {
             return
           }
           const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
-          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
           setCurrentHistoryId(newId || null)
           setDocTitle(uniqueName)
           setHistory([parsed])
           setHistoryIdx(0)
-          setTemplateId('classic-pro')
+          setTemplateId('banner-warm')
           setColor(undefined)
           setHistoryRefreshKey(k => k + 1)
           setIsCurrentEnglish(looksEnglish(parsed))
+          setLeftPanelTab('tpl')
 
           if (analysis) {
             setAiAnalysis(analysis)
@@ -544,13 +554,14 @@ function EditorInner() {
           console.log('[ATS import] parsed ResumeData:', { name: resumeData.name, expCount: resumeData.exp?.length, eduCount: resumeData.edu?.length })
           const currentHistory = loadHistory()
           const newName = uniqueHistoryName(filename || raw.name || '我的简历', currentHistory)
-          const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+          const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
           if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
           setHistory([resumeData])
           setHistoryIdx(0)
-          setTemplateId('classic-pro')
+          setTemplateId('banner-warm')
           setDocTitle(newName)
           setNoResumeOpen(false)
+          setLeftPanelTab('tpl')
           setAiPanelOpen(true)
           setAiPanelPhase('entry')
           return
@@ -934,7 +945,7 @@ function EditorInner() {
       return
     }
     const newName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
     if (newId) {
       loadedFromHistoryId.current = newId
       setCurrentHistoryId(newId)
@@ -946,10 +957,11 @@ function EditorInner() {
     }
     setHistory([DEMO_DATA])
     setHistoryIdx(0)
-    setTemplateId('classic-pro')
+    setTemplateId('banner-warm')
     setColor(undefined)
     setDocTitle(newName)
     setIsCurrentEnglish(false)
+    setLeftPanelTab('tpl')
   }, [auth.loggedIn])
 
   // ============ Editor logout ============
@@ -1550,7 +1562,7 @@ ${autoprint ? `<script>
     }
     const newHistorySnap = loadHistory()
     const newName = uniqueHistoryName('我的简历', newHistorySnap)
-    const newId = saveToHistory({ name: newName, data: starterData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: starterData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
     if (auth.loggedIn && newId) {
@@ -1559,7 +1571,7 @@ ${autoprint ? `<script>
     }
     setHistory([starterData])
     setHistoryIdx(0)
-    setTemplateId('classic-pro')
+    setTemplateId('banner-warm')
     setAccentStyleOverride(undefined)
     setFontPairOverride(undefined)
     setColor(undefined)
@@ -1567,6 +1579,7 @@ ${autoprint ? `<script>
     setSelection({ kind: 'none' })
     setNoResumeOpen(false)
     setHistoryRefreshKey(k => k + 1)
+    setLeftPanelTab('tpl')
     showToast('✓ 新简历已创建')
   }, [data, templateId, color, docTitle, noResumeOpen, auth.loggedIn])
 
@@ -1868,15 +1881,16 @@ ${autoprint ? `<script>
       return
     }
     const uniqueName = uniqueHistoryName(name, currentHistory)
-    const newId = saveToHistory({ name: uniqueName, data: importedData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: uniqueName, data: importedData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
     setHistory([importedData])
     setHistoryIdx(0)
-    setTemplateId('classic-pro')
+    setTemplateId('banner-warm')
     setColor(undefined)
     setDocTitle(uniqueName)
     setIsCurrentEnglish(looksEnglish(importedData))
+    setLeftPanelTab('tpl')
     if (loggedInRef.current) {
       void authRefreshRef.current()
     } else {
@@ -1968,14 +1982,14 @@ ${autoprint ? `<script>
         }}>
           <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)' }}>
             <span style={{
-              display: 'inline-block', padding: '1px 6px', borderRadius: '3px',
+              display: 'inline-block', padding: '1px 6px', borderRadius: '8px',
               background: '#f59e0b', color: 'white', fontSize: '10px', fontWeight: 700,
               marginRight: '8px', verticalAlign: 'middle',
             }}>Pro 模板预览</span>
             当前为预览模式 · 升级后可下载无水印 PDF
           </span>
           <button onClick={handleUnlockPro} style={{
-            padding: '5px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+            padding: '5px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
             background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
             cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
           }}>解锁 Pro</button>
@@ -2048,7 +2062,7 @@ ${autoprint ? `<script>
               onClick={() => isMobile ? setLeftOpen(v => !v) : setLeftCollapsed(v => !v)}
               title={isMobile ? '打开菜单' : (leftCollapsed ? '展开左栏' : '收起左栏')}
               style={{
-                width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #e2e8f0',
+                width: '28px', height: '28px', borderRadius: '10px', border: '1px solid #e2e8f0',
                 background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#64748b', flexShrink: 0,
               }}
@@ -2066,7 +2080,7 @@ ${autoprint ? `<script>
                   { icon: <Redo2 size={14} />, onClick: redo, disabled: historyIdx >= history.length - 1, title: '重做' },
                 ] as const).map((btn, i) => (
                   <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
-                    width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #e2e8f0',
+                    width: '28px', height: '28px', borderRadius: '10px', border: '1px solid #e2e8f0',
                     background: 'white', cursor: btn.disabled ? 'default' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: btn.disabled ? '#cbd5e1' : '#64748b', flexShrink: 0,
@@ -2082,7 +2096,7 @@ ${autoprint ? `<script>
             {showWatermark && !isMobile && (
               <span style={{
                 fontSize: '11px', color: '#92400e', background: '#fef3c7',
-                padding: '2px 8px', borderRadius: '4px', fontWeight: 500,
+                padding: '2px 8px', borderRadius: '10px', fontWeight: 500,
               }}>含水印</span>
             )}
             {/* Compact compress button — visible when overflow banner was dismissed */}
@@ -2090,7 +2104,7 @@ ${autoprint ? `<script>
               <button
                 onClick={handleCompress}
                 style={{
-                  padding: '3px 10px', borderRadius: '5px', border: 'none',
+                  padding: '3px 10px', borderRadius: '8px', border: 'none',
                   background: 'linear-gradient(135deg, #f97316, #ef4444)',
                   color: 'white', fontSize: '11px', fontWeight: 700,
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
@@ -2108,7 +2122,7 @@ ${autoprint ? `<script>
                 onClick={handleTranslate}
                 disabled={translateLoading}
                 style={{
-                  padding: '3px 10px', borderRadius: '5px',
+                  padding: '3px 10px', borderRadius: '8px',
                   background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
                   color: 'white',
                   fontSize: '11px', fontWeight: 700,
@@ -2127,7 +2141,7 @@ ${autoprint ? `<script>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
               {([['－', -10], ['＋', 10]] as [string, number][]).map(([l, d]) => (
                 <button key={l} onClick={() => commitZoom(zoomRef.current + d)} style={{
-                  padding: '4px 10px', borderRadius: '6px', fontSize: '13px',
+                  padding: '4px 10px', borderRadius: '10px', fontSize: '13px',
                   cursor: 'pointer', border: '1px solid #e2e8f0',
                   background: 'white', color: '#334155', fontFamily: 'var(--font-sans)',
                 }}>{l}</button>
@@ -2139,7 +2153,7 @@ ${autoprint ? `<script>
                   canvasRef.current.scrollLeft = 0
                 }
               }} style={{
-                padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
+                padding: '4px 10px', borderRadius: '10px', fontSize: '11px',
                 cursor: 'pointer', border: '1px solid #e2e8f0',
                 background: 'white', color: '#64748b', fontFamily: 'var(--font-sans)',
               }}>重置</button>
@@ -2201,7 +2215,7 @@ ${autoprint ? `<script>
                           <button
                             onClick={handleRejectCompressDiffs}
                             style={{
-                              padding: '5px 12px', borderRadius: '6px',
+                              padding: '5px 12px', borderRadius: '10px',
                               border: '1px solid #bae6fd', background: 'white',
                               color: '#0369a1', fontSize: '12px', cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
@@ -2210,7 +2224,7 @@ ${autoprint ? `<script>
                           <button
                             onClick={handleConfirmCompressDiffs}
                             style={{
-                              padding: '5px 14px', borderRadius: '6px', border: 'none',
+                              padding: '5px 14px', borderRadius: '10px', border: 'none',
                               background: '#0284c7', color: 'white',
                               fontSize: '12px', fontWeight: 700, cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
@@ -2219,7 +2233,7 @@ ${autoprint ? `<script>
                         </div>
                       </div>
                       {compressSummaryInfo && (
-                        <div style={{ fontSize: '11.5px', color: '#0c4a6e', background: '#e0f2fe', borderRadius: '6px', padding: '6px 10px', lineHeight: 1.6 }}>
+                        <div style={{ fontSize: '11.5px', color: '#0c4a6e', background: '#e0f2fe', borderRadius: '10px', padding: '6px 10px', lineHeight: 1.6 }}>
                           <span style={{ fontWeight: 600 }}>个人简介：</span>
                           <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '6px' }}>{compressSummaryInfo.oldText}</span>
                           <span style={{ color: '#0369a1' }}>{compressSummaryInfo.newText}</span>
@@ -2265,7 +2279,7 @@ ${autoprint ? `<script>
                       <button
                         onClick={() => updateData({ fontScale: undefined })}
                         style={{
-                          padding: '4px 10px', borderRadius: '6px', border: '1px solid #fed7aa',
+                          padding: '4px 10px', borderRadius: '10px', border: '1px solid #fed7aa',
                           background: 'transparent', color: '#92400e', fontSize: '11.5px',
                           cursor: 'pointer', fontFamily: 'var(--font-sans)',
                         }}
@@ -2274,7 +2288,7 @@ ${autoprint ? `<script>
                     <button
                       onClick={handleCompress}
                       style={{
-                        padding: '5px 14px', borderRadius: '7px', border: 'none',
+                        padding: '5px 14px', borderRadius: '10px', border: 'none',
                         background: 'linear-gradient(135deg, #f97316, #ef4444)',
                         color: 'white', fontSize: '12.5px', fontWeight: 700,
                         cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
@@ -2284,7 +2298,7 @@ ${autoprint ? `<script>
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 14px rgba(249,115,22,0.6)' }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 8px rgba(249,115,22,0.4)' }}
                     >
-                    一键压缩至 1 页
+                    压缩至 1 页
                     </button>
                     <button
                       onClick={() => setCompressWarningDismissed(true)}
@@ -2320,7 +2334,7 @@ ${autoprint ? `<script>
               <button
                 onClick={() => setShowEditorLogin(true)}
                 style={{
-                  padding: '5px 14px', borderRadius: '6px', border: 'none',
+                  padding: '5px 14px', borderRadius: '10px', border: 'none',
                   background: 'var(--highlight)', color: 'white',
                   fontSize: '12px', fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
@@ -2338,12 +2352,12 @@ ${autoprint ? `<script>
               <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>或者在此新建、导入一份简历</div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button onClick={handleCreateNewResume} style={{
-                  padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 600,
                   border: '1.5px solid transparent', background: '#0f172a', color: 'white',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>创建新简历</button>
                 <button onClick={handleImportAttempt} style={{
-                  padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 600,
                   border: '1.5px solid white', background: 'white', color: '#334155',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>导入简历</button>
@@ -2642,7 +2656,7 @@ ${autoprint ? `<script>
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            background: 'white', borderRadius: '16px',
+            background: 'white', borderRadius: '20px',
             padding: '36px 40px', textAlign: 'center',
             boxShadow: '0 20px 60px rgba(15,23,42,0.22)',
             minWidth: '280px',
@@ -2655,7 +2669,7 @@ ${autoprint ? `<script>
               onClick={() => translateAbortRef.current?.abort()}
               style={{
                 marginTop: '24px', padding: '7px 24px',
-                borderRadius: '8px', border: '1px solid #e2e8f0',
+                borderRadius: '12px', border: '1px solid #e2e8f0',
                 background: 'white', color: '#64748b',
                 fontSize: '13px', fontWeight: 500, cursor: 'pointer',
               }}
@@ -2670,7 +2684,7 @@ ${autoprint ? `<script>
         transform: `translateX(-50%) translateY(${toast ? '0' : '60px'})`,
         opacity: toast ? 1 : 0,
         background: 'var(--teal)', color: '#fff',
-        padding: '11px 22px', borderRadius: '10px',
+        padding: '11px 22px', borderRadius: '14px',
         fontSize: '13px', fontWeight: 500, zIndex: 300,
         transition: 'transform 0.3s, opacity 0.3s', pointerEvents: 'none',
         boxShadow: '0 4px 20px rgba(15, 23, 42, 0.25)',
