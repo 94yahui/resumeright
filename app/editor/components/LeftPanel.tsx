@@ -769,7 +769,7 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
     case 'background-pill':
       return (
         <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ background: c, borderRadius: '8px', padding: '3px 7px' }}>
+          <div style={{ background: c, borderRadius: '8px', padding: '3px 7px', display: 'flex', alignItems: 'center' }}>
             <span style={{ ...baseText, color: '#fff' }}>{text}</span>
           </div>
         </div>
