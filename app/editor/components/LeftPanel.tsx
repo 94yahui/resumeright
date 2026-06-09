@@ -875,11 +875,8 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
     onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = '#94a3b8' }}
     onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#e2e8f0' }}
     >
-      <div style={{
-        background: '#f1f5f9', padding: '6px',
-        display: 'flex', justifyContent: 'center',
-      }}>
-        <TemplateThumbnail template={tpl} width={104} />
+      <div style={{ background: '#f1f5f9' }}>
+        <TemplateThumbnail template={tpl} fillWidth />
       </div>
       {isPro && (
         <div style={{
