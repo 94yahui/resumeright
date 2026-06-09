@@ -741,7 +741,7 @@ function SquirclePill({ children, bg }: { children: React.ReactNode; bg: string 
     const apply = () => {
       const w = el.offsetWidth, h = el.offsetHeight
       if (!w || !h) return
-      const r = 1, l = r * 1.528, k = r * 0.569
+      const r = 2, l = r * 1.528, k = r * 0.569
       el.style.clipPath = `path('M ${l} 0 H ${w-l} C ${w-k} 0 ${w} ${k} ${w} ${l} V ${h-l} C ${w} ${h-k} ${w-k} ${h} ${w-l} ${h} H ${l} C ${k} ${h} 0 ${h-k} 0 ${h-l} V ${l} C 0 ${k} ${k} 0 ${l} 0 Z')`
     }
     apply()
