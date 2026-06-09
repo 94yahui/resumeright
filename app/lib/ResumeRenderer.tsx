@@ -770,13 +770,13 @@ export default function ResumeRenderer({
   }
 
   // ============ PHOTO ============
-  const PhotoBlock = ({ size = 90, onDark = false }: { size?: number; onDark?: boolean }) => {
+  const PhotoBlock = ({ size = 100, onDark = false }: { size?: number; onDark?: boolean }) => {
     const meta = data.photoMeta
-    const photoShape = meta?.shape ?? 'circle'
+    const photoShape = meta?.shape ?? 'rounded'
     const PORTRAIT_RATIO = 4 / 3
     const containerW = size
     const containerH = photoShape === 'rounded' ? Math.round(size * PORTRAIT_RATIO) : size
-    const borderRadius = photoShape === 'rounded' ? `${Math.round(size * 0.15)}px` : '50%'
+    const borderRadius = photoShape === 'rounded' ? '0' : '50%'
 
     // Compute rendered image dimensions preserving natural aspect ratio.
     // Without natW/natH (legacy photos), fall back to object-fit: cover on the container.
@@ -790,8 +790,8 @@ export default function ResumeRenderer({
     if (meta && meta.natW && meta.natH) {
       hasMeta = true
       const coverScale = Math.max(contentW / meta.natW, contentH / meta.natH)
-      imgW = Math.round(meta.natW * coverScale * meta.scale)
-      imgH = Math.round(meta.natH * coverScale * meta.scale)
+      imgW = Math.ceil(meta.natW * coverScale * meta.scale)
+      imgH = Math.ceil(meta.natH * coverScale * meta.scale)
       imgLeft = Math.round((contentW - imgW) / 2 + meta.x * contentW)
       imgTop  = Math.round((contentH - imgH) / 2 + meta.y * contentH)
     }
@@ -967,7 +967,7 @@ export default function ResumeRenderer({
           }}>
             {template.showPhoto && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                <PhotoBlock size={88} />
+                <PhotoBlock size={100} />
               </div>
             )}
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -1008,7 +1008,7 @@ export default function ResumeRenderer({
           }}>
             {template.showPhoto && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                <PhotoBlock size={88} />
+                <PhotoBlock size={100} />
               </div>
             )}
             <SkillsBlock />
@@ -1027,7 +1027,7 @@ export default function ResumeRenderer({
           padding: '36px 48px',
           display: 'flex', alignItems: 'center', gap: '24px',
         }}>
-          {template.showPhoto && <PhotoBlock size={96} onDark />}
+          {template.showPhoto && <PhotoBlock size={100} onDark />}
           <div style={{ flex: 1 }}>
             <NameBlock onDark big />
             <div style={{ height: '10px' }} />
@@ -1054,7 +1054,7 @@ export default function ResumeRenderer({
             padding: '24px',
             display: 'flex', alignItems: 'center', gap: '20px',
           }}>
-            {template.showPhoto && <PhotoBlock size={84} />}
+            {template.showPhoto && <PhotoBlock size={100} />}
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
@@ -1077,7 +1077,7 @@ export default function ResumeRenderer({
         {/* Header full-width */}
         <div style={{ padding: '36px 48px 24px', borderBottom: `1px solid ${accent}40` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {template.showPhoto && <PhotoBlock size={80} />}
+            {template.showPhoto && <PhotoBlock size={100} />}
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
@@ -1118,7 +1118,7 @@ export default function ResumeRenderer({
                 <div style={{ height: '10px' }} />
                 <ContactInline />
               </div>
-              <PhotoBlock size={90} />
+              <PhotoBlock size={100} />
             </div>
             <div style={{ marginTop: '18px', borderTop: `2.5px solid ${accent}`, paddingTop: '5px', borderBottom: `1px solid ${accent}40` }} />
           </div>
@@ -1136,7 +1136,7 @@ export default function ResumeRenderer({
         <div style={rootStyle}>
           <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 48px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-              <PhotoBlock size={76} />
+              <PhotoBlock size={100} />
               <div>
                 <NameBlock big />
                 <div style={{ height: '8px' }} />
@@ -1170,7 +1170,7 @@ export default function ResumeRenderer({
                 <ContactInline />
               </div>
             </div>
-            <PhotoBlock size={88} />
+            <PhotoBlock size={100} />
           </div>
           <div style={{ padding: '24px 48px 40px' }}>
             <MainBody />
@@ -1211,7 +1211,7 @@ export default function ResumeRenderer({
         <div style={{ padding: '40px 48px 28px', textAlign: 'center' }}>
           {template.showPhoto && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-              <PhotoBlock size={90} />
+              <PhotoBlock size={100} />
             </div>
           )}
           <NameBlock centered big />
@@ -1235,8 +1235,8 @@ export default function ResumeRenderer({
         {/* Colored band — overflow visible so photo hangs below */}
         <div style={{ backgroundColor: accent, height: '110px', position: 'relative', overflow: 'visible', zIndex: 1 }}>
           {template.showPhoto && (
-            <div style={{ position: 'absolute', bottom: '-44px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
-              <PhotoBlock size={88} />
+            <div style={{ position: 'absolute', bottom: '-50px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
+              <PhotoBlock size={100} />
             </div>
           )}
         </div>
@@ -1244,7 +1244,7 @@ export default function ResumeRenderer({
         {/* Header: spacer for hanging photo + name side-by-side */}
         <div style={{ padding: '12px 48px 0' }}>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
-            {template.showPhoto && <div style={{ width: '88px', height: '44px', flexShrink: 0 }} />}
+            {template.showPhoto && <div style={{ width: '100px', height: '50px', flexShrink: 0 }} />}
             <div style={{ flex: 1, paddingBottom: '6px' }}>
               <NameBlock big />
             </div>
@@ -1275,7 +1275,7 @@ export default function ResumeRenderer({
         }}>
           {template.showPhoto && (
             <div style={{ flexShrink: 0 }}>
-              <PhotoBlock size={80} />
+              <PhotoBlock size={100} />
             </div>
           )}
           <div style={{ flex: 1.2 }}>
@@ -1318,7 +1318,7 @@ export default function ResumeRenderer({
             </div>
             {template.showPhoto && (
               <div style={{ flexShrink: 0, position: 'relative', zIndex: 1 }}>
-                <PhotoBlock size={96} />
+                <PhotoBlock size={100} />
               </div>
             )}
           </div>
@@ -1338,7 +1338,7 @@ export default function ResumeRenderer({
       <div style={{ padding: '40px 48px 24px' }}>
         {template.showPhoto ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <PhotoBlock size={88} />
+            <PhotoBlock size={100} />
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '10px' }} />
