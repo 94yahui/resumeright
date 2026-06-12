@@ -35,11 +35,17 @@ export interface ResumeData {
   photoMeta?: { x: number; y: number; scale: number; natW?: number; natH?: number; shape?: 'circle' | 'rounded' }
   summary: string
 
+  // Basic info fields
+  gender?: string
+  age?: string
+
   // Contact visibility (undefined = visible)
   hideEmail?: boolean
   hidePhone?: boolean
   hideCity?: boolean
   hideWebsite?: boolean
+  hideGender?: boolean
+  hideAge?: boolean
 
   // Visibility flags
   hasExp?: boolean

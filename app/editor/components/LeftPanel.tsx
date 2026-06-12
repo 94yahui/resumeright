@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
-  Trophy, FileCheck, HandHelping, Sparkles, UserRound, Mail, Camera,
+  Trophy, FileCheck, HandHelping, Sparkles, UserRound, Camera,
   Trash2, Lock, Lightbulb, X, Check, Copy, Pencil, GripVertical,
 } from 'lucide-react'
 import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
@@ -433,11 +433,8 @@ export default function LeftPanel({
               个人信息
             </div>
             <div style={{ padding: '0 10px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <button onClick={() => onAddModule('name')} style={infoBtn}>
-                <UserRound size={13} /> 姓名 / 职位
-              </button>
               <button onClick={() => onAddModule('contact')} style={infoBtn}>
-                <Mail size={13} /> 联系方式/基本信息
+                <UserRound size={13} /> 基本信息 & 联系方式
               </button>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button onClick={() => onAddModule('photo')} style={{ ...infoBtn, flex: 1 }}>

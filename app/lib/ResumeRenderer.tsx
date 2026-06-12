@@ -721,9 +721,13 @@ export default function ResumeRenderer({
         .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo !== true)
         .map(makeCustomItem),
     ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
-    const infoItems = (data.customContacts || [])
-      .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo === true)
-      .map(makeCustomItem)
+    const infoItems: { icon: React.ReactNode; text: string; href?: string }[] = [
+      (!data.hideGender && data.gender) && { icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />, text: `性别: ${data.gender}` },
+      (!data.hideAge && data.age) && { icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />, text: `年龄: ${data.age}` },
+      ...(data.customContacts || [])
+        .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo === true)
+        .map(makeCustomItem),
+    ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
 
     const renderItem = (it: { icon: React.ReactNode; text: string; href?: string }, key: string | number) => (
       <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
@@ -844,9 +848,9 @@ export default function ResumeRenderer({
 
   // ============ NAME / JOB TITLE ============
   const NameBlock = ({ onDark = false, centered = false, big = true }: { onDark?: boolean; centered?: boolean; big?: boolean }) => (
-    <div onClick={click({ kind: 'field', field: 'name' })}
+    <div onClick={click({ kind: 'contact' })}
       style={{
-        ...editStyle({ kind: 'field', field: 'name' }),
+        ...editStyle({ kind: 'contact' }),
         padding: interactive ? '4px' : 0,
         margin: interactive ? '-4px' : 0,
         textAlign: centered ? 'center' : 'left',

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Lightbulb, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X } from "lucide-react";
+import { Trash2, ArrowUp, ArrowDown, Plus, Eye, EyeOff, X } from "lucide-react";
 import {
   ResumeData,
   SelectionType,
@@ -45,15 +45,11 @@ export default function RightPanel({
   onMoveEntry,
 }: Props) {
 
-  const [showCustomHelp, setShowCustomHelp] = useState(false)
-
   const headerTitle =
-    selection.kind === "field" && selection.field === "name"
-      ? "个人信息"
-      : selection.kind === "field" && selection.field === "summary"
-        ? "个人简介"
-        : selection.kind === "contact"
-          ? "联系方式/基本信息"
+    selection.kind === "field" && selection.field === "summary"
+      ? "个人简介"
+      : selection.kind === "contact"
+        ? "基本信息 & 联系方式"
           : selection.kind === "skills"
             ? "专业技能"
             : selection.kind === "entry"
@@ -113,220 +109,69 @@ export default function RightPanel({
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
 
-        {/* Name + Job */}
-        {selection.kind === "field" && selection.field === "name" && (
-          <>
-            <Field
-              label="姓名"
-              value={data.name}
-              onChange={(v) => onUpdate({ name: v })}
-            />
-            <Field
-              label="职位 / 标题"
-              value={data.jobtitle}
-              onChange={(v) => onUpdate({ jobtitle: v })}
-            />
-            <div style={tipBox}>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <Lightbulb size={12} color="#64748b" />
-                职位简洁有力，例如"高级前端工程师 · 5年经验"
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Contact */}
+        {/* 基本信息 & 联系方式 panel */}
         {selection.kind === "contact" && (
           <>
-            <ToggleField
-              label="邮箱"
-              value={data.email}
-              onChange={(v) => onUpdate({ email: v })}
-              hidden={!!data.hideEmail}
-              onToggleHide={() => onUpdate({ hideEmail: !data.hideEmail })}
-            />
-            <ToggleField
-              label="手机"
-              value={data.phone}
-              onChange={(v) => onUpdate({ phone: v })}
-              hidden={!!data.hidePhone}
-              onToggleHide={() => onUpdate({ hidePhone: !data.hidePhone })}
-            />
-            <ToggleField
-              label="城市"
-              value={data.city}
-              onChange={(v) => onUpdate({ city: v })}
-              hidden={!!data.hideCity}
-              onToggleHide={() => onUpdate({ hideCity: !data.hideCity })}
-            />
-            {/* Primary website + eye toggle + add-more button */}
+            {/* ── 基本信息 ── */}
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>基本信息</div>
+            <Field label="姓名" value={data.name} onChange={(v) => onUpdate({ name: v })} />
+            <Field label="职位 / 标题" value={data.jobtitle} onChange={(v) => onUpdate({ jobtitle: v })} />
+            <ToggleField label="性别" value={data.gender || ''} onChange={(v) => onUpdate({ gender: v })} hidden={!!data.hideGender} onToggleHide={() => onUpdate({ hideGender: !data.hideGender })} />
+            <ToggleField label="年龄" value={data.age || ''} onChange={(v) => onUpdate({ age: v })} hidden={!!data.hideAge} onToggleHide={() => onUpdate({ hideAge: !data.hideAge })} />
+            {(data.customContacts || []).map((cc, i) => !cc.isInfo ? null : (
+              <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="标题（如：政治面貌）" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'显示':'隐藏'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
+                  <button onClick={() => onUpdate({customContacts:(data.customContacts||[]).filter((_,j)=>j!==i)})} style={{padding:'6px',borderRadius:'10px',border:'1px solid #e2e8f0',background:'white',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}}><X size={12} color="#94a3b8"/></button>
+                </div>
+                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="内容" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+              </div>
+            ))}
+            <button onClick={() => onUpdate({ customContacts: [...(data.customContacts||[]), { label:'', value:'', hidden:false, isInfo:true }] })} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-blue)', display:'flex', alignItems:'center', gap:'3px', fontSize:'11px', fontWeight:600, fontFamily:'var(--font-sans)', marginBottom:'4px' }}>
+              <Plus size={12} /> 添加自定义
+            </button>
+
+            {/* ── 联系方式 ── */}
+            <div style={{ height: '1px', background: '#e2e8f0', margin: '14px 0 12px' }} />
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>联系方式</div>
+            <ToggleField label="邮箱" value={data.email} onChange={(v) => onUpdate({ email: v })} hidden={!!data.hideEmail} onToggleHide={() => onUpdate({ hideEmail: !data.hideEmail })} />
+            <ToggleField label="手机" value={data.phone} onChange={(v) => onUpdate({ phone: v })} hidden={!!data.hidePhone} onToggleHide={() => onUpdate({ hidePhone: !data.hidePhone })} />
+            <ToggleField label="城市" value={data.city} onChange={(v) => onUpdate({ city: v })} hidden={!!data.hideCity} onToggleHide={() => onUpdate({ hideCity: !data.hideCity })} />
             <div style={{ marginBottom: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                 <label style={labelStyle}>网站</label>
-                <button
-                  onClick={() => onUpdate({ hideWebsite: !data.hideWebsite })}
-                  title={data.hideWebsite ? "点击在简历中显示" : "点击在简历中隐藏"}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: data.hideWebsite ? "#94a3b8" : "var(--theme-blue)", display: "flex", alignItems: "center", padding: 0 }}
-                >
+                <button onClick={() => onUpdate({ hideWebsite: !data.hideWebsite })} title={data.hideWebsite ? "点击在简历中显示" : "点击在简历中隐藏"} style={{ background: "none", border: "none", cursor: "pointer", color: data.hideWebsite ? "#94a3b8" : "var(--theme-blue)", display: "flex", alignItems: "center", padding: 0 }}>
                   {data.hideWebsite ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
-              <input
-                value={data.website}
-                onChange={(e) => onUpdate({ website: e.target.value })}
-                style={{ ...inputStyle, opacity: data.hideWebsite ? 0.5 : 1 } as React.CSSProperties}
-                onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
-                onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
-              />
+              <input value={data.website} onChange={(e) => onUpdate({ website: e.target.value })} style={{ ...inputStyle, opacity: data.hideWebsite ? 0.5 : 1 } as React.CSSProperties} onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }} onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }} />
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
-                <button
-                  onClick={() => onUpdate({ extraWebsites: [...(data.extraWebsites || []), ""] })}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--theme-blue)", display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 600, fontFamily: "var(--font-sans)" }}
-                >
+                <button onClick={() => onUpdate({ extraWebsites: [...(data.extraWebsites || []), ""] })} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--theme-blue)", display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 600, fontFamily: "var(--font-sans)" }}>
                   <Plus size={12} /> 添加链接
                 </button>
               </div>
             </div>
-            {/* Extra websites */}
             {(data.extraWebsites || []).map((url, i) => (
               <div key={i} style={{ marginBottom: "10px", display: "flex", gap: "6px", alignItems: "center" }}>
-                <input
-                  value={url}
-                  onChange={(e) => {
-                    const updated = [...(data.extraWebsites || [])]
-                    updated[i] = e.target.value
-                    onUpdate({ extraWebsites: updated })
-                  }}
-                  placeholder="https://..."
-                  style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
-                  onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
-                  onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
-                />
-                <button
-                  onClick={() => onUpdate({ extraWebsites: (data.extraWebsites || []).filter((_, j) => j !== i) })}
-                  style={{ padding: "8px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
-                >
+                <input value={url} onChange={(e) => { const u=[...(data.extraWebsites||[])]; u[i]=e.target.value; onUpdate({extraWebsites:u}) }} placeholder="https://..." style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={(e) => { e.target.style.borderColor="var(--theme-blue)"; e.target.style.background="white" }} onBlur={(e) => { e.target.style.borderColor="#e2e8f0"; e.target.style.background="#f8fafc" }} />
+                <button onClick={() => onUpdate({ extraWebsites: (data.extraWebsites||[]).filter((_,j)=>j!==i) })} style={{ padding:"8px", borderRadius:"10px", border:"1px solid #e2e8f0", background:"white", cursor:"pointer", display:"flex", alignItems:"center" }}>
                   <X size={13} color="#94a3b8" />
                 </button>
               </div>
             ))}
-            {/* Custom fields */}
-            <div style={{ height: '1px', background: '#e2e8f0', margin: '6px 0 12px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: showCustomHelp ? '8px' : '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px', textTransform: 'uppercase' }}>自定义字段</span>
-              <button
-                onClick={() => setShowCustomHelp(v => !v)}
-                title="点击了解如何使用自定义字段"
-                style={{
-                  width: '16px', height: '16px', borderRadius: '50%',
-                  border: showCustomHelp ? '1.5px solid var(--theme-blue)' : '1.5px solid #cbd5e1',
-                  background: showCustomHelp ? 'var(--theme-blue)' : 'transparent',
-                  color: showCustomHelp ? 'white' : '#94a3b8',
-                  fontSize: '10px', fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, lineHeight: 1, fontFamily: 'var(--font-sans)',
-                  transition: 'all 0.15s',
-                }}
-              >?</button>
-            </div>
-            {showCustomHelp && (
-              <div style={{
-                background: '#f0f7ff', border: '1px solid #bfdbfe',
-                borderRadius: '12px', padding: '10px 12px', marginBottom: '10px',
-                fontSize: '12px', color: '#334155', lineHeight: 1.6,
-              }}>
-                <div style={{ fontWeight: 600, marginBottom: '6px', color: '#1e40af' }}>如何使用自定义字段</div>
-                <div style={{ marginBottom: '5px' }}>自定义字段会显示在简历的联系信息区域，可分为两种类型：</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '6px' }}>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <span style={{ padding: '1px 6px', borderRadius: '12px', fontSize: '10px', fontWeight: 700, background: '#eff6ff', color: 'var(--theme-blue)', border: '1px solid var(--theme-blue)', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>联系方式</span>
-                    <span>与邮箱、电话等并排显示，适合 GitHub、个人网站等链接。</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <span style={{ padding: '1px 6px', borderRadius: '12px', fontSize: '10px', fontWeight: 700, background: '#f5f3ff', color: '#7c3aed', border: '1px solid #8b5cf6', flexShrink: 0, alignSelf: 'flex-start', marginTop: '2px' }}>基本信息</span>
-                    <span>单独成组显示，适合年龄、性别、政治面貌等个人信息（部分模板会在此处显示"基本信息"小标题）。</span>
-                  </div>
-                </div>
-                <div style={{ color: '#64748b', fontSize: '11px' }}>点击字段旁的分类标签即可切换类型。</div>
-              </div>
-            )}
-            {(data.customContacts || []).map((cc, i) => (
+            {(data.customContacts || []).map((cc, i) => cc.isInfo ? null : (
               <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input
-                    value={cc.label}
-                    onChange={(e) => {
-                      const updated = [...(data.customContacts || [])]
-                      updated[i] = { ...updated[i], label: e.target.value }
-                      onUpdate({ customContacts: updated })
-                    }}
-                    placeholder="标题（如：GitHub）"
-                    style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
-                    onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
-                    onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
-                  />
-                  <div style={{ display: 'flex', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', flexShrink: 0 }}>
-                    {([
-                      { label: '联系方式', active: !cc.isInfo, value: false as boolean },
-                      { label: '基本信息', active: !!cc.isInfo, value: true as boolean },
-                    ] as const).map(opt => (
-                      <button
-                        key={opt.label}
-                        onClick={() => {
-                          if (opt.active) return
-                          const updated = [...(data.customContacts || [])]
-                          updated[i] = { ...updated[i], isInfo: opt.value }
-                          onUpdate({ customContacts: updated })
-                        }}
-                        style={{
-                          padding: '2px 7px', fontSize: '10px', fontWeight: 600, lineHeight: '16px',
-                          cursor: opt.active ? 'default' : 'pointer', border: 'none',
-                          background: opt.active
-                            ? (opt.value ? '#8b5cf6' : 'var(--theme-blue)')
-                            : '#f8fafc',
-                          color: opt.active ? 'white' : '#94a3b8',
-                          fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-                        }}
-                      >{opt.label}</button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const updated = [...(data.customContacts || [])]
-                      updated[i] = { ...updated[i], hidden: !cc.hidden }
-                      onUpdate({ customContacts: updated })
-                    }}
-                    title={cc.hidden ? '点击在简历中显示' : '点击在简历中隐藏'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: cc.hidden ? '#94a3b8' : 'var(--theme-blue)', display: 'flex', alignItems: 'center', padding: 0, flexShrink: 0 }}
-                  >
-                    {cc.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
-                    onClick={() => onUpdate({ customContacts: (data.customContacts || []).filter((_, j) => j !== i) })}
-                    style={{ padding: '6px', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-                  >
-                    <X size={12} color="#94a3b8" />
-                  </button>
+                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="标题（如：GitHub）" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'显示':'隐藏'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
+                  <button onClick={() => onUpdate({customContacts:(data.customContacts||[]).filter((_,j)=>j!==i)})} style={{padding:'6px',borderRadius:'10px',border:'1px solid #e2e8f0',background:'white',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}}><X size={12} color="#94a3b8"/></button>
                 </div>
-                <input
-                  value={cc.value}
-                  onChange={(e) => {
-                    const updated = [...(data.customContacts || [])]
-                    updated[i] = { ...updated[i], value: e.target.value }
-                    onUpdate({ customContacts: updated })
-                  }}
-                  placeholder="内容或链接"
-                  style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--theme-blue)'; e.target.style.background = 'white' }}
-                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc' }}
-                />
+                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="内容或链接" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
               </div>
             ))}
-            <button
-              onClick={() => onUpdate({ customContacts: [...(data.customContacts || []), { label: '', value: '', hidden: false, isInfo: true }] })}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-blue)', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)', marginTop: '4px' }}
-            >
-              <Plus size={12} /> 添加自定义字段
+            <button onClick={() => onUpdate({ customContacts: [...(data.customContacts||[]), { label:'', value:'', hidden:false, isInfo:false }] })} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-blue)', display:'flex', alignItems:'center', gap:'3px', fontSize:'11px', fontWeight:600, fontFamily:'var(--font-sans)', marginTop:'4px' }}>
+              <Plus size={12} /> 添加自定义
             </button>
           </>
         )}
@@ -547,11 +392,6 @@ const btnDanger: React.CSSProperties = {
   fontFamily: "var(--font-sans)", fontSize: "12px",
   cursor: "pointer", fontWeight: 500,
   display: "flex", alignItems: "center", gap: "6px",
-};
-const tipBox: React.CSSProperties = {
-  marginTop: "14px", padding: "10px 12px",
-  background: "#f8fafc", borderRadius: "10px",
-  fontSize: "11.5px", color: "#64748b", lineHeight: 1.5,
 };
 
 // ============ FIELD COMPONENTS ============
