@@ -29,8 +29,9 @@ body{background:white;font-family:var(--font-sans);}
 }
 .resume-page:last-child{break-after:auto!important;page-break-after:auto!important;}
 .resume-page-num{display:none!important;}
-@page{size:794px 1123px;margin:0;}
+@page{size:210mm 297mm;margin:0;}
 *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+.resume-page [style*="filter"]{filter:none!important;}
 `
 
 const FONT_URL =

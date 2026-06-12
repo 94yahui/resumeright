@@ -314,11 +314,17 @@ export default function LeftPanel({
     }
   }, [historyRefreshKey])
 
-  // Scroll active template card to center of the template list
+  // Scroll active template card to center — only when switching TO the tpl tab, not on template click.
+  // prevTabRef starts as '' (not 'tpl') so the initial mount also triggers centering.
+  const prevTabRef = useRef<string>('')
   useEffect(() => {
+    const prevTab = prevTabRef.current
+    prevTabRef.current = tab
     if (tab !== 'tpl') return
+    if (prevTab === 'tpl') return  // already on tpl tab, templateId changed — don't scroll
     const isPro = proTpls.some(t => t.id === templateId)
     if (isPro) setShowPro(true)
+    // Delay lets React re-render after setShowPro so pro template cards are in the DOM
     const timer = setTimeout(() => {
       const container = scrollContainerRef.current
       if (!container) return
@@ -327,7 +333,7 @@ export default function LeftPanel({
       const cardRect = card.getBoundingClientRect()
       const containerRect = container.getBoundingClientRect()
       const target = container.scrollTop + cardRect.top - containerRect.top - container.clientHeight / 2 + card.offsetHeight / 2
-      container.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+      container.scrollTo({ top: Math.max(0, target), behavior: 'instant' as ScrollBehavior })
     }, 60)
     return () => clearTimeout(timer)
   }, [tab, templateId])
@@ -659,17 +665,6 @@ export default function LeftPanel({
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                          {entry.id === currentHistoryId && (
-                            <div style={{
-                              padding: '4px 8px', borderRadius: '8px', fontSize: '11px',
-                              background: '#e0f0fd', color: 'var(--theme-blue)', fontWeight: 600,
-                              border: '1px solid rgba(13,148,136,0.3)',
-                              display: 'flex', alignItems: 'center', gap: '3px',
-                              whiteSpace: 'nowrap',
-                            }}>
-                              ✦ 当前编辑
-                            </div>
-                          )}
                           <button
                             onClick={e => {
                               e.stopPropagation()

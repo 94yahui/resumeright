@@ -1669,7 +1669,8 @@ ${autoprint ? `<script>
       const estimatedBaseH = (totalH / currentScale) * 0.82
       const rawScale = estimatedBaseH > PAGE_H ? PAGE_H / estimatedBaseH : 1
       const scale = parseFloat(Math.min(0.97, rawScale).toFixed(4))
-      const newData: ResumeData = { ...json.data, fontScale: scale < 1 ? scale : undefined }
+      // json.data was built from { ...data, photo: '', photoMeta: undefined } — restore originals
+      const newData: ResumeData = { ...json.data, photo: data.photo, photoMeta: data.photoMeta, fontScale: scale < 1 ? scale : undefined }
       const hasDiffs = Object.keys(json.bulletDiffs ?? {}).length > 0 || json.summaryChanged
 
       if (!hasDiffs) {
