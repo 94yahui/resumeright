@@ -244,6 +244,7 @@ export default function LeftPanel({
   const [editingLabelValue, setEditingLabelValue] = useState('')
   const labelInputRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [thumbW, setThumbW] = useState(0)
 
   useEffect(() => {
     if (forceTab) setTab(forceTab)
@@ -314,6 +315,18 @@ export default function LeftPanel({
     }
   }, [historyRefreshKey])
 
+  // Measure scroll container width so thumbnails get the right size without ResizeObserver lag.
+  // scrollContainerRef is always visible (not display:none), so clientWidth is always accurate.
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const measure = () => setThumbW(Math.floor((el.clientWidth - 28 - 10) / 2)) // 28=lr padding, 10=gap
+    measure()
+    const obs = new ResizeObserver(measure)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   // Scroll active template card to center — only when switching TO the tpl tab, not on template click.
   // prevTabRef starts as '' (not 'tpl') so the initial mount also triggers centering.
   const prevTabRef = useRef<string>('')
@@ -324,18 +337,22 @@ export default function LeftPanel({
     if (prevTab === 'tpl') return  // already on tpl tab, templateId changed — don't scroll
     const isPro = proTpls.some(t => t.id === templateId)
     if (isPro) setShowPro(true)
-    // Delay lets React re-render after setShowPro so pro template cards are in the DOM
-    const timer = setTimeout(() => {
-      const container = scrollContainerRef.current
-      if (!container) return
-      const card = container.querySelector(`[data-tpl-id="${templateId}"]`) as HTMLElement | null
-      if (!card) return
-      const cardRect = card.getBoundingClientRect()
-      const containerRect = container.getBoundingClientRect()
-      const target = container.scrollTop + cardRect.top - containerRect.top - container.clientHeight / 2 + card.offsetHeight / 2
-      container.scrollTo({ top: Math.max(0, target), behavior: 'instant' as ScrollBehavior })
-    }, 60)
-    return () => clearTimeout(timer)
+    // Double rAF: first fires after display:block takes effect, second after React flushes setShowPro.
+    // Faster and more reliable than a fixed 60ms timeout.
+    let rafId: number
+    const raf1 = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
+        const container = scrollContainerRef.current
+        if (!container) return
+        const card = container.querySelector(`[data-tpl-id="${templateId}"]`) as HTMLElement | null
+        if (!card) return
+        const cardRect = card.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+        const target = container.scrollTop + cardRect.top - containerRect.top - container.clientHeight / 2 + card.offsetHeight / 2
+        container.scrollTo({ top: Math.max(0, target), behavior: 'instant' as ScrollBehavior })
+      })
+    })
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(rafId) }
   }, [tab, templateId])
 
   function formatDate(ts: number): string {
@@ -385,14 +402,15 @@ export default function LeftPanel({
       <div ref={scrollContainerRef} className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
 
         {/* ===== TEMPLATE TAB ===== */}
-        {tab === 'tpl' && (
+        {/* Keep always mounted so thumbnails stay alive; CSS hides when inactive */}
+        <div style={{ display: tab === 'tpl' ? 'block' : 'none' }}>
           <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
             <div style={{ padding: '14px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--theme-blue)' }}>
               免费模板 ({freeTpls.length})
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
               {freeTpls.map(tpl => (
-                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} />
+                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} />
               ))}
             </div>
 
@@ -417,13 +435,13 @@ export default function LeftPanel({
                   return (
                     <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id}
                       onClick={() => onTemplateChange(tpl.id)}
-                      isPro isLocked={!unlocked} />
+                      isPro isLocked={!unlocked} thumbW={thumbW} />
                   )
                 })}
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* ===== MODULE TAB ===== */}
         {tab === 'mod' && (
@@ -851,8 +869,8 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
   }
 }
 
-function TplCard({ tpl, active, onClick, isPro, isLocked }: {
-  tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; isLocked?: boolean
+function TplCard({ tpl, active, onClick, isPro, isLocked, thumbW }: {
+  tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; isLocked?: boolean; thumbW?: number
 }) {
   return (
     <div data-tpl-id={tpl.id} onClick={onClick} style={{
@@ -868,7 +886,7 @@ function TplCard({ tpl, active, onClick, isPro, isLocked }: {
     onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#e2e8f0' }}
     >
       <div style={{ background: '#f1f5f9' }}>
-        <TemplateThumbnail template={tpl} fillWidth />
+        {thumbW ? <TemplateThumbnail template={tpl} width={thumbW} /> : null}
       </div>
       {isPro && (
         <div style={{
