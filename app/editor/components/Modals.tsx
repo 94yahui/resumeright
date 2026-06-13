@@ -1108,7 +1108,7 @@ export function AIPanel({
                 const optimizedRate = Math.min(95, offerRate + 15);
                 const offerColor =
                   offerRate >= 70
-                    ? "#22c55e"
+                    ? "var(--theme-blue)"
                     : offerRate >= 50
                       ? "#eab308"
                       : offerRate >= 30
@@ -1137,7 +1137,7 @@ export function AIPanel({
                       }}
                     >
                       <Target size={9} color="var(--theme-blue)" />{" "}
-                      拿到面试机会预测
+                      工作匹配率
                     </div>
                     <div
                       style={{
@@ -1194,7 +1194,7 @@ export function AIPanel({
                             fontFamily: "'Inter',sans-serif",
                             fontSize: "30px",
                             fontWeight: 800,
-                            color: "#22c55e",
+                            color: "var(--theme-blue)",
                             lineHeight: 1,
                           }}
                         >
@@ -1203,7 +1203,7 @@ export function AIPanel({
                         <div
                           style={{
                             fontSize: "9px",
-                            color: "#22c55e",
+                            color: "var(--theme-blue)",
                             fontWeight: 600,
                             marginTop: "3px",
                           }}
@@ -1226,7 +1226,7 @@ export function AIPanel({
                           width: `${editorAnimRate}%`,
                           height: "100%",
                           background:
-                            "linear-gradient(90deg, var(--theme-blue), #22c55e)",
+                            "linear-gradient(90deg, var(--theme-blue), #0f5fc2)",
                           borderRadius: "2px",
                           transition: "width 1.2s cubic-bezier(0.4,0,0.2,1)",
                         }}
@@ -2874,7 +2874,7 @@ const SUB_BENEFITS = [
   "ATS 检测 5 次/天",
   "岗位匹配分析 & 面试题预测",
   "一键生成英文简历（5 次/天）",
-  "一键 AI 压缩至 1 页",
+  "一键压缩至 1 页",
   "简历智能导入（10 次/天）",
 ];
 

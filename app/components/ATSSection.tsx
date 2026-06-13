@@ -140,8 +140,8 @@ function RadarChart({ dimensions }: { dimensions: ATSDimension[] }) {
 // ── Dimension card ────────────────────────────────────────────────────────────
 function DimCard({ dim }: { dim: ATSDimension }) {
   const pct = dim.score / 20
-  const color = pct >= 0.8 ? '#16a34a' : pct >= 0.6 ? '#d97706' : '#dc2626'
-  const bg    = pct >= 0.8 ? '#f0fdf4' : pct >= 0.6 ? '#fffbeb' : '#fef2f2'
+  const color = pct >= 0.8 ? '#0789ec' : pct >= 0.6 ? '#d97706' : '#dc2626'
+  const bg    = pct >= 0.8 ? '#eff6ff' : pct >= 0.6 ? '#fffbeb' : '#fef2f2'
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: '14px',
@@ -247,7 +247,16 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
         }}
           onMouseEnter={e => { if (!(exhausted && !needLogin)) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' } }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; if (!(exhausted && !needLogin)) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
-        >{hasCached ? '开始 ATS 检测' : '上传你的简历'}</button>
+        >
+          {hasCached ? '开始 ATS 检测' : '上传你的简历'}
+          {hasCached && !exhausted && (
+            <span style={{ marginLeft: '6px', letterSpacing: '-1px' }}>
+              <span style={{ opacity: 1 }}>›</span>
+              <span style={{ opacity: 0.5 }}>›</span>
+              <span style={{ opacity: 0.22 }}>›</span>
+            </span>
+          )}
+        </button>
       )}
 
       {/* ── Inline hint: shown after guest clicks with exhausted quota, or always for logged-in exhausted ── */}
@@ -273,15 +282,15 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
   result: ATSResult; onReset: () => void
   onGoEditor: () => void; goingToEditor: boolean
 }) {
-  const scoreColor = result.totalScore >= 80 ? '#16a34a' : result.totalScore >= 60 ? '#d97706' : '#dc2626'
+  const scoreColor = result.totalScore >= 80 ? '#0789ec' : result.totalScore >= 60 ? '#d97706' : '#dc2626'
   const scoreLabel = result.totalScore >= 80 ? '优秀' : result.totalScore >= 60 ? '良好' : '待改善'
   return (
     <>
       {/* Constrained top */}
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          {result.name && <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '5px' }}>{result.name}</div>}
-          {result.jobtitle && <div style={{ fontSize: '16px', fontWeight: 300, color: '#64748b', letterSpacing: '0.3px' }}>{result.jobtitle}</div>}
+          {result.name && <div style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>{result.name}</div>}
+          {result.jobtitle && <div style={{ fontSize: '20px', fontWeight: 400, color: '#64748b', letterSpacing: '0.3px' }}>{result.jobtitle}</div>}
           <button onClick={onReset} style={{
             marginTop: '14px', padding: '7px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 600,
             border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', cursor: 'pointer', fontFamily: 'var(--font-sans)',
