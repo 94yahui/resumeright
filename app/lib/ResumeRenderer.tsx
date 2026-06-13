@@ -801,6 +801,9 @@ export default function ResumeRenderer({
       imgTop  = Math.round((contentH - imgH) / 2 + meta.y * contentH)
     }
 
+    // Show sample photo when user hasn't uploaded one yet
+    const photoSrc = data.photo || '/virtual_photo.png'
+
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation()
       if (interactive && onPhotoUpload) onPhotoUpload()
@@ -811,7 +814,7 @@ export default function ResumeRenderer({
         style={{
           width: containerW, height: containerH,
           borderRadius,
-          background: data.photo ? 'transparent' : (onDark ? 'rgba(255,255,255,0.15)' : `${accent}15`),
+          background: 'transparent',
           border: `2px solid ${onDark ? 'rgba(255,255,255,0.3)' : accent + '30'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: size * 0.35, color: onDark ? 'rgba(255,255,255,0.7)' : accent,
@@ -820,21 +823,17 @@ export default function ResumeRenderer({
           cursor: interactive ? 'pointer' : 'default',
           position: 'relative',
         }}>
-        {data.photo ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.photo} alt=""
-              style={hasMeta ? {
-                position: 'absolute',
-                width: `${imgW}px`, height: `${imgH}px`,
-                left: `${imgLeft}px`, top: `${imgTop}px`,
-                pointerEvents: 'none', userSelect: 'none',
-              } : {
-                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%',
-              }}
-            />
-          </>
-        ) : '👤'}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photoSrc} alt=""
+          style={hasMeta && data.photo ? {
+            position: 'absolute',
+            width: `${imgW}px`, height: `${imgH}px`,
+            left: `${imgLeft}px`, top: `${imgTop}px`,
+            pointerEvents: 'none', userSelect: 'none',
+          } : {
+            width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%',
+          }}
+        />
         {interactive && !data.photo && (
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -1237,26 +1236,44 @@ export default function ResumeRenderer({
   if (template.layout === 'linkedin-banner') {
     return (
       <div style={rootStyle}>
-        {/* Colored band — overflow visible so photo hangs below */}
-        <div style={{ backgroundColor: accent, height: '110px', position: 'relative', overflow: 'visible', zIndex: 1 }}>
+        {/* Colored band: name+title right inside band, photo left hanging ~60px below */}
+        <div style={{
+          backgroundColor: accent,
+          height: '130px',
+          position: 'relative',
+          overflow: 'visible',
+          zIndex: 1,
+          boxSizing: 'border-box',
+        }}>
+          {/* Photo: hangs 60px below header */}
           {template.showPhoto && (
-            <div style={{ position: 'absolute', bottom: '-50px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
+            <div style={{ position: 'absolute', bottom: '-30px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
               <PhotoBlock size={100} />
             </div>
           )}
+
+          {/* Name + job title: right of photo, bottom-aligned in header */}
+          <div style={{
+            position: 'absolute',
+            left: template.showPhoto ? '168px' : '48px',
+            right: '48px',
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            paddingBottom: '22px',
+          }}>
+            <NameBlock big onDark />
+          </div>
         </div>
 
-        {/* Header: spacer for hanging photo + name side-by-side */}
-        <div style={{ padding: '12px 48px 0' }}>
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
-            {template.showPhoto && <div style={{ width: '100px', height: '50px', flexShrink: 0 }} />}
-            <div style={{ flex: 1, paddingBottom: '6px' }}>
-              <NameBlock big />
-            </div>
+        {/* Contact: starts below photo bottom (60px hang + 8px gap = 68px padding-top) */}
+        <div style={{ padding: '0 48px' }}>
+          <div style={{ paddingTop: '40px', paddingBottom: '12px' }}>
+            <ContactInline />
           </div>
-          <div style={{ height: '10px' }} />
-          <ContactInline />
-          <div style={{ height: '1.5px', background: `${accent}30`, marginTop: '18px' }} />
+          <div style={{ height: '1.5px', background: `${accent}30` }} />
         </div>
 
         <div style={{ padding: '14px 48px 40px' }}>
