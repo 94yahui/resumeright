@@ -259,6 +259,17 @@ export default function ResumeRenderer({
             </div>
           </div>
         )
+      case 'arrow-trio':
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: s(7), marginBottom: s(5) }}>
+            <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1px', flexShrink: 0, lineHeight: 1 }}>
+              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 1 }}>›</span>
+              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 0.45 }}>›</span>
+              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 0.18 }}>›</span>
+            </div>
+          </div>
+        )
       case 'plain-bold':
       default:
         return <div style={{ ...baseProps, fontSize: s(14) }}>{children}</div>
@@ -1038,7 +1049,7 @@ export default function ResumeRenderer({
             <ContactInline onDark />
           </div>
         </div>
-        <div style={{ padding: '32px 48px' }}>
+        <div style={{ padding: '16px 48px' }}>
           <MainBody />
           <SkillsBlock />
         </div>
@@ -1066,7 +1077,7 @@ export default function ResumeRenderer({
             </div>
           </div>
         </div>
-        <div style={{ padding: '28px 48px 40px' }}>
+        <div style={{ padding: '16px 48px 40px' }}>
           <MainBody />
           <SkillsBlock />
         </div>
@@ -1090,7 +1101,7 @@ export default function ResumeRenderer({
           </div>
         </div>
         {/* Two columns */}
-        <div style={{ display: 'flex', padding: '28px 48px 40px', gap: '32px' }}>
+        <div style={{ display: 'flex', padding: '16px 48px 40px', gap: '32px' }}>
           <div style={{ flex: 2 }}>
             <SummaryBlock />
             {effectiveSectionOrder
@@ -1176,7 +1187,7 @@ export default function ResumeRenderer({
             </div>
             <PhotoBlock size={100} />
           </div>
-          <div style={{ padding: '24px 48px 40px' }}>
+          <div style={{ padding: '16px 48px 40px' }}>
             <MainBody />
             <SkillsBlock />
           </div>
@@ -1188,7 +1199,7 @@ export default function ResumeRenderer({
     if (template.photoPlacement === 'large-center') {
       return (
         <div style={rootStyle}>
-          <div style={{ padding: '52px 48px 32px', textAlign: 'center' }}>
+          <div style={{ padding: '52px 48px 0', textAlign: 'center' }}>
             {template.showPhoto && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
                 <PhotoBlock size={120} />
@@ -1201,7 +1212,7 @@ export default function ResumeRenderer({
             </div>
             <div style={{ width: '40px', height: '3px', background: accent, margin: '24px auto 0', borderRadius: '2px' }} />
           </div>
-          <div style={{ padding: '4px 48px 40px' }}>
+          <div style={{ padding: '14px 48px 40px' }}>
             <MainBody />
             <SkillsBlock />
           </div>
@@ -1236,7 +1247,7 @@ export default function ResumeRenderer({
   if (template.layout === 'linkedin-banner') {
     return (
       <div style={rootStyle}>
-        {/* Colored band: name+title right inside band, photo left hanging ~60px below */}
+        {/* Colored band: photo + name/title in shared flex row, center-aligned */}
         <div style={{
           backgroundColor: accent,
           height: '130px',
@@ -1245,30 +1256,25 @@ export default function ResumeRenderer({
           zIndex: 1,
           boxSizing: 'border-box',
         }}>
-          {/* Photo: hangs 60px below header */}
-          {template.showPhoto && (
-            <div style={{ position: 'absolute', bottom: '-30px', left: '48px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
-              <PhotoBlock size={100} />
-            </div>
-          )}
-
-          {/* Name + job title: right of photo, bottom-aligned in header */}
           <div style={{
             position: 'absolute',
-            left: template.showPhoto ? '168px' : '48px',
+            left: '48px',
             right: '48px',
-            top: 0,
-            bottom: 0,
+            bottom: '10px',
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            paddingBottom: '22px',
+            alignItems: 'center',
+            gap: '20px',
           }}>
-            <NameBlock big onDark />
+            {template.showPhoto && (
+              <div style={{ flexShrink: 0, marginBottom: '-30px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
+                <PhotoBlock size={100} />
+              </div>
+            )}
+            <div style={{ marginTop: '10px' }}><NameBlock big onDark /></div>
           </div>
         </div>
 
-        {/* Contact: starts below photo bottom (60px hang + 8px gap = 68px padding-top) */}
+        {/* Contact: starts below photo bottom */}
         <div style={{ padding: '0 48px' }}>
           <div style={{ paddingTop: '40px', paddingBottom: '12px' }}>
             <ContactInline />
@@ -1308,7 +1314,7 @@ export default function ResumeRenderer({
             <ContactInline vertical />
           </div>
         </div>
-        <div style={{ padding: '28px 48px 40px' }}>
+        <div style={{ padding: '16px 48px 40px' }}>
           <MainBody />
           <SkillsBlock />
         </div>
@@ -1326,7 +1332,7 @@ export default function ResumeRenderer({
             <div style={{
               position: 'absolute', top: 0, right: 0,
               width: '260px', height: '220px',
-              background: `linear-gradient(135deg, ${accent}00 30%, ${accent}18 100%)`,
+              background: `linear-gradient(135deg, ${accent}00 30%, ${accent}40 100%)`,
               clipPath: 'polygon(35% 0, 100% 0, 100% 100%, 0 100%)',
               pointerEvents: 'none',
             }} />
@@ -1354,10 +1360,78 @@ export default function ResumeRenderer({
     )
   }
 
+  // ============ LAYOUT: ACCENT STRIPE (left full-height stripe) ============
+  if (template.layout === 'accent-stripe') {
+    return (
+      <div style={{ ...rootStyle, position: 'relative', minHeight: `${pageCount * PAGE_HEIGHT}px` }}>
+        {/* Full-height accent stripe — extends to cover all pages regardless of content length */}
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '8px', background: accent }} />
+        <div style={{ padding: '40px 48px 0' }}>
+          {template.showPhoto ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <PhotoBlock size={100} />
+              <div style={{ flex: 1 }}>
+                <NameBlock big />
+                <div style={{ height: '10px' }} />
+                <ContactInline />
+              </div>
+            </div>
+          ) : (
+            <>
+              <NameBlock big />
+              <div style={{ height: '10px' }} />
+              <ContactInline />
+            </>
+          )}
+          <div style={{ height: '2px', background: `${accent}45`, marginTop: '20px' }} />
+        </div>
+        <div style={{ padding: '14px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: BOTTOM STRIP (colored footer bar) ============
+  if (template.layout === 'bottom-strip') {
+    return (
+      <div style={{ ...rootStyle, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '44px 48px 0' }}>
+          {template.showPhoto ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <PhotoBlock size={100} />
+              <div style={{ flex: 1 }}>
+                <div onClick={click({ kind: 'contact' })} style={{ ...editStyle({ kind: 'contact' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
+                  <div style={{ fontFamily: headingFont, fontSize: s(32), fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{data.name}</div>
+                  {data.jobtitle && <div style={{ fontSize: s(14), fontWeight: 500, color: accent, marginTop: s(4) }}>{data.jobtitle}</div>}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div onClick={click({ kind: 'contact' })} style={{ ...editStyle({ kind: 'contact' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
+              <div style={{ fontFamily: headingFont, fontSize: s(32), fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{data.name}</div>
+              {data.jobtitle && <div style={{ fontSize: s(14), fontWeight: 500, color: accent, marginTop: s(4) }}>{data.jobtitle}</div>}
+            </div>
+          )}
+          <div style={{ height: '1px', background: `${accent}45`, marginTop: '20px' }} />
+        </div>
+        <div style={{ flex: 1, padding: '14px 48px 20px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+        {/* Bottom contact strip */}
+        <div style={{ backgroundColor: accent, padding: '14px 48px' }}>
+          <ContactInline onDark />
+        </div>
+      </div>
+    )
+  }
+
   // ============ LAYOUT: SINGLE CLASSIC (default) ============
   return (
     <div style={rootStyle}>
-      <div style={{ padding: '40px 48px 24px' }}>
+      <div style={{ padding: '40px 48px 0' }}>
         {template.showPhoto ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <PhotoBlock size={100} />
@@ -1376,7 +1450,7 @@ export default function ResumeRenderer({
         )}
         <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
       </div>
-      <div style={{ padding: '8px 48px 40px' }}>
+      <div style={{ padding: '14px 48px 40px' }}>
         <MainBody />
         <SkillsBlock />
       </div>
