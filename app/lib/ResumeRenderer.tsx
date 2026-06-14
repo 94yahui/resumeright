@@ -155,8 +155,8 @@ export default function ResumeRenderer({
         )
       case 'side-icon':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: s(5) }}>
-            <div style={{ width: '8px', height: '8px', background: titleColor, borderRadius: '50%' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: s(8), marginBottom: s(5) }}>
+            <div style={{ width: s(8), height: s(8), background: titleColor, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.3 }} />
           </div>
@@ -710,7 +710,7 @@ export default function ResumeRenderer({
   }
 
   // ============ CONTACT BAR ============
-  const ContactInline = ({ onDark = false, vertical = false }: { onDark?: boolean; vertical?: boolean }) => {
+  const ContactInline = ({ onDark = false, vertical = false, centered = false }: { onDark?: boolean; vertical?: boolean; centered?: boolean }) => {
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#475569'
     const toWebHref = (url: string) =>
       /^https?:\/\//i.test(url) ? url : `https://${url}`
@@ -764,6 +764,7 @@ export default function ResumeRenderer({
           display: 'flex',
           flexDirection: vertical ? 'column' : 'row',
           flexWrap: vertical ? 'nowrap' : 'wrap',
+          justifyContent: centered ? 'center' : undefined,
           gap: vertical ? '6px' : '6px 18px',
           fontSize: s(11.5),
           color: c,
@@ -868,7 +869,7 @@ export default function ResumeRenderer({
       }}>
       <div style={{
         fontFamily: headingFont,
-        fontSize: big ? s(32) : s(22),
+        fontSize: big ? '32px' : '22px',
         fontWeight: 700,
         letterSpacing: '-0.5px',
         lineHeight: 1.1,
@@ -877,10 +878,10 @@ export default function ResumeRenderer({
       {data.jobtitle && (
         <div style={{
           fontFamily: baseFont,
-          fontSize: big ? s(14) : s(12),
+          fontSize: big ? '14px' : '12px',
           fontWeight: 400,
           color: onDark ? 'rgba(255,255,255,0.75)' : '#475569',
-          marginTop: s(4),
+          marginTop: '4px',
         }}>{data.jobtitle}</div>
       )}
     </div>
@@ -1256,27 +1257,31 @@ export default function ResumeRenderer({
           zIndex: 1,
           boxSizing: 'border-box',
         }}>
-          <div style={{
-            position: 'absolute',
-            left: '48px',
-            right: '48px',
-            bottom: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '20px',
-          }}>
-            {template.showPhoto && (
-              <div style={{ flexShrink: 0, marginBottom: '-30px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
-                <PhotoBlock size={100} />
+          {/* Photo: pinned to top of band */}
+          {template.showPhoto && (() => {
+            const isCircle = (data.photoMeta?.shape ?? 'rounded') === 'circle'
+            const photoSize = isCircle ? 110 : 100
+            return (
+              <div style={{ position: 'absolute', left: '48px', top: '36px', zIndex: 2, filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.14))' }}>
+                <PhotoBlock size={photoSize} />
               </div>
-            )}
-            <div style={{ marginTop: '10px' }}><NameBlock big onDark /></div>
-          </div>
+            )
+          })()}
+          {/* Name/title: pinned to bottom of band — same distance regardless of photo shape */}
+          {(() => {
+            const isCircle = (data.photoMeta?.shape ?? 'rounded') === 'circle'
+            const nameLeft = template.showPhoto ? (isCircle ? '178px' : '168px') : '48px'
+            return (
+              <div style={{ position: 'absolute', left: nameLeft, right: '48px', bottom: '14px' }}>
+                <NameBlock big onDark />
+              </div>
+            )
+          })()}
         </div>
 
         {/* Contact: starts below photo bottom */}
         <div style={{ padding: '0 48px' }}>
-          <div style={{ paddingTop: '40px', paddingBottom: '12px' }}>
+          <div style={{ paddingTop: (data.photoMeta?.shape ?? 'rounded') === 'circle' ? '22px' : '48px', paddingBottom: '12px' }}>
             <ContactInline />
           </div>
           <div style={{ height: '1.5px', background: `${accent}30` }} />
@@ -1402,17 +1407,11 @@ export default function ResumeRenderer({
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
               <PhotoBlock size={100} />
               <div style={{ flex: 1 }}>
-                <div onClick={click({ kind: 'contact' })} style={{ ...editStyle({ kind: 'contact' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
-                  <div style={{ fontFamily: headingFont, fontSize: s(32), fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{data.name}</div>
-                  {data.jobtitle && <div style={{ fontSize: s(14), fontWeight: 500, color: accent, marginTop: s(4) }}>{data.jobtitle}</div>}
-                </div>
+                <NameBlock big />
               </div>
             </div>
           ) : (
-            <div onClick={click({ kind: 'contact' })} style={{ ...editStyle({ kind: 'contact' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
-              <div style={{ fontFamily: headingFont, fontSize: s(32), fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{data.name}</div>
-              {data.jobtitle && <div style={{ fontSize: s(14), fontWeight: 500, color: accent, marginTop: s(4) }}>{data.jobtitle}</div>}
-            </div>
+            <NameBlock big />
           )}
           <div style={{ height: '1px', background: `${accent}45`, marginTop: '20px' }} />
         </div>
@@ -1422,7 +1421,7 @@ export default function ResumeRenderer({
         </div>
         {/* Bottom contact strip */}
         <div style={{ backgroundColor: accent, padding: '14px 48px' }}>
-          <ContactInline onDark />
+          <ContactInline onDark centered />
         </div>
       </div>
     )

@@ -66,6 +66,9 @@ function getSidebarOverlay(layout: string): { left: number; right: number } | nu
   if (layout === 'sidebar-left-wide')   return { left: 252, right: 0 }
   if (layout === 'sidebar-left-narrow') return { left: 210, right: 0 }
   if (layout === 'sidebar-right')       return { left: 0,   right: 210 }
+  // accent-stripe has an 8px decorative stripe on the left that must fill the full page height.
+  // Use the sidebar overlay approach so the stripe is never clipped by overflow:hidden.
+  if (layout === 'accent-stripe')       return { left: 8,   right: 0 }
   return null
 }
 

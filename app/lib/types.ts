@@ -439,13 +439,6 @@ export const THUMB_DATA: ResumeData = {
       date: '2023',
       bullets: [],
     },
-    {
-      id: 'aw2',
-      title: 'ACM-ICPC 亚洲区域赛铜奖',
-      sub: '国际大学生程序设计竞赛',
-      date: '2019',
-      bullets: [],
-    },
   ],
   cert: [
     {

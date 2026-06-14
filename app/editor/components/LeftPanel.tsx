@@ -736,6 +736,7 @@ const ACCENT_STYLES: { value: AccentStyle; label: string }[] = [
   { value: 'thin-line',     label: '细线底框' },
   { value: 'double-line',   label: '双线夹标题' },
   { value: 'triple-bar',    label: '渐变竖条' },
+  { value: 'arrow-trio',   label: '渐隐箭头' },
   { value: 'gradient-band', label: '渐变色带' },
   { value: 'flanked-line',  label: '双侧横线' },
   { value: 'slash-prefix',  label: '斜杠前缀' },
@@ -826,6 +827,17 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
             <div style={{ width: '4px', height: '10px', background: c }} />
             <div style={{ width: '3px', height: '10px', background: c, opacity: 0.6 }} />
             <div style={{ width: '2px', height: '10px', background: c, opacity: 0.3 }} />
+          </div>
+        </div>
+      )
+    case 'arrow-trio':
+      return (
+        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={baseText}>{text}</div>
+          <div style={{ display: 'flex', gap: '1px', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}>
+            <span style={{ fontSize: '11px', color: c, opacity: 1 }}>›</span>
+            <span style={{ fontSize: '11px', color: c, opacity: 0.55 }}>›</span>
+            <span style={{ fontSize: '11px', color: c, opacity: 0.22 }}>›</span>
           </div>
         </div>
       )

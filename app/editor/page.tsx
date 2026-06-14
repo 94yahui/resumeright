@@ -196,7 +196,6 @@ function EditorInner() {
   const appliedAtHistoryIdxRef = useRef<Map<string, number>>(new Map())
   const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | null>(null)
   const translateAbortRef = useRef<AbortController | null>(null)
-  const compressAbortRef = useRef<AbortController | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -813,6 +812,16 @@ function EditorInner() {
   const updateData = useCallback((patch: Partial<ResumeData>) => {
     setData(prev => ({ ...prev, ...patch }))
   }, [setData])
+
+  // Patch the current history entry in-place — does NOT add a new undo step.
+  // Used by the post-compress correction so that undo always reverts to pre-compress state.
+  const replaceCurrentData = useCallback((patch: Partial<ResumeData>) => {
+    setHistory(prev => {
+      const updated = [...prev]
+      updated[historyIdx] = { ...updated[historyIdx], ...patch }
+      return updated
+    })
+  }, [historyIdx])
 
   const updateEntry = useCallback((sec: SectionKey, idx: number, patch: Partial<Entry>) => {
     setData(prev => {
@@ -1604,13 +1613,9 @@ ${autoprint ? `<script>
 
   const [translateLoading, setTranslateLoading] = useState(false)
   const [isCurrentEnglish, setIsCurrentEnglish] = useState(false)
-  const [compressPhase, setCompressPhase] = useState<'idle' | 'loading' | 'ai-review'>('idle')
-  const [compressBulletDiffs, setCompressBulletDiffs] = useState<Record<string, string[]>>({})
-  const [compressSummaryInfo, setCompressSummaryInfo] = useState<{ oldText: string; newText: string } | null>(null)
-  const pendingCompressCleanRef = useRef<ResumeData | null>(null)
+  const [compressPhase, setCompressPhase] = useState<'idle' | 'loading'>('idle')
   const [compressWarningDismissed, setCompressWarningDismissed] = useState(false)
-  const [postCompressCheck, setPostCompressCheck] = useState(0)
-  const postCompressDataRef = useRef<ResumeData | null>(null)
+  const [postScaleCheck, setPostScaleCheck] = useState(0)
 
   // ============ One-page compress ============
   const PAGE_H = 1123
@@ -1620,8 +1625,25 @@ ${autoprint ? `<script>
   // Auto-show banner again when content starts overflowing again after being fixed
   useEffect(() => { if (pageCount <= 1) setCompressWarningDismissed(false) }, [pageCount])
 
+  // Post-render correction: after font scale is applied and layout reflows,
+  // re-measure and tighten if still overflowing (text reflow is non-linear).
+  // Uses replaceCurrentData so the correction shares one undo step with the initial compress.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!postScaleCheck) return
+    const id = setTimeout(() => {
+      const totalH = canvasTotalHeightRef.current
+      if (totalH > PAGE_H) {
+        const cs = data.fontScale ?? 1
+        const adj = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
+        if (adj < cs) { replaceCurrentData({ fontScale: adj }); return }
+      }
+      showToast('✓ 已压缩至 1 页（可撤销）')
+    }, 350)
+    return () => clearTimeout(id)
+  }, [postScaleCheck])
 
-  const handleCompress = useCallback(async () => {
+  const handleCompress = useCallback(() => {
     if (!auth.loggedIn) {
       pendingLoginActionRef.current = 'compress'
       setShowEditorLogin(true)
@@ -1636,96 +1658,19 @@ ${autoprint ? `<script>
     }
     if (compressPhase !== 'idle') return
 
-    setCompressPhase('loading')
-    try {
-      const totalH = canvasTotalHeightRef.current
-      const pct = totalH > 0 ? (totalH - PAGE_H) / PAGE_H * 100 : 0
-      const currentScale = data.fontScale ?? 1
-
-      if (pct <= 35) {
-        // Pure font scale — one-shot, no AI needed
-        const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
-        updateData({ fontScale: scale })
-        setCompressPhase('idle')
-        showToast('✓ 已压缩至 1 页（可撤销）')
-        return
-      }
-
-      // AI text trim path (overflow >35%)
-      const abortCtrl = new AbortController()
-      compressAbortRef.current = abortCtrl
-      const res = await fetch('/api/ai/compress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, deviceId }),
-        signal: abortCtrl.signal,
-      })
-      compressAbortRef.current = null
-      if (!res.ok) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
-      const json = await res.json()
-      if (!json.data) { showToast('AI 压缩失败，请稍后重试'); setCompressPhase('idle'); return }
-
-      // Estimate font scale after AI trim (~18% text reduction)
-      const estimatedBaseH = (totalH / currentScale) * 0.82
-      const rawScale = estimatedBaseH > PAGE_H ? PAGE_H / estimatedBaseH : 1
-      const scale = parseFloat(Math.min(0.97, rawScale).toFixed(4))
-      // json.data was built from { ...data, photo: '', photoMeta: undefined } — restore originals
-      const newData: ResumeData = { ...json.data, photo: data.photo, photoMeta: data.photoMeta, fontScale: scale < 1 ? scale : undefined }
-      const hasDiffs = Object.keys(json.bulletDiffs ?? {}).length > 0 || json.summaryChanged
-
-      if (!hasDiffs) {
-        postCompressDataRef.current = newData
-        setData(newData)
-        setCompressPhase('idle')
-        setPostCompressCheck(n => n + 1)
-      } else {
-        // Show diffs for user review before applying
-        pendingCompressCleanRef.current = newData
-        setCompressBulletDiffs(json.bulletDiffs ?? {})
-        setCompressSummaryInfo(json.summaryChanged ? { oldText: json.summaryOld ?? '', newText: json.summaryNew ?? '' } : null)
-        setCompressPhase('ai-review')
-      }
-    } catch (e: unknown) {
-      if (e instanceof Error && e.name === 'AbortError') { setCompressPhase('idle'); return }
-      showToast('压缩失败，请稍后重试')
-      setCompressPhase('idle')
-    }
-  }, [data, deviceId, currentHistoryId, updateData, setData, compressPhase, auth.loggedIn])
-
-  const handleConfirmCompressDiffs = useCallback(() => {
-    const pending = pendingCompressCleanRef.current
-    if (!pending) return
-    pendingCompressCleanRef.current = null
-    setData(pending)
-    setCompressBulletDiffs({})
-    setCompressSummaryInfo(null)
-    setCompressPhase('idle')
-    postCompressDataRef.current = pending
-    setPostCompressCheck(n => n + 1)
-  }, [setData])
-
-  const handleRejectCompressDiffs = useCallback(() => {
-    pendingCompressCleanRef.current = null
-    setCompressBulletDiffs({})
-    setCompressSummaryInfo(null)
-    setCompressPhase('idle')
-  }, [])
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const pending = postCompressDataRef.current
-    if (!pending) return
-    postCompressDataRef.current = null
     const totalH = canvasTotalHeightRef.current
-    if (totalH > PAGE_H) {
-      const cs = pending.fontScale ?? 1
-      const adjusted = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
-      if (adjusted < 1) {
-        updateData({ fontScale: adjusted })
-      }
+    const pct = totalH > 0 ? (totalH - PAGE_H) / PAGE_H * 100 : 0
+    const currentScale = data.fontScale ?? 1
+
+    if (pct <= 35) {
+      const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
+      updateData({ fontScale: scale })
+      setPostScaleCheck(n => n + 1)
+    } else {
+      showToast('内容超出较多，建议删减部分经历条目或缩短描述后再压缩')
     }
-    showToast('✓ 已压缩至 1 页（可撤销）')
-  }, [postCompressCheck])
+  }, [data.fontScale, updateData, compressPhase, auth.loggedIn])
+
 
   const handleTranslate = useCallback(async () => {
     if (!auth.loggedIn) {
@@ -2161,91 +2106,6 @@ ${autoprint ? `<script>
             </div>
           </div>
 
-          {/* AI compress banner — animates in when loading or reviewing diffs */}
-          {(() => {
-            const shown = (compressPhase === 'loading' || compressPhase === 'ai-review') && !noResumeOpen
-            return (
-              <div style={{
-                overflow: 'hidden',
-                maxHeight: shown ? '140px' : '0',
-                flexShrink: 0,
-                pointerEvents: shown ? 'auto' : 'none',
-                transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
-              }}>
-                <div className="no-print" style={{
-                  background: '#f0f9ff', borderBottom: '2px solid #bae6fd',
-                  padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px',
-                  opacity: shown ? 1 : 0,
-                  transform: shown ? 'translateY(0)' : 'translateY(-8px)',
-                  transition: 'opacity 0.22s ease, transform 0.26s ease',
-                }}>
-                  <style>{`@keyframes cmpSpin{to{transform:rotate(360deg)}}`}</style>
-                  {compressPhase === 'loading' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minHeight: '28px' }}>
-                      <div style={{
-                        width: '14px', height: '14px', borderRadius: '50%',
-                        border: '2px solid rgba(3,105,161,0.22)',
-                        borderTopColor: '#0369a1', flexShrink: 0,
-                        animation: 'cmpSpin 0.75s linear infinite',
-                      }} />
-                      <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
-                        AI 正在分析并精简内容，请稍候…
-                      </span>
-                      <button
-                        onClick={() => { compressAbortRef.current?.abort(); setCompressPhase('idle') }}
-                        title="停止 AI 精简"
-                        style={{
-                          marginLeft: 'auto', width: '22px', height: '22px', borderRadius: '50%',
-                          border: '1px solid #bae6fd', background: 'transparent',
-                          color: '#0369a1', fontSize: '13px', lineHeight: 1,
-                          cursor: 'pointer', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', flexShrink: 0, opacity: 0.8,
-                          transition: 'opacity 0.15s',
-                        }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8' }}
-                      >×</button>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
-                          ✨ AI 建议精简以下内容（划线 = 删除，橙色 = 修改后）
-                        </span>
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexShrink: 0 }}>
-                          <button
-                            onClick={handleRejectCompressDiffs}
-                            style={{
-                              padding: '5px 12px', borderRadius: '10px',
-                              border: '1px solid #bae6fd', background: 'white',
-                              color: '#0369a1', fontSize: '12px', cursor: 'pointer',
-                              fontFamily: 'var(--font-sans)',
-                            }}
-                          >取消</button>
-                          <button
-                            onClick={handleConfirmCompressDiffs}
-                            style={{
-                              padding: '5px 14px', borderRadius: '10px', border: 'none',
-                              background: '#0284c7', color: 'white',
-                              fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                              fontFamily: 'var(--font-sans)',
-                            }}
-                          >应用精简</button>
-                        </div>
-                      </div>
-                      {compressSummaryInfo && (
-                        <div style={{ fontSize: '11.5px', color: '#0c4a6e', background: '#e0f2fe', borderRadius: '10px', padding: '6px 10px', lineHeight: 1.6 }}>
-                          <span style={{ fontWeight: 600 }}>个人简介：</span>
-                          <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: '6px' }}>{compressSummaryInfo.oldText}</span>
-                          <span style={{ color: '#0369a1' }}>{compressSummaryInfo.newText}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
 
           {/* Overflow warning banner — animates out when compress starts */}
           {(() => {
@@ -2399,7 +2259,7 @@ ${autoprint ? `<script>
                   onReorderSection={reorderEntries}
                   showWatermark={showWatermark}
                   aiSuggestionSections={aiSuggestionSections}
-                  bulletDiffs={compressPhase === 'ai-review' ? compressBulletDiffs : bulletDiffs}
+                  bulletDiffs={bulletDiffs}
                   pendingSkills={pendingSkills}
                   isEnglish={isCurrentEnglish}
                 />

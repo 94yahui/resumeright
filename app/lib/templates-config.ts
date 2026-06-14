@@ -10,6 +10,8 @@ export type LayoutType =
   | 'linkedin-banner'
   | 'namecard-header'
   | 'diagonal-photo'
+  | 'accent-stripe'
+  | 'bottom-strip'
 
 
 export type AccentStyle =
@@ -25,6 +27,7 @@ export type AccentStyle =
   | 'flanked-line'
   | 'slash-prefix'
   | 'highlight-mark'
+  | 'arrow-trio'
 
 export type FontPair =
   | 'modern-sans'
@@ -1005,7 +1008,7 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
 
   // single-centered
   { id: 'pro-triple-ctr-sans', name: '三竖居中', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false, tag: '设计·居中', desc: '居中排版配三竖节标题，现代感十足' },
-  { id: 'pro-triple-ctr-photo', name: '三竖居中照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'right', tag: '设计·照片', desc: '居中配头像与三竖标题，个性鲜明' },
+  { id: 'pro-triple-ctr-photo', name: '三竖·并排照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'right', tag: '设计·照片', desc: '名字与头像并排，三竖节标题，个性鲜明' },
   { id: 'pro-triple-ctr-photo-nophoto', name: '三竖居中（无照片）', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: false, tag: '设计·居中', desc: '居中排版配三竖标题，个性鲜明' },
   { id: 'pro-triple-ctr-serif', name: '三竖居中衬线', categories: ['design', 'finance'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#1e293b', fontPair: 'serif-heading', showPhoto: false, tag: '学术·设计', desc: '衬线居中排版配三竖节标题，典雅大气' },
   { id: 'pro-triple-ctr-serif-ph', name: '三竖居中衬线照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'triple-bar', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: true, photoPlacement: 'right', tag: '艺术·照片', desc: '衬线居中三竖配头像，文艺质感' },
@@ -1062,7 +1065,7 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
   { id: 'pro-grad-ctr-sans', name: '渐变居中', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false, tag: '设计·渐变', desc: '居中排版配渐变带节标题，现代感十足' },
   { id: 'pro-grad-ctr-photo', name: '渐变居中照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#b45309', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'right', tag: '创意·照片', desc: '居中渐变带配头像，创意设计感' },
   { id: 'pro-grad-ctr-serif', name: '渐变居中衬线', categories: ['design', 'finance'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#1e293b', fontPair: 'serif-heading', showPhoto: false, tag: '学术·典雅', desc: '衬线居中渐变带，学术典雅风格' },
-  { id: 'pro-grad-ctr-serif-ph', name: '渐变居中衬线照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: true, photoPlacement: 'right', tag: '艺术·照片', desc: '衬线居中渐变带配头像，文艺质感' },
+  { id: 'pro-grad-ctr-serif-ph', name: '渐变衬线·并排照片', categories: ['design', 'general'], free: false, layout: 'single-centered', accentStyle: 'gradient-band', accentColor: '#15803d', fontPair: 'serif-heading', showPhoto: true, photoPlacement: 'right', tag: '艺术·照片', desc: '名字与头像并排，衬线渐变带节标题，文艺质感' },
 
   // sidebar-left-narrow
   { id: 'pro-grad-nrw-sans', name: '渐变窄栏', categories: ['general', 'tech'], free: false, layout: 'sidebar-left-narrow', accentStyle: 'gradient-band', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false, tag: '通用·现代', desc: '左窄栏渐变带节标题，清爽现代' },
@@ -1290,6 +1293,34 @@ const _ALL_TEMPLATES: TemplateConfig[] = [
     tag: '设计·创意·照片',
     desc: '紫色斜切装饰块配头像，胶囊节标题，设计感十足',
   },
+
+  // ── accent-stripe (左侧全高色带) ──
+  { id: 'pro-stripe-slate',   name: '色带·经典',  categories: ['general', 'finance'], free: false, layout: 'accent-stripe', accentStyle: 'left-bar',       accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: false, tag: '通用·简洁·ATS',  desc: '左侧竖线贯穿全页，左栏标题，专业内敛' },
+  { id: 'pro-stripe-teal',    name: '色带·清爽',  categories: ['general', 'tech'],    free: false, layout: 'accent-stripe', accentStyle: 'underline-bar',  accentColor: '#0f766e', fontPair: 'modern-sans',   showPhoto: false, tag: '科技·清爽',       desc: '色带贯穿，下划线节标题，清爽现代' },
+  { id: 'pro-stripe-serif',   name: '色带·衬线',  categories: ['finance', 'general'], free: false, layout: 'accent-stripe', accentStyle: 'thin-line',      accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '金融·典雅',       desc: '色带配衬线字体，细线节标题，沉稳典雅' },
+  { id: 'pro-stripe-photo',   name: '色带·照片',  categories: ['general', 'tech'],    free: false, layout: 'accent-stripe', accentStyle: 'left-bar',       accentColor: '#7c3aed', fontPair: 'modern-sans',   showPhoto: true,  tag: '通用·照片',       desc: '色带配头像，左栏节标题，个性与专业兼具' },
+  { id: 'pro-stripe-mono',    name: '色带·等宽',  categories: ['tech'],               free: false, layout: 'accent-stripe', accentStyle: 'slash-prefix',   accentColor: '#14532d', fontPair: 'mono-accent',   showPhoto: false, tag: '开发·极客',       desc: '色带等宽字体，斜杠节标题，极客程序员风' },
+  { id: 'pro-stripe-arrow',   name: '色带·箭头',  categories: ['general', 'design'],  free: false, layout: 'accent-stripe', accentStyle: 'arrow-trio',     accentColor: '#c2410c', fontPair: 'modern-sans',   showPhoto: false, tag: '设计·运营',       desc: '色带配渐隐箭头节标题，活力醒目' },
+
+  // ── bottom-strip (底部色带) ──
+  { id: 'pro-bottom-navy',    name: '底栏·商务',  categories: ['general', 'finance'], free: false, layout: 'bottom-strip',  accentStyle: 'underline-bar',  accentColor: '#1e3a8a', fontPair: 'modern-sans',   showPhoto: false, tag: '金融·商务',       desc: '底部色条，联系信息居底，大名字顶端，商务大气' },
+  { id: 'pro-bottom-teal',    name: '底栏·简约',  categories: ['general', 'tech'],    free: false, layout: 'bottom-strip',  accentStyle: 'left-bar',       accentColor: '#0d9488', fontPair: 'modern-sans',   showPhoto: false, tag: '科技·清爽',       desc: '底部色条，左栏节标题，职位名以主题色标出' },
+  { id: 'pro-bottom-serif',   name: '底栏·衬线',  categories: ['finance', 'general'], free: false, layout: 'bottom-strip',  accentStyle: 'thin-line',      accentColor: '#7f1d1d', fontPair: 'serif-heading', showPhoto: false, tag: '咨询·法律',       desc: '底部色条衬线字体，细线节标题，正式庄重' },
+  { id: 'pro-bottom-photo',   name: '底栏·照片',  categories: ['general', 'design'],  free: false, layout: 'bottom-strip',  accentStyle: 'underline-bar',  accentColor: '#374151', fontPair: 'modern-sans',   showPhoto: true,  tag: '通用·照片',       desc: '底部色条配头像，职位名以主题色标出，简洁个性' },
+  { id: 'pro-bottom-arrow',   name: '底栏·箭头',  categories: ['design', 'general'],  free: false, layout: 'bottom-strip',  accentStyle: 'arrow-trio',     accentColor: '#6d28d9', fontPair: 'modern-sans',   showPhoto: false, tag: '设计·创意',       desc: '底部色条，渐隐箭头节标题，职位名主题色点睛' },
+
+  // ── arrow-trio 跨布局组合 ──
+  { id: 'pro-arrow-cls-sans',   name: '箭头·单栏',     categories: ['general', 'tech'],    free: false, layout: 'single-classic',      accentStyle: 'arrow-trio', accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: false, tag: '通用·简洁',       desc: '渐隐三箭头节标题，单栏经典布局，简洁有力' },
+  { id: 'pro-arrow-cls-serif',  name: '箭头·衬线',     categories: ['finance', 'general'], free: false, layout: 'single-classic',      accentStyle: 'arrow-trio', accentColor: '#1e3a8a', fontPair: 'serif-heading', showPhoto: false, tag: '金融·典雅',       desc: '衬线字体配渐隐箭头节标题，典雅沉稳' },
+  { id: 'pro-arrow-cls-photo',  name: '箭头·照片',     categories: ['general', 'tech'],    free: false, layout: 'single-classic',      accentStyle: 'arrow-trio', accentColor: '#0f766e', fontPair: 'modern-sans',   showPhoto: true,  tag: '通用·照片',       desc: '渐隐箭头单栏配头像，清爽现代' },
+  { id: 'pro-arrow-cls-mono',   name: '箭头·等宽',     categories: ['tech'],               free: false, layout: 'single-classic',      accentStyle: 'arrow-trio', accentColor: '#14532d', fontPair: 'mono-accent',   showPhoto: false, tag: '开发·工程师',     desc: '等宽字体渐隐箭头，代码注释风格极客' },
+  { id: 'pro-arrow-nrw',        name: '箭头·窄栏',     categories: ['general', 'tech'],    free: false, layout: 'sidebar-left-narrow', accentStyle: 'arrow-trio', accentColor: '#7c3aed', fontPair: 'modern-sans',   showPhoto: false, tag: '侧栏·个性',       desc: '左窄栏配渐隐箭头节标题，层次分明' },
+  { id: 'pro-arrow-nrw-photo',  name: '箭头·窄栏照片', categories: ['general', 'design'],  free: false, layout: 'sidebar-left-narrow', accentStyle: 'arrow-trio', accentColor: '#0e7490', fontPair: 'modern-sans',   showPhoto: true,  tag: '侧栏·照片',       desc: '左窄栏配头像与渐隐箭头，清新有力' },
+  { id: 'pro-arrow-card',       name: '箭头·卡片',     categories: ['general', 'finance'], free: false, layout: 'header-card',         accentStyle: 'arrow-trio', accentColor: '#374151', fontPair: 'modern-sans',   showPhoto: false, tag: '卡片·商务',       desc: '卡片头部配渐隐箭头节标题，整洁商务风' },
+  { id: 'pro-arrow-card-photo', name: '箭头·卡片照片', categories: ['general', 'tech'],    free: false, layout: 'header-card',         accentStyle: 'arrow-trio', accentColor: '#1d4ed8', fontPair: 'modern-sans',   showPhoto: true,  tag: '卡片·照片',       desc: '卡片头部配头像与渐隐箭头，科技感强' },
+  { id: 'pro-arrow-two',        name: '箭头·双栏',     categories: ['general', 'finance'], free: false, layout: 'two-column-balance',  accentStyle: 'arrow-trio', accentColor: '#334155', fontPair: 'modern-sans',   showPhoto: false, tag: '双栏·信息密集',   desc: '双栏平衡配渐隐箭头节标题，工整严谨' },
+  { id: 'pro-arrow-banner',     name: '箭头·横幅',     categories: ['general', 'design'],  free: false, layout: 'top-banner-photo',    accentStyle: 'arrow-trio', accentColor: '#1e293b', fontPair: 'modern-sans',   showPhoto: true,  tag: '横幅·照片',       desc: '顶部横幅配渐隐箭头节标题，视觉冲击强' },
+  { id: 'pro-arrow-ctr',        name: '箭头·居中',     categories: ['design', 'general'],  free: false, layout: 'single-centered',     accentStyle: 'arrow-trio', accentColor: '#c2410c', fontPair: 'modern-sans',   showPhoto: false, tag: '居中·创意',       desc: '居中排版配渐隐箭头节标题，个性活泼' },
 ]
 
 // Deterministic Fisher-Yates shuffle with a fixed LCG seed so order is stable across builds
@@ -1304,30 +1335,45 @@ function _seededShuffle<T>(arr: T[], seed: number): T[] {
   return result
 }
 
-// Hand-curated front row: true visual diversity across layout × accentStyle × fontPair.
-// Ordered to surface genuinely different-looking templates before the long tail of variants.
+// Hand-curated front row: photo single-column first, then photo double-column,
+// then no-photo single-column highlights.
 const PRO_FRONT_ROW_IDS = [
-  // Unique structural layouts first
-  'pro-diagonal-navy',        // diagonal-photo: 斜切装饰块
-  'pro-diagonal-violet',      // diagonal-photo: 紫色版
-  'pro-linkedin-blue',        // linkedin-banner: 悬挂头像
-  'pro-namecard-slate',       // namecard-header: 横向名片
-  'pro-namecard-serif',       // namecard-header: 衬线版
-  // single-classic — one representative per accent style
+  // ── 带照片·单栏（不同排版方式）──
+  'pro-linkedin-blue',        // linkedin-banner: 彩色横幅+悬挂头像
+  'pro-diagonal-navy',        // diagonal-photo: 斜切装饰+照片
+  'pro-namecard-slate',       // namecard-header: 横向名片三分布局
+  'pro-grad-banner-sans',     // top-banner-photo: 横幅内照片
+  'pro-stripe-photo',         // accent-stripe: 色带+照片
+  'pro-bottom-photo',         // bottom-strip: 底栏+照片
+  'pro-triple-ctr-photo',     // single-centered photo-right: 名字照片并排
+  'pro-arrow-banner',         // top-banner-photo arrow-trio: 横幅箭头标题
+  'pro-arrow-card-photo',     // header-card arrow-trio: 卡片+照片
+  'pro-hl-cls-serif-ph',      // single-classic highlight+serif: 荧光衬线照片
+  'pro-flanked-cls-serif-ph', // single-classic flanked: 双侧线照片
+  'pro-arrow-cls-photo',      // single-classic arrow-trio: 箭头照片
+  'pro-portrait-minimal',     // single-centered large-center: 大头像居中（靠后）
+  // ── 带照片·双栏（不同排版方式）──
+  'pro-flanked-wide-photo',   // sidebar-left-wide: 深色宽栏+双侧线+照片
+  'pro-grad-wide-serif-ph',   // sidebar-left-wide serif: 精英渐变宽栏+照片
+  'pro-flanked-nrw-photo',    // sidebar-left-narrow: 窄栏+双侧线+照片
+  'pro-hl-nrw-photo',         // sidebar-left-narrow highlight: 荧光窄栏+照片
+  'pro-arrow-nrw-photo',      // sidebar-left-narrow arrow-trio: 箭头窄栏+照片
+  'pro-triple-right-photo',   // sidebar-right: 右侧栏三竖+照片
+  'pro-grad-two-photo',       // two-column-balance: 双栏渐变+照片
+  'pro-slash-two-col',        // two-column-balance slash: 斜杠双栏+照片
+  // ── 无照片·单栏特色 ──
+  'pro-arrow-cls-sans',       // arrow-trio single-classic: 单栏箭头
+  'pro-arrow-cls-serif',      // arrow-trio serif: 衬线箭头
   'pro-hl-cls-sans',          // highlight-mark: 荧光底衬
-  'pro-hl-cls-serif-ph',      // highlight-mark serif + photo
   'pro-slash-cls-mono',       // slash-prefix: 斜杠代码风
-  'pro-slash-cls-sans',       // slash-prefix sans: 极简现代
   'pro-flanked-cls-sans',     // flanked-line: 双侧线ATS
-  'pro-flanked-cls-serif',    // flanked-line serif: 典雅
   'pro-classic-mono',         // side-icon mono-accent: 开发者
-  'pro-classic-serif',        // left-bar serif + photo: 金融传统
-  'pro-classic-double',       // double-line: 商务严谨
-  'pro-triple-classic',       // triple-bar: 极简律动
-  'pro-gradient-classic',     // gradient-band: 渐变创意
-  // single-centered — varied head arrangements
-  'pro-centered-serif',       // double-line serif photo-right: 横版典雅
-  'pro-centered-photo',       // underline photo-left-beside: 名片并排
+  'pro-stripe-teal',          // accent-stripe: 色带·清爽
+  'pro-bottom-navy',          // bottom-strip: 底栏·商务
+  // ── 居中/特色 ──
+  'pro-centered-photo',       // single-centered photo-left-beside: 名片并排
+  'pro-namecard-serif',       // namecard-header: 衬线版
+  'pro-diagonal-violet',      // diagonal-photo: 紫色版
 ]
 
 function _buildTemplates(arr: TemplateConfig[]): TemplateConfig[] {

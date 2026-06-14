@@ -116,24 +116,23 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
             >{label}</a>
           ))}
 
-          {/* Auth controls */}
-          {!loading && (
-            loggedIn
-              ? (
-                <UserDropdown
-                  avatar={avatar}
-                  nickname={nickname}
-                  openid={openid}
-                  membership={membership}
-                  isStudent={isStudent}
-                  freeAnalyzeUsed={freeAnalyzeUsed}
-                  onLogout={handleLogout}
-                  onUpgrade={handleUpgrade}
-                />
-              )
-              : (
-                /* Login button + QR hint tooltip */
-                <div style={{ position: 'relative' }}>
+          {/* Auth controls — shown immediately; useLayoutEffect applies cache before first paint */}
+          {loggedIn
+            ? (
+              <UserDropdown
+                avatar={avatar}
+                nickname={nickname}
+                openid={openid}
+                membership={membership}
+                isStudent={isStudent}
+                freeAnalyzeUsed={freeAnalyzeUsed}
+                onLogout={handleLogout}
+                onUpgrade={handleUpgrade}
+              />
+            )
+            : (
+              /* Login button + QR hint tooltip */
+              <div style={{ position: 'relative' }}>
                   <button
                     onClick={() => setShowLogin(true)}
                     onMouseEnter={onLoginEnter}
@@ -180,7 +179,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
                   </div>
                 </div>
               )
-          )}
+          }
 
           <Link href="/editor" className="nav-cta" style={{
             ...btnBase,
@@ -190,12 +189,12 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
           }}
             onMouseEnter={e => (e.currentTarget.style.background = "var(--ink2)")}
             onMouseLeave={e => (e.currentTarget.style.background = "var(--ink)")}
-          >{!loading && loggedIn ? '开始编辑' : '免费开始'}</Link>
+          >{loggedIn ? '开始编辑' : '免费开始'}</Link>
         </div>
 
         {/* Mobile: login/user dropdown + start */}
         <div className="nav-mobile-cta" style={{ display: "none", alignItems: "center", gap: "8px" }}>
-          {!loading && !loggedIn && (
+          {!loggedIn && (
             <button
               onClick={() => setShowLogin(true)}
               style={{
@@ -205,7 +204,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
               }}
             >登录</button>
           )}
-          {!loading && loggedIn && (
+          {loggedIn && (
             <UserDropdown
               avatar={avatar}
               nickname={nickname}
@@ -221,7 +220,7 @@ export default function Navbar({ onUploadClick }: { onUploadClick?: () => void }
             ...btnBase,
             background: "var(--ink)", color: "var(--paper)",
             padding: "8px 16px", textDecoration: "none",
-          }}>{!loading && loggedIn ? '开始编辑' : '开始'}</Link>
+          }}>{loggedIn ? '开始编辑' : '开始'}</Link>
         </div>
       </nav>
 

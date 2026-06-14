@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       interest:  pickEntries((rd.interest as unknown[] | undefined) ?? []),
       language:  pickEntries((rd.language as unknown[] | undefined) ?? []),
       skills: rd.skills,
+      skillCategories: rd.skillCategories,
     }
 
     const prompt = `You are a professional Chinese-to-English resume translator.
@@ -97,7 +98,7 @@ Rules:
 4. Job titles: use standard English equivalents (高级前端工程师→Senior Frontend Engineer, 产品经理→Product Manager).
 5. In date fields, replace "至今" with "Present" only; keep numeric formats like "2022.03" unchanged.
 6. Bullet points: begin with a strong past-tense action verb; keep all numeric data unchanged.
-7. Skills: keep technology names in English as-is (React, TypeScript, etc.); translate non-English skill names.
+7. Skills: keep technology names in English as-is (React, TypeScript, etc.); translate non-English skill names. For skillCategories, translate each category's "name" field (e.g. 前端开发→Frontend Development, 编程语言→Programming Languages); keep the "items" array with the same translation rules as skills.
 8. City names: translate to standard English (上海→Shanghai, 北京→Beijing, 深圳→Shenzhen, etc.).
 9. Return ONLY valid JSON with the exact same field structure as the input. No extra commentary.
 
@@ -115,6 +116,7 @@ ${JSON.stringify(snippet)}`
       city:     String(translated.city      || rd.city      || ''),
       summary:  String(translated.summary   || rd.summary   || ''),
       skills:   Array.isArray(translated.skills) ? translated.skills : rd.skills,
+      skillCategories: Array.isArray(translated.skillCategories) ? translated.skillCategories : rd.skillCategories,
       exp:      mergeEntries((rd.exp      as RD[] | undefined) ?? [], (translated.exp      as EntrySnippet[] | undefined) ?? []),
       edu:      mergeEntries((rd.edu      as RD[] | undefined) ?? [], (translated.edu      as EntrySnippet[] | undefined) ?? []),
       project:  mergeEntries((rd.project  as RD[] | undefined) ?? [], (translated.project  as EntrySnippet[] | undefined) ?? []),
