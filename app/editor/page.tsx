@@ -213,6 +213,7 @@ function EditorInner() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasBreakPointsRef = useRef<number[]>([0])
   const canvasTotalHeightRef = useRef(0)
+  const postScaleIterRef = useRef(0)
   const scaleWrapperRef = useRef<HTMLDivElement>(null)
   const zoomDisplayRef = useRef<HTMLSpanElement>(null)
   const zoomCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1628,6 +1629,8 @@ ${autoprint ? `<script>
   // Post-render correction: after font scale is applied and layout reflows,
   // re-measure and tighten if still overflowing (text reflow is non-linear).
   // Uses replaceCurrentData so the correction shares one undo step with the initial compress.
+  // Iterates up to 2 extra times to handle layouts with unscaled fixed elements (e.g. photos
+  // in bottom-strip) where a single pass leaves residual overflow.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!postScaleCheck) return
@@ -1636,7 +1639,12 @@ ${autoprint ? `<script>
       if (totalH > PAGE_H) {
         const cs = data.fontScale ?? 1
         const adj = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
-        if (adj < cs) { replaceCurrentData({ fontScale: adj }); return }
+        if (adj < cs && postScaleIterRef.current < 2) {
+          postScaleIterRef.current += 1
+          replaceCurrentData({ fontScale: adj })
+          setPostScaleCheck(n => n + 1)
+          return
+        }
       }
       showToast('✓ 已压缩至 1 页（可撤销）')
     }, 350)
@@ -1664,6 +1672,7 @@ ${autoprint ? `<script>
 
     if (pct <= 35) {
       const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
+      postScaleIterRef.current = 0
       updateData({ fontScale: scale })
       setPostScaleCheck(n => n + 1)
     } else {
