@@ -257,6 +257,7 @@ export default function LeftPanel({
   const labelInputRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [thumbW, setThumbW] = useState(0)
+  const [filterShadow, setFilterShadow] = useState(false)
 
   useEffect(() => {
     if (forceTab) setTab(forceTab)
@@ -462,16 +463,24 @@ export default function LeftPanel({
         )}
       </div>
 
-      <div ref={scrollContainerRef} className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <div ref={scrollContainerRef} className="overlay-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
+        onScroll={e => setFilterShadow((e.currentTarget.scrollTop > 0))}>
 
         {/* ===== TEMPLATE TAB ===== */}
         {/* Keep always mounted so thumbnails stay alive; CSS hides when inactive */}
         <div style={{ display: tab === 'tpl' ? 'block' : 'none' }}>
           <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
+            {/* Sticky filter rows */}
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 10,
+              background: 'white',
+              boxShadow: filterShadow ? '0 3px 8px rgba(0,0,0,0.08)' : 'none',
+              transition: 'box-shadow 0.2s',
+            }}>
             {/* Row 1: industry */}
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '10px 12px 4px' }}>
               {[['all','全部'],['general','通用'],['student','应届生'],['tech','科技'],['design','设计'],['finance','金融'],['management','管理']].map(([val, label]) => (
-                <button key={val} onClick={() => setCatFilter(val)} style={{
+                <button key={val} onClick={() => { setCatFilter(val); scrollContainerRef.current?.scrollTo({ top: 0 }) }} style={{
                   padding: '3px 9px', borderRadius: '20px', border: 'none',
                   fontSize: '11px', fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
@@ -483,7 +492,7 @@ export default function LeftPanel({
             {/* Row 2: layout */}
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 12px 10px' }}>
               {[['all','全部'],['photo','带照片'],['nophoto','无照片'],['single','单栏'],['double','双栏']].map(([val, label]) => (
-                <button key={val} onClick={() => setLayoutFilter(val)} style={{
+                <button key={val} onClick={() => { setLayoutFilter(val); scrollContainerRef.current?.scrollTo({ top: 0 }) }} style={{
                   padding: '3px 9px', borderRadius: '20px', border: 'none',
                   fontSize: '11px', fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
@@ -491,6 +500,7 @@ export default function LeftPanel({
                   color: layoutFilter === val ? '#fff' : '#64748b',
                 }}>{label}</button>
               ))}
+            </div>
             </div>
             {/* Count */}
             <div style={{ padding: '0 14px 6px', fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px' }}>

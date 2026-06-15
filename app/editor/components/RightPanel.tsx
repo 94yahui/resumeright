@@ -280,21 +280,13 @@ export default function RightPanel({
                     <label style={labelStyle}>{meta.sub}</label>
                     <input
                       type="text"
-                      list={`proficiency-opts-${entry.id}`}
                       value={entry.sub}
                       onChange={(e) => onUpdateEntry(sec, idx, { sub: e.target.value })}
-                      placeholder="输入或选择流利程度"
+                      placeholder="如：流利、精通、母语"
                       style={inputStyle as React.CSSProperties}
                       onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
                       onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
                     />
-                    <datalist id={`proficiency-opts-${entry.id}`}>
-                      <option value="母语" />
-                      <option value="精通" />
-                      <option value="流利" />
-                      <option value="基础" />
-                      <option value="初级" />
-                    </datalist>
                   </div>
                 ) : (
                   <Field

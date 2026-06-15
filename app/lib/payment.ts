@@ -310,8 +310,7 @@ export function checkUsage(deviceId: string, type: UsageType, status: ProStatus)
 
   if (type === 'ai_translate') {
     if (status.kind !== 'subscription') return { allowed: false, reason: 'not_paid', used: 0, limit: 0 }
-    const used = getDailyCount(deviceId, 'ai_translate')
-    if (used >= 5) return { allowed: false, reason: 'daily_limit', used, limit: 5 }
+    // Daily limit for subscription users is checked server-side (authDailyTranslateUsedRef) in handleTranslate
     return { allowed: true }
   }
 

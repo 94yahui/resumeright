@@ -724,7 +724,7 @@ export default function ResumeRenderer({
     const makeCustomItem = (ci: { label: string; value: string }) => {
       const isUrl = /^https?:\/\//i.test(ci.value)
       return {
-        icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />,
+        icon: null,
         text: isUrl ? ci.label : `${ci.label}: ${ci.value}`,
         href: isUrl ? ci.value : undefined,
       }
@@ -740,8 +740,8 @@ export default function ResumeRenderer({
         .map(makeCustomItem),
     ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
     const infoItems: { icon: React.ReactNode; text: string; href?: string }[] = [
-      (!data.hideGender && data.gender) && { icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />, text: `性别: ${data.gender}` },
-      (!data.hideAge && data.age) && { icon: <span style={{ display: 'inline-block', width: '3px', height: '10px', borderRadius: '1.5px', background: c, flexShrink: 0, opacity: 0.85 }} />, text: `年龄: ${data.age}` },
+      (!data.hideGender && data.gender) && { icon: null, text: (isEnglish ?? data.resumeLang === 'en') ? `Gender: ${data.gender}` : `性别: ${data.gender}` },
+      (!data.hideAge && data.age) && { icon: null, text: (isEnglish ?? data.resumeLang === 'en') ? `Age: ${data.age}` : `年龄: ${data.age}` },
       ...(data.customContacts || [])
         .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo === true)
         .map(makeCustomItem),
@@ -749,7 +749,7 @@ export default function ResumeRenderer({
 
     const renderItem = (it: { icon: React.ReactNode; text: string; href?: string }, key: string | number) => (
       <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-all' }}>
-        <span style={{ opacity: 0.85, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{it.icon}</span>
+        {it.icon != null && <span style={{ opacity: 0.85, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{it.icon}</span>}
         {it.href ? (
           <a
             href={it.href}
@@ -786,7 +786,7 @@ export default function ResumeRenderer({
             : <span style={{ color: onDark ? 'rgba(255,255,255,0.3)' : '#cbd5e1', alignSelf: 'center', lineHeight: 1, fontSize: _s(11) }}>|</span>
           )}
           {vertical && (
-            <span style={{ fontSize: _s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>基本信息</span>
+            <span style={{ fontSize: _s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>{(isEnglish ?? data.resumeLang === 'en') ? 'Personal Info' : '基本信息'}</span>
           )}
           {infoItems.map((it, i) => renderItem(it, `info_${i}`))}
         </>}

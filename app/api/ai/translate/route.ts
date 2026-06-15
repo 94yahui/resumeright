@@ -150,7 +150,7 @@ Translate the following JSON resume fields to natural, professional English.
 
 Rules:
 1. Translate all Chinese text to professional English.
-2. "personName": romanize Chinese names to Pinyin with proper capitalization (e.g., 张三 → Zhang San, 王小明 → Wang Xiaoming). For already-English or mixed names, keep as-is.
+2. "personName": romanize Chinese names to Pinyin and reorder to Western convention (Given Name + Surname), e.g., 张三 → San Zhang, 王小明 → Xiaoming Wang, 李明 → Ming Li. For already-English or mixed names, keep as-is.
 3. Company/university names: use the official English name when well-known (e.g. 字节跳动→ByteDance, 阿里巴巴→Alibaba, 腾讯→Tencent, 美团→Meituan, 北京大学→Peking University, 清华大学→Tsinghua University, 上海交通大学→Shanghai Jiao Tong University), otherwise translate descriptively.
 4. Job titles: use standard English equivalents (高级前端工程师→Senior Frontend Engineer, 产品经理→Product Manager).
 5. In date fields, replace "至今" with "Present" only; keep numeric formats like "2022.03" unchanged.

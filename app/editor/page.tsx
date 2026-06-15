@@ -14,9 +14,9 @@ import PaymentSuccessToast from '../components/PaymentSuccessToast'
 import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
-import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
+import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, THUMB_DATA, CATEGORY_THUMB_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
 import { takePendingImport } from '../lib/pendingImport'
-import { getTemplate, AccentStyle, FontPair } from '../lib/templates-config'
+import { getTemplate, TEMPLATES, AccentStyle, FontPair } from '../lib/templates-config'
 import {
   loadDraft, saveDraft, clearDraft, clearLocalResumeData,
   loadHistory, saveToHistory, deleteHistory, updateHistoryEntry, sortAndSaveHistory,
@@ -78,13 +78,25 @@ function cleanDataForPrint(d: ResumeData): ResumeData {
   }
 }
 
+function getInitData(tplId: string): ResumeData {
+  const tpl = TEMPLATES.find(t => t.id === tplId)
+  for (const cat of tpl?.categories ?? []) {
+    if (CATEGORY_THUMB_DATA[cat]) return CATEGORY_THUMB_DATA[cat]
+  }
+  return THUMB_DATA
+}
+
+function isBlankData(d: ResumeData): boolean {
+  return d.name === DEMO_DATA.name && d.email === DEMO_DATA.email
+}
+
 function EditorInner() {
   const searchParams = useSearchParams()
   const initTemplate = searchParams.get('template') || 'banner-warm'
   const auth = useAuth()
 
   // ============ Undo/Redo history stack ============
-  const [history, setHistory] = useState<ResumeData[]>([DEMO_DATA])
+  const [history, setHistory] = useState<ResumeData[]>([getInitData(initTemplate)])
   const [historyIdx, setHistoryIdx] = useState(0)
   const data = history[historyIdx]
 
@@ -367,7 +379,7 @@ function EditorInner() {
       const fromTemplateId = (() => { try { return sessionStorage.getItem('rc_from_template') || '' } catch { return '' } })()
       try { sessionStorage.removeItem('rc_from_template') } catch {}
       const isBlankEntry = currentId
-          && JSON.stringify(latestForAutoSave.current.data) === JSON.stringify(DEMO_DATA)
+          && isBlankData(latestForAutoSave.current.data)
           && currentId !== fromTemplateId
       if (!currentId || isBlankEntry) {
         const hist = loadHistory()
@@ -571,7 +583,7 @@ function EditorInner() {
     if (searchParams.get('template')) {
       const currentHistory = loadHistory()
       const initName = uniqueHistoryName('我的简历', currentHistory)
-      const newId = saveToHistory({ name: initName, data: DEMO_DATA, templateId: initTemplate, color: undefined, savedAt: Date.now() })
+      const newId = saveToHistory({ name: initName, data: getInitData(initTemplate), templateId: initTemplate, color: undefined, savedAt: Date.now() })
       if (newId) {
         loadedFromHistoryId.current = newId
         setCurrentHistoryId(newId)
@@ -953,7 +965,7 @@ function EditorInner() {
       return
     }
     const newName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: newName, data: DEMO_DATA, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: newName, data: THUMB_DATA, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
     if (newId) {
       loadedFromHistoryId.current = newId
       setCurrentHistoryId(newId)
@@ -963,7 +975,7 @@ function EditorInner() {
         if (entry) upsertCloudResume(entry)
       }
     }
-    setHistory([DEMO_DATA])
+    setHistory([THUMB_DATA])
     setHistoryIdx(0)
     setTemplateId('banner-warm')
     setColor(undefined)
@@ -1772,7 +1784,7 @@ ${autoprint ? `<script>
       }
 
       const currentHistory = loadHistory()
-      const rawName = json.translatedTitle || `${docTitle} (English)`
+      const rawName = `${docTitle}_en`
       const engName = uniqueHistoryName(rawName, currentHistory)
       const newId = saveToHistory({ name: engName, data: { ...json.data, photo: data.photo, photoMeta: data.photoMeta }, templateId, color, savedAt: Date.now(), isEnglish: true })
       loadedFromHistoryId.current = newId || null
@@ -1787,8 +1799,7 @@ ${autoprint ? `<script>
       recordUsage(deviceId, 'ai_translate', freshStatus)
       void authRefreshRef.current()
       setProStatus(getProStatus(deviceId, newId || undefined))
-      const usedToday = getDailyCount(deviceId, 'ai_translate')
-      const remaining = Math.max(0, 5 - usedToday)
+      const remaining = Math.max(0, 5 - (authDailyTranslateUsedRef.current + 1))
       showToast(`✓ 英文版已生成（今日剩余 ${remaining} 次）`)
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return
