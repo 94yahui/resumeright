@@ -279,6 +279,7 @@ function EditorInner() {
   const effectiveColor = color || template.accentColor
   // Watermark: shown for free users on all templates; hidden for any paid plan.
   const showWatermark = proStatus.kind === 'free'
+  const [watermarkBannerDismissed, setWatermarkBannerDismissed] = useState(false)
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -1989,7 +1990,7 @@ ${autoprint ? `<script>
       </div>
 
       {/* Watermark banner — shown for free users */}
-      {showWatermark && !noResumeOpen && !auth.loading && (
+      {showWatermark && !watermarkBannerDismissed && !noResumeOpen && !auth.loading && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
@@ -1998,11 +1999,18 @@ ${autoprint ? `<script>
           <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)' }}>
             当前下载将含水印 · 升级 Pro 即可无水印导出
           </span>
-          <button onClick={handleUnlockPro} style={{
-            padding: '5px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
-            background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
-            cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-          }}>升级 Pro</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button onClick={handleUnlockPro} style={{
+              padding: '5px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
+              background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
+              cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            }}>升级 Pro</button>
+            <button onClick={() => setWatermarkBannerDismissed(true)} style={{
+              background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.45)',
+              cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px 4px',
+              fontFamily: 'var(--font-sans)',
+            }}>✕</button>
+          </div>
         </div>
       )}
 
