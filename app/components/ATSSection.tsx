@@ -446,8 +446,18 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
   }, [])
 
   function handleUseCached() {
-    const cached = getCachedATSResult() as ATSResult | null
+    const cached = getCachedATSResult() as (ATSResult & { parsedData?: unknown }) | null
     if (cached) {
+      // Re-populate sessionStorage so the editor can pre-fill without a second parse
+      const resumeForEditor = cached.parsedData ?? (cached.name ? { name: cached.name, jobtitle: cached.jobtitle || '' } : null)
+      if (resumeForEditor) {
+        try {
+          sessionStorage.setItem('rc_ats_import', JSON.stringify({
+            filename: (cachedFilename ?? '').replace(/\.[^.]+$/, ''),
+            resume: resumeForEditor,
+          }))
+        } catch {}
+      }
       setResult(cached)
       setFilename(cachedFilename ?? '')
       setPhase('result')

@@ -375,12 +375,15 @@ function EditorInner() {
     syncResumesWithCloud().then(changed => {
       if (changed) setHistoryRefreshKey(k => k + 1)
       const currentId = loadedFromHistoryId.current
-      // Read and immediately clear the intentional-template flag so it only protects once
+      // Read and immediately clear intentional-entry flags so they only protect once
       const fromTemplateId = (() => { try { return sessionStorage.getItem('rc_from_template') || '' } catch { return '' } })()
       try { sessionStorage.removeItem('rc_from_template') } catch {}
+      const fromAtsId = (() => { try { return sessionStorage.getItem('rc_from_ats') || '' } catch { return '' } })()
+      try { sessionStorage.removeItem('rc_from_ats') } catch {}
       const isBlankEntry = currentId
           && isBlankData(latestForAutoSave.current.data)
           && currentId !== fromTemplateId
+          && currentId !== fromAtsId
       if (!currentId || isBlankEntry) {
         const hist = loadHistory()
         const candidates = isBlankEntry ? hist.filter(e => e.id !== currentId) : hist
@@ -565,7 +568,11 @@ function EditorInner() {
           const currentHistory = loadHistory()
           const newName = uniqueHistoryName(filename || raw.name || '我的简历', currentHistory)
           const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
-          if (newId) { loadedFromHistoryId.current = newId; setCurrentHistoryId(newId) }
+          if (newId) {
+            loadedFromHistoryId.current = newId
+            setCurrentHistoryId(newId)
+            try { sessionStorage.setItem('rc_from_ats', newId) } catch {}
+          }
           setHistory([resumeData])
           setHistoryIdx(0)
           setTemplateId('banner-warm')
