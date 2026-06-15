@@ -76,6 +76,8 @@ export default function ResumeRenderer({
   // Scale font sizes and vertical spacings only — structural dimensions (widths, sidebar fills) are untouched
   const sc = data.fontScale ?? 1
   const s = (x: number): string => sc === 1 ? `${x}px` : `${+(x * sc).toFixed(1)}px`
+  // No-scale version: used for header areas (single-column) and narrow sidebar (two-column)
+  const s0 = (x: number): string => `${x}px`
 
   const AIChip = () => (
     <div className="no-print" style={{
@@ -126,37 +128,38 @@ export default function ResumeRenderer({
   }
 
   // ============ ACCENT TITLE STYLES ============
-  const SectionTitle = ({ children, onDark = false }: { children: React.ReactNode; onDark?: boolean }) => {
+  const SectionTitle = ({ children, onDark = false, noScale = false }: { children: React.ReactNode; onDark?: boolean; noScale?: boolean }) => {
+    const _s = noScale ? s0 : s
     const titleColor = onDark ? '#ffffff' : accent
     const baseProps: React.CSSProperties = {
       fontFamily: headingFont,
-      fontSize: s(13),
+      fontSize: _s(13),
       fontWeight: 700,
       letterSpacing: template.fontPair === 'serif-heading' ? '0.5px' : '1.5px',
       textTransform: template.fontPair === 'serif-heading' ? 'none' : 'uppercase',
       color: titleColor,
-      marginBottom: s(5),
+      marginBottom: _s(5),
     }
 
     switch (template.accentStyle) {
       case 'underline-bar':
         return (
-          <div style={{ marginBottom: s(5) }}>
+          <div style={{ marginBottom: _s(5) }}>
             <div style={baseProps}>{children}</div>
             <div style={{ height: '2px', background: titleColor, width: '36px' }} />
           </div>
         )
       case 'left-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: _s(5) }}>
             <div style={{ width: '4px', height: '16px', background: titleColor }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
           </div>
         )
       case 'side-icon':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: s(8), marginBottom: s(5) }}>
-            <div style={{ width: s(8), height: s(8), background: titleColor, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(8), marginBottom: _s(5) }}>
+            <div style={{ width: _s(8), height: _s(8), background: titleColor, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.3 }} />
           </div>
@@ -171,23 +174,23 @@ export default function ResumeRenderer({
               padding: '4px 12px',
               borderRadius: '4px',
               fontFamily: headingFont,
-              fontSize: s(12),
+              fontSize: _s(12),
               fontWeight: 700,
               letterSpacing: '1px',
               textTransform: 'uppercase',
-              marginBottom: s(7),
+              marginBottom: _s(7),
             }}>{children}</div>
           </div>
         )
       case 'thin-line':
         return (
-          <div style={{ marginBottom: s(5), borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
+          <div style={{ marginBottom: _s(5), borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
             <div style={{ ...baseProps, marginBottom: 0, fontWeight: 500 }}>{children}</div>
           </div>
         )
       case 'double-line':
         return (
-          <div style={{ marginBottom: s(5) }}>
+          <div style={{ marginBottom: _s(5) }}>
             <div style={{ height: '1px', background: titleColor, marginBottom: '3px' }} />
             <div style={{ ...baseProps, textAlign: 'center', marginBottom: '3px' }}>{children}</div>
             <div style={{ height: '1px', background: titleColor }} />
@@ -195,7 +198,7 @@ export default function ResumeRenderer({
         )
       case 'triple-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: _s(5) }}>
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
               <div style={{ width: '6px', height: '13px', background: titleColor, opacity: 1 }} />
@@ -207,7 +210,7 @@ export default function ResumeRenderer({
       case 'gradient-band':
         return (
           <div style={{
-            marginBottom: s(7),
+            marginBottom: _s(7),
             marginLeft: '-8px',
             marginRight: '-8px',
             padding: '5px 8px',
@@ -221,7 +224,7 @@ export default function ResumeRenderer({
         )
       case 'flanked-line':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: s(6), marginBottom: s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(6), marginBottom: _s(5) }}>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.6 }} />
             <div style={{ ...baseProps, marginBottom: 0, whiteSpace: 'nowrap' }}>{children}</div>
             <div style={{ flex: 1, height: '1px', background: titleColor, opacity: 0.6 }} />
@@ -229,11 +232,11 @@ export default function ResumeRenderer({
         )
       case 'slash-prefix':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: s(5), marginBottom: s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(5), marginBottom: _s(5) }}>
             <span style={{
               fontFamily: 'monospace',
               fontWeight: 700,
-              fontSize: s(13),
+              fontSize: _s(13),
               color: titleColor,
               opacity: 0.45,
               flexShrink: 0,
@@ -245,7 +248,7 @@ export default function ResumeRenderer({
         )
       case 'highlight-mark':
         return (
-          <div style={{ marginBottom: s(5) }}>
+          <div style={{ marginBottom: _s(5) }}>
             <div style={{ display: 'inline-block', position: 'relative' }}>
               <div style={{ ...baseProps, marginBottom: 0, position: 'relative', zIndex: 1 }}>{children}</div>
               <div style={{
@@ -261,25 +264,26 @@ export default function ResumeRenderer({
         )
       case 'arrow-trio':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: s(7), marginBottom: s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(7), marginBottom: _s(5) }}>
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1px', flexShrink: 0, lineHeight: 1 }}>
-              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 1 }}>›</span>
-              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 0.45 }}>›</span>
-              <span style={{ fontFamily: headingFont, fontSize: s(13), fontWeight: 700, color: titleColor, opacity: 0.18 }}>›</span>
+              <span style={{ fontFamily: headingFont, fontSize: _s(13), fontWeight: 700, color: titleColor, opacity: 1 }}>›</span>
+              <span style={{ fontFamily: headingFont, fontSize: _s(13), fontWeight: 700, color: titleColor, opacity: 0.45 }}>›</span>
+              <span style={{ fontFamily: headingFont, fontSize: _s(13), fontWeight: 700, color: titleColor, opacity: 0.18 }}>›</span>
             </div>
           </div>
         )
       case 'plain-bold':
       default:
-        return <div style={{ ...baseProps, fontSize: s(14) }}>{children}</div>
+        return <div style={{ ...baseProps, fontSize: _s(14) }}>{children}</div>
     }
   }
 
   // ============ ENTRY ITEM (with bullets) ============
-  const EntryItem = ({ entry, sec, idx, onDark = false, isLast = false }: {
-    entry: Entry; sec: SectionKey; idx: number; onDark?: boolean; isLast?: boolean
+  const EntryItem = ({ entry, sec, idx, onDark = false, isLast = false, noScale = false }: {
+    entry: Entry; sec: SectionKey; idx: number; onDark?: boolean; isLast?: boolean; noScale?: boolean
   }) => {
+    const _s = noScale ? s0 : s
     const titleC = onDark ? '#fff' : '#0f172a'
     const subC = onDark ? 'rgba(255,255,255,0.7)' : '#475569'
     const dateC = onDark ? 'rgba(255,255,255,0.6)' : '#64748b'
@@ -358,7 +362,7 @@ export default function ResumeRenderer({
         style={{
           ...editStyle({ kind: 'entry', sec, idx }),
           position: 'relative',
-          marginBottom: isLast ? 0 : s(6),
+          marginBottom: isLast ? 0 : _s(6),
           padding: interactive ? '0 6px' : '0',
           marginLeft: interactive ? '-6px' : 0,
           breakInside: 'avoid',
@@ -374,11 +378,11 @@ export default function ResumeRenderer({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '2px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: headingFont, fontSize: s(14), fontWeight: 600, color: titleC, lineHeight: 1.3 }}>
+            <div style={{ fontFamily: headingFont, fontSize: _s(14), fontWeight: 600, color: titleC, lineHeight: 1.3 }}>
               {entry.title}
             </div>
             {entry.sub && (
-              <div style={{ fontSize: s(12.5), color: subC, marginTop: '1px' }}>
+              <div style={{ fontSize: _s(12.5), color: subC, marginTop: '1px' }}>
                 {entry.sub}
               </div>
             )}
@@ -386,7 +390,7 @@ export default function ResumeRenderer({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {interactive && aiSectionSet.has(`${sec}:${idx}`) && <AIChip />}
             {entry.date && (
-              <div style={{ fontSize: s(11.5), color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
+              <div style={{ fontSize: _s(11.5), color: dateC, whiteSpace: 'nowrap', fontWeight: 500 }}>
                 {entry.date}
               </div>
             )}
@@ -411,9 +415,9 @@ export default function ResumeRenderer({
                 const isPureDeletion = hasDiff && /^\[\[~.*~\]\]$/.test(b.trim())
                 const segments = hasDiff ? parseDiffBullet(b) : null
                 return (
-                  <li key={i} style={{ fontSize: s(12), lineHeight: 1.55, paddingLeft: s(14), position: 'relative', marginBottom: '1px', color: bodyC }}>
+                  <li key={i} style={{ fontSize: _s(12), lineHeight: 1.55, paddingLeft: _s(14), position: 'relative', marginBottom: '1px', color: bodyC }}>
                     {!isPureDeletion && (
-                      <span style={{ position: 'absolute', left: 0, top: s(8), width: s(4), height: s(4), borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--ai-highlight)' : '#9ca3af') }} />
+                      <span style={{ position: 'absolute', left: 0, top: _s(8), width: _s(4), height: _s(4), borderRadius: '50%', background: onDark ? 'rgba(255,255,255,0.6)' : (hasDiff ? 'var(--ai-highlight)' : '#9ca3af') }} />
                     )}
                     {segments ? (
                       segments.map((seg, si) => (
@@ -443,26 +447,27 @@ export default function ResumeRenderer({
 
   // ============ SECTION ============
   // ============ LANGUAGE — horizontal wrapping pills ============
-  const LanguageSection = ({ onDark = false }: { onDark?: boolean }) => {
+  const LanguageSection = ({ onDark = false, noScale = false }: { onDark?: boolean; noScale?: boolean }) => {
     if (!data.hasLanguage || data.language.length === 0) return null
+    const _s = noScale ? s0 : s
     const langStyle = data.languageStyle ?? 'pills'
     const textC = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
     const pillBg = onDark ? 'rgba(255,255,255,0.12)' : `${accent}12`
     const pillBorder = onDark ? 'rgba(255,255,255,0.22)' : `${accent}35`
 
     const renderPills = () => (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: _s(8) }}>
         {data.language.map((entry, idx) => {
           const sel = isSelected({ kind: 'entry', sec: 'language', idx })
           return (
             <div key={entry.id} data-entry="1"
               onClick={click({ kind: 'entry', sec: 'language', idx })}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                padding: '4px 12px',
+                display: 'inline-flex', alignItems: 'center', gap: _s(5),
+                padding: `${_s(4)} ${_s(12)}`,
                 background: sel ? `${accent}20` : pillBg,
                 border: `1.5px solid ${sel ? accent : pillBorder}`,
-                borderRadius: '20px', fontSize: s(12), color: textC,
+                borderRadius: '20px', fontSize: _s(12), color: textC,
                 cursor: interactive ? 'pointer' : 'default',
                 transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
                 boxShadow: sel ? `inset 0 0 0 1.5px ${accent}` : 'none',
@@ -478,7 +483,7 @@ export default function ResumeRenderer({
     )
 
     const renderPlain = () => (
-      <p style={{ fontSize: s(12), color: textC, lineHeight: 1.7, margin: 0 }}>
+      <p style={{ fontSize: _s(12), color: textC, lineHeight: 1.7, margin: 0 }}>
         {data.language.map((entry, idx) => {
           const sel = isSelected({ kind: 'entry', sec: 'language', idx })
           return (
@@ -499,21 +504,21 @@ export default function ResumeRenderer({
     )
 
     const renderList = () => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: s(4) }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: _s(4) }}>
         {data.language.map((entry, idx) => {
           const sel = isSelected({ kind: 'entry', sec: 'language', idx })
           return (
             <div key={entry.id} data-entry="1"
               onClick={click({ kind: 'entry', sec: 'language', idx })}
               style={{
-                display: 'flex', alignItems: 'baseline', gap: s(8),
+                display: 'flex', alignItems: 'baseline', gap: _s(8),
                 cursor: interactive ? 'pointer' : 'default',
                 background: sel ? `${accent}10` : 'transparent',
                 borderRadius: '4px', padding: sel ? '2px 4px' : '0',
                 margin: sel ? '-2px -4px' : '0',
               }}>
-              <span style={{ fontSize: s(12.5), fontWeight: 600, color: onDark ? 'rgba(255,255,255,0.9)' : '#0f172a', minWidth: s(48) }}>{entry.title || '语言'}</span>
-              {entry.sub && <span style={{ fontSize: s(11.5), color: textC, opacity: 0.75 }}>{entry.sub}</span>}
+              <span style={{ fontSize: _s(12.5), fontWeight: 600, color: onDark ? 'rgba(255,255,255,0.9)' : '#0f172a', minWidth: _s(48) }}>{entry.title || '语言'}</span>
+              {entry.sub && <span style={{ fontSize: _s(11.5), color: textC, opacity: 0.75 }}>{entry.sub}</span>}
             </div>
           )
         })}
@@ -521,8 +526,8 @@ export default function ResumeRenderer({
     )
 
     return (
-      <div data-section-start="1" style={{ marginBottom: s(10) }}>
-        <SectionTitle onDark={onDark}>{T('language')}</SectionTitle>
+      <div data-section-start="1" style={{ marginBottom: _s(10) }}>
+        <SectionTitle onDark={onDark} noScale={noScale}>{T('language')}</SectionTitle>
         {langStyle === 'pills' && renderPills()}
         {langStyle === 'plain' && renderPlain()}
         {langStyle === 'list' && renderList()}
@@ -530,20 +535,21 @@ export default function ResumeRenderer({
     )
   }
 
-  const Section = ({ sec, label, items, onDark = false }: {
-    sec: SectionKey; label: string; items: Entry[]; onDark?: boolean
+  const Section = ({ sec, label, items, onDark = false, noScale = false }: {
+    sec: SectionKey; label: string; items: Entry[]; onDark?: boolean; noScale?: boolean
   }) => {
     if (!items || items.length === 0) return null
+    const _s = noScale ? s0 : s
     const hasSectionAI = interactive && items.some((_, idx) => aiSectionSet.has(`${sec}:${idx}`))
     return (
-      <div style={{ marginBottom: s(10) }}>
+      <div style={{ marginBottom: _s(10) }}>
         <div data-section-start="1" style={hasSectionAI ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' } : undefined}>
           <div style={hasSectionAI ? { flex: 1 } : undefined}>
-            <SectionTitle onDark={onDark}>{label}</SectionTitle>
+            <SectionTitle onDark={onDark} noScale={noScale}>{label}</SectionTitle>
           </div>
         </div>
         {items.map((entry, idx) => (
-          <EntryItem key={entry.id} entry={entry} sec={sec} idx={idx} onDark={onDark} isLast={idx === items.length - 1} />
+          <EntryItem key={entry.id} entry={entry} sec={sec} idx={idx} onDark={onDark} isLast={idx === items.length - 1} noScale={noScale} />
         ))}
       </div>
     )
@@ -573,7 +579,8 @@ export default function ResumeRenderer({
   }
 
   // ============ SKILLS ============
-  const SkillsBlock = ({ onDark = false }: { onDark?: boolean }) => {
+  const SkillsBlock = ({ onDark = false, noScale = false }: { onDark?: boolean; noScale?: boolean }) => {
+    const _s = noScale ? s0 : s
     const hasPending = !!pendingSkills && pendingSkills.length > 0
     const hasCategories = (data.skillCategories?.length ?? 0) > 0
     const hasItems = hasCategories
@@ -589,8 +596,8 @@ export default function ResumeRenderer({
     const renderTag = (sk: string, i: number, isPending = false) => (
       <span key={i} style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        padding: '4px 12px', borderRadius: '4px',
-        fontSize: s(11.5), lineHeight: 1, fontWeight: 500,
+        padding: `${_s(4)} ${_s(12)}`, borderRadius: '4px',
+        fontSize: _s(11.5), lineHeight: 1, fontWeight: 500,
         background: isPending ? 'var(--ai-highlight)' : onDark ? 'rgba(255,255,255,0.15)' : `${accent}12`,
         color: isPending ? '#fff' : onDark ? '#fff' : accent,
         border: isPending ? '1px solid var(--ai-highlight)' : onDark ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${accent}30`,
@@ -598,7 +605,7 @@ export default function ResumeRenderer({
     )
 
     const renderDot = (sk: string, i: number, isPending = false) => (
-      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: s(11.5), color: textColor }}>
+      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: _s(11.5), color: textColor }}>
         <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: isPending ? 'var(--ai-highlight)' : onDark ? 'rgba(255,255,255,0.6)' : accent, flexShrink: 0 }} />
         {isPending
           ? <span style={{ background: 'var(--ai-highlight)', color: '#fff', fontWeight: 600, borderRadius: '3px', padding: '1px 6px' }}>{sk}</span>
@@ -610,7 +617,7 @@ export default function ResumeRenderer({
     const renderPlainText = (items: string[], pending: string[] = []) => {
       const normalText = items.join(', ')
       return (
-        <span style={{ fontSize: s(11.5), color: textColor, lineHeight: 1.6 }}>
+        <span style={{ fontSize: _s(11.5), color: textColor, lineHeight: 1.6 }}>
           {normalText}
           {pending.map((sk, i) => (
             <span key={i}>
@@ -639,50 +646,50 @@ export default function ResumeRenderer({
       margin: interactive ? '-4px' : 0,
       ...(skillStyle === 'plain'
         ? { display: 'block', overflowWrap: 'break-word' as const }
-        : { display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }),
+        : { display: 'flex', flexWrap: 'wrap' as const, gap: _s(6) }),
       ...extra,
     })
 
     const header = (
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-        <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('skills')}</SectionTitle></div>
+        <div style={{ flex: 1 }}><SectionTitle onDark={onDark} noScale={noScale}>{T('skills')}</SectionTitle></div>
         {interactive && aiSectionSet.has('skills') && <AIChip />}
       </div>
     )
 
     if (hasCategories) {
       return (
-        <div data-section-start="1" style={{ marginBottom: s(10) }}>
+        <div data-section-start="1" style={{ marginBottom: _s(10) }}>
           {header}
           <div onClick={click({ kind: 'skills' })} style={{ ...editStyle({ kind: 'skills' }), padding: interactive ? '4px' : 0, margin: interactive ? '-4px' : 0 }}>
             {data.skillCategories!.map(cat => cat.items.length === 0 ? null : (
-              <div key={cat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: s(1), marginBottom: skillStyle === 'plain' ? s(2) : s(4) }}>
+              <div key={cat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: _s(1), marginBottom: skillStyle === 'plain' ? _s(2) : _s(4) }}>
                 <span style={{
-                  fontSize: s(11.5), fontWeight: 600, flexShrink: 0,
+                  fontSize: _s(11.5), fontWeight: 600, flexShrink: 0,
                   color: onDark ? 'rgba(255,255,255,0.85)' : '#0f172a',
                   lineHeight: skillStyle === 'tags' ? '23px' : 1.6,
                 }}>{cat.name}：</span>
                 {skillStyle === 'plain' ? (
                   // plain: block so wrapped lines stay under the items, not the label
-                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: s(11.5), lineHeight: 1.6, color: textColor }}>
+                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: _s(11.5), lineHeight: 1.6, color: textColor }}>
                     {cat.items.join(', ')}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: _s(6), flex: 1 }}>
                     {renderItems(cat.items)}
                   </div>
                 )}
               </div>
             ))}
             {hasPending && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: s(1), marginBottom: skillStyle === 'plain' ? s(2) : s(4) }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: _s(1), marginBottom: skillStyle === 'plain' ? _s(2) : _s(4) }}>
                 <span style={{
-                  fontSize: s(11.5), fontWeight: 600, flexShrink: 0,
+                  fontSize: _s(11.5), fontWeight: 600, flexShrink: 0,
                   color: onDark ? 'rgba(255,255,255,0.85)' : '#0f172a',
                   lineHeight: skillStyle === 'tags' ? '23px' : 1.6,
                 }}>新增技能：</span>
                 {skillStyle === 'plain' ? (
-                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: s(11.5), lineHeight: 1.6 }}>
+                  <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: _s(11.5), lineHeight: 1.6 }}>
                     {renderPlainText([], pendingSkills!)}
                   </div>
                 ) : (
@@ -700,7 +707,7 @@ export default function ResumeRenderer({
     }
 
     return (
-      <div data-section-start="1" style={{ marginBottom: s(10) }}>
+      <div data-section-start="1" style={{ marginBottom: _s(10) }}>
         {header}
         <div onClick={click({ kind: 'skills' })} style={containerStyle()}>
           {renderItems(data.skills, pendingSkills ?? [])}
@@ -710,7 +717,7 @@ export default function ResumeRenderer({
   }
 
   // ============ CONTACT BAR ============
-  const ContactInline = ({ onDark = false, vertical = false, centered = false }: { onDark?: boolean; vertical?: boolean; centered?: boolean }) => {
+  const ContactInline = ({ onDark = false, vertical = false, centered = false, noScale = false }: { onDark?: boolean; vertical?: boolean; centered?: boolean; noScale?: boolean }) => {
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#475569'
     const toWebHref = (url: string) =>
       /^https?:\/\//i.test(url) ? url : `https://${url}`
@@ -757,6 +764,7 @@ export default function ResumeRenderer({
       </span>
     )
 
+    const _s = noScale ? s0 : s
     return (
       <div onClick={click({ kind: 'contact' })}
         style={{
@@ -766,7 +774,7 @@ export default function ResumeRenderer({
           flexWrap: vertical ? 'nowrap' : 'wrap',
           justifyContent: centered ? 'center' : undefined,
           gap: vertical ? '6px' : '6px 18px',
-          fontSize: s(11.5),
+          fontSize: _s(11.5),
           color: c,
           padding: interactive ? '4px' : 0,
           margin: interactive ? '-4px' : 0,
@@ -775,10 +783,10 @@ export default function ResumeRenderer({
         {infoItems.length > 0 && <>
           {contactItems.length > 0 && (vertical
             ? <div style={{ height: '1px', background: onDark ? 'rgba(255,255,255,0.15)' : '#e2e8f0', margin: '2px 0' }} />
-            : <span style={{ color: onDark ? 'rgba(255,255,255,0.3)' : '#cbd5e1', alignSelf: 'center', lineHeight: 1, fontSize: s(11) }}>|</span>
+            : <span style={{ color: onDark ? 'rgba(255,255,255,0.3)' : '#cbd5e1', alignSelf: 'center', lineHeight: 1, fontSize: _s(11) }}>|</span>
           )}
           {vertical && (
-            <span style={{ fontSize: s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>基本信息</span>
+            <span style={{ fontSize: _s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>基本信息</span>
           )}
           {infoItems.map((it, i) => renderItem(it, `info_${i}`))}
         </>}
@@ -895,16 +903,16 @@ export default function ResumeRenderer({
     return [...stored, ...DEFAULT_SECTION_ORDER.filter(k => !storedSet.has(k))]
   })()
 
-  const renderSection = (key: SectionKey, onDark = false): React.ReactNode => {
+  const renderSection = (key: SectionKey, onDark = false, noScale = false): React.ReactNode => {
     switch (key) {
-      case 'exp':       return data.hasExp !== false ? <Section key="exp" sec="exp" label={T('exp')} items={data.exp} onDark={onDark} /> : null
-      case 'edu':       return data.hasEdu !== false ? <Section key="edu" sec="edu" label={T('edu')} items={data.edu} onDark={onDark} /> : null
-      case 'project':   return data.hasProject ? <Section key="project" sec="project" label={T('project')} items={data.project} onDark={onDark} /> : null
-      case 'language':  return data.hasLanguage ? <LanguageSection key="language" onDark={onDark} /> : null
-      case 'award':     return data.hasAward ? <Section key="award" sec="award" label={T('award')} items={data.award} onDark={onDark} /> : null
-      case 'cert':      return data.hasCert ? <Section key="cert" sec="cert" label={T('cert')} items={data.cert} onDark={onDark} /> : null
-      case 'volunteer': return data.hasVolunteer ? <Section key="volunteer" sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} /> : null
-      case 'interest':  return data.hasInterest ? <Section key="interest" sec="interest" label={T('interest')} items={data.interest} onDark={onDark} /> : null
+      case 'exp':       return data.hasExp !== false ? <Section key="exp" sec="exp" label={T('exp')} items={data.exp} onDark={onDark} noScale={noScale} /> : null
+      case 'edu':       return data.hasEdu !== false ? <Section key="edu" sec="edu" label={T('edu')} items={data.edu} onDark={onDark} noScale={noScale} /> : null
+      case 'project':   return data.hasProject ? <Section key="project" sec="project" label={T('project')} items={data.project} onDark={onDark} noScale={noScale} /> : null
+      case 'language':  return data.hasLanguage ? <LanguageSection key="language" onDark={onDark} noScale={noScale} /> : null
+      case 'award':     return data.hasAward ? <Section key="award" sec="award" label={T('award')} items={data.award} onDark={onDark} noScale={noScale} /> : null
+      case 'cert':      return data.hasCert ? <Section key="cert" sec="cert" label={T('cert')} items={data.cert} onDark={onDark} noScale={noScale} /> : null
+      case 'volunteer': return data.hasVolunteer ? <Section key="volunteer" sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} noScale={noScale} /> : null
+      case 'interest':  return data.hasInterest ? <Section key="interest" sec="interest" label={T('interest')} items={data.interest} onDark={onDark} noScale={noScale} /> : null
       default:          return null
     }
   }
@@ -952,11 +960,11 @@ export default function ResumeRenderer({
             </div>
 
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle onDark>{T('contact')}</SectionTitle>
-              <ContactInline onDark vertical />
+              <SectionTitle onDark noScale>{T('contact')}</SectionTitle>
+              <ContactInline onDark vertical noScale />
             </div>
 
-            <SkillsBlock onDark />
+            <SkillsBlock onDark noScale />
           </div>
 
           {/* Main */}
@@ -990,10 +998,10 @@ export default function ResumeRenderer({
               <NameBlock centered big={false} />
             </div>
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle>{T('contact')}</SectionTitle>
-              <ContactInline vertical />
+              <SectionTitle noScale>{T('contact')}</SectionTitle>
+              <ContactInline vertical noScale />
             </div>
-            <SkillsBlock />
+            <SkillsBlock noScale />
           </div>
           <div style={{ flex: 1, padding: '40px 36px' }}>
             <MainBody />
@@ -1027,7 +1035,7 @@ export default function ResumeRenderer({
                 <PhotoBlock size={100} />
               </div>
             )}
-            <SkillsBlock />
+            <SkillsBlock noScale />
           </div>
         </div>
       </div>
@@ -1047,7 +1055,7 @@ export default function ResumeRenderer({
           <div style={{ flex: 1 }}>
             <NameBlock onDark big />
             <div style={{ height: '10px' }} />
-            <ContactInline onDark />
+            <ContactInline onDark noScale />
           </div>
         </div>
         <div style={{ padding: '16px 48px' }}>
@@ -1074,7 +1082,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
-              <ContactInline />
+              <ContactInline noScale />
             </div>
           </div>
         </div>
@@ -1097,7 +1105,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
-              <ContactInline />
+              <ContactInline noScale />
             </div>
           </div>
         </div>
@@ -1110,11 +1118,11 @@ export default function ResumeRenderer({
               .map(key => renderSection(key))}
           </div>
           <div style={{ flex: 1 }}>
-            <Section sec="edu" label={T('edu')} items={data.edu} />
-            <SkillsBlock />
-            {data.hasLanguage && <LanguageSection />}
-            {data.hasAward && <Section sec="award" label={T('award')} items={data.award} />}
-            {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} />}
+            <Section sec="edu" label={T('edu')} items={data.edu} noScale />
+            <SkillsBlock noScale />
+            {data.hasLanguage && <LanguageSection noScale />}
+            {data.hasAward && <Section sec="award" label={T('award')} items={data.award} noScale />}
+            {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} noScale />}
           </div>
         </div>
       </div>
@@ -1132,7 +1140,7 @@ export default function ResumeRenderer({
               <div style={{ flex: 1 }}>
                 <NameBlock big />
                 <div style={{ height: '10px' }} />
-                <ContactInline />
+                <ContactInline noScale />
               </div>
               <PhotoBlock size={100} />
             </div>
@@ -1156,12 +1164,12 @@ export default function ResumeRenderer({
               <div>
                 <NameBlock big />
                 <div style={{ height: '8px' }} />
-                <ContactInline />
+                <ContactInline noScale />
               </div>
             </div>
           </div>
           <div style={{ height: '2px', background: accent, margin: '0 48px 0' }} />
-          <div style={{ padding: '4px 48px 40px' }}>
+          <div style={{ padding: '14px 48px 40px' }}>
             <MainBody />
             <SkillsBlock />
           </div>
@@ -1183,7 +1191,7 @@ export default function ResumeRenderer({
               <NameBlock centered big />
               <div style={{ height: '10px' }} />
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <ContactInline />
+                <ContactInline noScale />
               </div>
             </div>
             <PhotoBlock size={100} />
@@ -1209,7 +1217,7 @@ export default function ResumeRenderer({
             <NameBlock centered big />
             <div style={{ height: '12px' }} />
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <ContactInline />
+              <ContactInline noScale />
             </div>
             <div style={{ width: '40px', height: '3px', background: accent, margin: '24px auto 0', borderRadius: '2px' }} />
           </div>
@@ -1233,7 +1241,7 @@ export default function ResumeRenderer({
           <NameBlock centered big />
           <div style={{ height: '10px' }} />
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ContactInline />
+            <ContactInline noScale />
           </div>
         </div>
         <div style={{ padding: '4px 48px 40px' }}>
@@ -1282,7 +1290,7 @@ export default function ResumeRenderer({
         {/* Contact: starts below photo bottom */}
         <div style={{ padding: '0 48px' }}>
           <div style={{ paddingTop: (data.photoMeta?.shape ?? 'rounded') === 'circle' ? '22px' : '48px', paddingBottom: '12px' }}>
-            <ContactInline />
+            <ContactInline noScale />
           </div>
           <div style={{ height: '1.5px', background: `${accent}30` }} />
         </div>
@@ -1316,7 +1324,7 @@ export default function ResumeRenderer({
           </div>
           <div style={{ width: '1px', height: '60px', background: `${accent}25`, flexShrink: 0 }} />
           <div style={{ flexShrink: 0, maxWidth: '210px' }}>
-            <ContactInline vertical />
+            <ContactInline vertical noScale />
           </div>
         </div>
         <div style={{ padding: '16px 48px 40px' }}>
@@ -1347,7 +1355,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '12px' }} />
-              <ContactInline />
+              <ContactInline noScale />
             </div>
             {template.showPhoto && (
               <div style={{ flexShrink: 0, position: 'relative', zIndex: 1 }}>
@@ -1378,14 +1386,14 @@ export default function ResumeRenderer({
               <div style={{ flex: 1 }}>
                 <NameBlock big />
                 <div style={{ height: '10px' }} />
-                <ContactInline />
+                <ContactInline noScale />
               </div>
             </div>
           ) : (
             <>
               <NameBlock big />
               <div style={{ height: '10px' }} />
-              <ContactInline />
+              <ContactInline noScale />
             </>
           )}
           <div style={{ height: '2px', background: `${accent}45`, marginTop: '20px' }} />
@@ -1421,7 +1429,7 @@ export default function ResumeRenderer({
         </div>
         {/* Bottom contact strip */}
         <div style={{ backgroundColor: accent, padding: '14px 48px' }}>
-          <ContactInline onDark centered />
+          <ContactInline onDark centered noScale />
         </div>
       </div>
     )
@@ -1437,14 +1445,14 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '10px' }} />
-              <ContactInline />
+              <ContactInline noScale />
             </div>
           </div>
         ) : (
           <>
             <NameBlock big />
             <div style={{ height: '10px' }} />
-            <ContactInline />
+            <ContactInline noScale />
           </>
         )}
         <div style={{ height: '2px', background: accent, marginTop: '20px' }} />

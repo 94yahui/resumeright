@@ -9,15 +9,14 @@ import type { PaywallTrigger } from "../editor/components/Modals";
 import { useAuth } from "../hooks/useAuth";
 
 const FREE_FEATURES = [
-  "基础模板（5 套）",
+  "全部 199 套模板随心选",
   "在线编辑",
-  "PDF 下载（带水印）",
-  "2 次免费 AI 简历优化",
+  "PDF 下载（含水印）",
+  "AI 简历分析 2 次（终身）",
   "ATS 检测 2 次/天",
 ];
 
 const PRO_FEATURES = [
-  "全部精美模板随心用",
   "无水印 PDF 下载",
   "AI 简历优化 20 次/天",
   "ATS 检测 5 次/天",
@@ -28,8 +27,7 @@ const PRO_FEATURES = [
 ];
 
 const SINGLE_FEATURES = [
-  "解锁指定 1 套模板",
-  "无水印 PDF 下载",
+  "本份简历无水印下载",
   "永久重新下载",
   "AI 简历优化 5 次",
   "ATS 检测 3 次/天",
@@ -556,7 +554,7 @@ export default function Pricing({
                 marginBottom: "28px",
               }}
             >
-              /套模板 · 永久使用
+              /份简历 · 永久使用
             </div>
 
             <ul
@@ -630,8 +628,8 @@ export default function Pricing({
         </div>
       </div>
 
-      {/* Student link */}
-      <div style={{ textAlign: "center", marginTop: "32px" }}>
+      {/* Student link — hidden once verified */}
+      {!isStudent && <div style={{ textAlign: "center", marginTop: "32px" }}>
         <button
           onClick={() => {
             if (!auth.loggedIn) {
@@ -663,7 +661,7 @@ export default function Pricing({
             学生认证可享全场 5 折 →
           </span>
         </button>
-      </div>
+      </div>}
 
       {/* Modals */}
       {paywallOpen && deviceId && (

@@ -22,6 +22,8 @@ async function qwen(prompt: string, apiKey: string): Promise<unknown> {
 }
 
 type EntrySnippet = { title: string; sub: string; date: string; bullets: string[] }
+type ContactSnippet = { label: string; value: string }
+type CatSnippet = { name: string; items: string[] }
 
 function pickEntries(arr: unknown[]): EntrySnippet[] {
   return arr.map(e => {
@@ -31,6 +33,23 @@ function pickEntries(arr: unknown[]): EntrySnippet[] {
       sub:     String(r.sub     ?? ''),
       date:    String(r.date    ?? ''),
       bullets: Array.isArray(r.bullets) ? (r.bullets as unknown[]).map(String) : [],
+    }
+  })
+}
+
+function pickContacts(arr: unknown[]): ContactSnippet[] {
+  return arr.map(c => {
+    const r = c as Record<string, unknown>
+    return { label: String(r.label ?? ''), value: String(r.value ?? '') }
+  })
+}
+
+function pickCategories(arr: unknown[]): CatSnippet[] {
+  return arr.map(c => {
+    const r = c as Record<string, unknown>
+    return {
+      name:  String(r.name ?? ''),
+      items: Array.isArray(r.items) ? (r.items as unknown[]).map(String) : [],
     }
   })
 }
@@ -48,6 +67,36 @@ function mergeEntries(
       sub:     t.sub     || orig.sub,
       date:    t.date    || orig.date,
       bullets: Array.isArray(t.bullets) && t.bullets.length ? t.bullets : orig.bullets,
+    }
+  })
+}
+
+function mergeContacts(
+  originals: Record<string, unknown>[],
+  translated: ContactSnippet[],
+): Record<string, unknown>[] {
+  return originals.map((orig, i) => {
+    const t = translated?.[i]
+    if (!t) return orig
+    return {
+      ...orig,
+      label: t.label || orig.label,
+      value: t.value || orig.value,
+    }
+  })
+}
+
+function mergeCategories(
+  originals: Record<string, unknown>[],
+  translated: CatSnippet[],
+): Record<string, unknown>[] {
+  return originals.map((orig, i) => {
+    const t = translated?.[i]
+    if (!t) return orig
+    return {
+      ...orig,
+      name:  t.name  || orig.name,
+      items: Array.isArray(t.items) && t.items.length ? t.items : orig.items,
     }
   })
 }
@@ -70,11 +119,13 @@ export async function POST(req: NextRequest) {
     // Build a stripped payload with only text fields that need translation
     type RD = Record<string, unknown>
     const rd = resumeData as RD
+    const rawContacts = (rd.customContacts as unknown[] | undefined) ?? []
     const snippet = {
       name:       docTitle ? String(docTitle) : '',
       personName: String(rd.name ?? ''),
       jobtitle: rd.jobtitle,
       city:     rd.city,
+      gender:   rd.gender,
       summary:  rd.summary,
       exp:      pickEntries((rd.exp as unknown[] | undefined) ?? []),
       edu:      pickEntries((rd.edu as unknown[] | undefined) ?? []),
@@ -85,7 +136,13 @@ export async function POST(req: NextRequest) {
       interest:  pickEntries((rd.interest as unknown[] | undefined) ?? []),
       language:  pickEntries((rd.language as unknown[] | undefined) ?? []),
       skills: rd.skills,
-      skillCategories: rd.skillCategories,
+      skillCategories: Array.isArray(rd.skillCategories)
+        ? pickCategories(rd.skillCategories as unknown[])
+        : undefined,
+      skillCategoriesStash: Array.isArray(rd.skillCategoriesStash)
+        ? pickCategories(rd.skillCategoriesStash as unknown[])
+        : undefined,
+      customContacts: rawContacts.length > 0 ? pickContacts(rawContacts) : undefined,
     }
 
     const prompt = `You are a professional Chinese-to-English resume translator.
@@ -98,9 +155,11 @@ Rules:
 4. Job titles: use standard English equivalents (高级前端工程师→Senior Frontend Engineer, 产品经理→Product Manager).
 5. In date fields, replace "至今" with "Present" only; keep numeric formats like "2022.03" unchanged.
 6. Bullet points: begin with a strong past-tense action verb; keep all numeric data unchanged.
-7. Skills: keep technology names in English as-is (React, TypeScript, etc.); translate non-English skill names. For skillCategories, translate each category's "name" field (e.g. 前端开发→Frontend Development, 编程语言→Programming Languages); keep the "items" array with the same translation rules as skills.
+7. Skills: keep technology names in English as-is (React, TypeScript, etc.); translate non-English skill names. For "skillCategories" and "skillCategoriesStash": translate each category's "name" field (e.g. 前端开发→Frontend Development, 编程语言→Programming Languages); apply the same skill translation rules to the "items" array.
 8. City names: translate to standard English (上海→Shanghai, 北京→Beijing, 深圳→Shenzhen, etc.).
-9. Return ONLY valid JSON with the exact same field structure as the input. No extra commentary.
+9. "gender": translate Chinese gender values (男→Male, 女→Female); keep already-English values as-is.
+10. "customContacts": each entry has a "label" and a "value". Translate Chinese labels (e.g. 政治面貌→Political Affiliation, 民族→Ethnicity, 个人主页→Personal Website). Translate Chinese values (e.g. 中共党员→CPC Member, 汉族→Han). Keep URLs, emails, phone numbers, and already-English values unchanged.
+11. Return ONLY valid JSON with the exact same field structure as the input. No extra commentary.
 
 Input JSON:
 ${JSON.stringify(snippet)}`
@@ -108,15 +167,26 @@ ${JSON.stringify(snippet)}`
     const translated = await qwen(prompt, apiKey) as RD
 
     // Merge translated fields back into original ResumeData (preserving ids, photo, contact, flags, etc.)
+    const origCats = (rd.skillCategories as RD[] | undefined) ?? []
+    const origStash = (rd.skillCategoriesStash as RD[] | undefined) ?? []
     const result: RD = {
       ...resumeData,
       resumeLang: 'en',
       name:     String(translated.personName || rd.name     || ''),
       jobtitle: String(translated.jobtitle   || rd.jobtitle || ''),
       city:     String(translated.city      || rd.city      || ''),
+      gender:   translated.gender != null ? String(translated.gender) : rd.gender,
       summary:  String(translated.summary   || rd.summary   || ''),
       skills:   Array.isArray(translated.skills) ? translated.skills : rd.skills,
-      skillCategories: Array.isArray(translated.skillCategories) ? translated.skillCategories : rd.skillCategories,
+      skillCategories: origCats.length > 0
+        ? mergeCategories(origCats, Array.isArray(translated.skillCategories) ? (translated.skillCategories as CatSnippet[]) : [])
+        : rd.skillCategories,
+      skillCategoriesStash: origStash.length > 0
+        ? mergeCategories(origStash, Array.isArray(translated.skillCategoriesStash) ? (translated.skillCategoriesStash as CatSnippet[]) : [])
+        : rd.skillCategoriesStash,
+      customContacts: rawContacts.length > 0
+        ? mergeContacts(rawContacts as RD[], Array.isArray(translated.customContacts) ? (translated.customContacts as ContactSnippet[]) : [])
+        : rd.customContacts,
       exp:      mergeEntries((rd.exp      as RD[] | undefined) ?? [], (translated.exp      as EntrySnippet[] | undefined) ?? []),
       edu:      mergeEntries((rd.edu      as RD[] | undefined) ?? [], (translated.edu      as EntrySnippet[] | undefined) ?? []),
       project:  mergeEntries((rd.project  as RD[] | undefined) ?? [], (translated.project  as EntrySnippet[] | undefined) ?? []),

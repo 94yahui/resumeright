@@ -179,18 +179,24 @@ STAR PRINCIPLE (English): Action verb → Context/Scale → Method or Tool used 
 
     const promptSuggestions = hasJD
       ? `【岗位定向优化模式】
-任务：结合目标职位描述，运用STAR原则深挖简历中可关联的潜在能力与成果，进行针对性补全或润色，让简历精准命中岗位需求。
-核心原则：①以简历已有内容为主，同时若JD中明确要求的技能/方法论/工具与用户的工作经历高度相关（如用户有互联网开发经验且JD要求敏捷开发），可在对应bullet中合理补充这类可推断出的经验；②严禁凭空捏造用户完全未涉及的项目成果、核心技术或具体数字 ③若原文无数字，绝对不得自行添加任何量化数据、百分比或具体指标 ④若描述已优秀则仅做局部增删修改 ⑤优先工作经历、项目经历、技能、个人简介等核心版块。
+任务：结合目标职位描述，对简历进行全面的精准重构——优化现有内容、挖掘隐藏经验、移除不相关条目、提炼新项目条目、补全经历框架，让简历精准命中岗位需求。
+核心原则：①以简历已有内容为主，若JD要求的技能/方法论与工作背景高度相关可合理推断补充 ②严禁捏造项目成果、核心技术或具体数字 ③若原文无数字，绝对不得添加量化数据 ④优先工作经历、项目经历、技能、个人简介。
 ${diffExample}
 
-请严格按以下JSON格式返回，suggestions包含4到6条：
+【四类建议说明】
+A. 常规优化（改写bullet）：用diff标记标注改动，每条20到40字
+B. 建议移除（action:"remove"）：整段工作/项目经历与JD方向明显不符，建议移除以突出重点
+C. 新增项目（action:"add"）：用户工作描述中有可提炼为独立项目的内容，且用户项目版块为空或薄弱时使用
+D. 补充框架（action:"fill"）：JD明确要求某类经历但用户完全没有相关背景，生成带[[?占位符?]]的草稿框架供用户填写
+
+请严格按以下JSON格式返回，suggestions包含4到8条（视情况选用A/B/C/D类型组合）：
 {
   "hasOfferRate": true,
   "offerRate": <整数0-100，综合考量经验/技能/学历匹配度>,
   "jobInfo": {"title": <职位名称或null>, "company": <公司名或null>, "location": <地点或null>, "type": <"全职"/"兼职"/"实习"或null>},
   "matchBreakdown": {"overall": <0-100>, "experience": <0-100>, "skills": <0-100>, "other": <0-100>},
   "missingSkills": [<3到6条，每条10字内，以"需"开头>],
-  "overview": <3-4句：2个契合点 + 2个差距 + 最关键改进建议>,
+  "overview": <3-4句：2个契合点 + 2个差距 + 最关键改进建议；若有不相关经历请点名说明>,
   "suggestions": [
     {
       "id": "summary_0", "section": "summary", "entryIndex": 0, "field": "summary",
@@ -204,14 +210,14 @@ ${diffExample}
       "label": <如"工作经历·职位@公司">,
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了哪个模块、具体改动及核心竞争优势>,
-      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动bullet原样输出；每条50字内>]
+      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动bullet原样输出；每条20到40字>]
     },
     {
       "id": "project_0", "section": "project", "entryIndex": 0, "field": "bullets",
       "label": <如"项目经历·项目名">,
       "tip": <改写重点，15字内>,
       "changeDescription": <30字内：改了哪个模块、具体改动及核心竞争优势>,
-      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动bullet原样输出；每条50字内>]
+      "optimizedContent": [<完整bullet列表，每条必须用diff标记精确标注改动词语（禁止整句替换）；未改动bullet原样输出；每条20到40字>]
     },
     {
       "id": "skills_0", "section": "skills", "entryIndex": 0, "field": "skills",
@@ -219,10 +225,46 @@ ${diffExample}
       "tip": <15字内>,
       "changeDescription": null,
       "optimizedContent": [<仅列出岗位要求但简历没有的技能；简历已有：${existingSkillsStr}；不能含已有技能；斜杠组合如"Kubernetes/Kafka"必须拆成两个独立条目；无缺失则返回[]>]
+    },
+    {
+      "id": "exp_2", "section": "exp", "entryIndex": 2, "field": "bullets",
+      "action": "remove",
+      "label": <如"建议移除·运营专员@某公司">,
+      "tip": <15字内，说明为何不符>,
+      "changeDescription": <30字内：该经历方向与JD不符的具体原因，保留会有什么负面影响>,
+      "optimizedContent": []
+    },
+    {
+      "id": "new_project_0", "section": "project", "entryIndex": -1, "field": "bullets",
+      "action": "add",
+      "label": <如"建议新增项目·低代码平台搭建">,
+      "tip": <15字内>,
+      "changeDescription": <30字内：从哪段工作经历提炼、为何作为项目展示更有说服力>,
+      "newEntry": {
+        "title": <项目名称>,
+        "sub": <担任角色，如"技术负责人">,
+        "date": <时间范围，从工作经历推断>,
+        "bullets": [<3条描述，每条20到40字，强动词+行为+结果>]
+      },
+      "optimizedContent": []
+    },
+    {
+      "id": "fill_0", "section": "exp", "entryIndex": -1, "field": "bullets",
+      "action": "fill",
+      "label": <如"建议补充：数据分析经历框架">,
+      "tip": <15字内，目标职位要求此能力>,
+      "changeDescription": <30字内：JD中哪个要求触发了此建议，补充后有什么价值>,
+      "newEntry": {
+        "title": "[[?职位/项目名称?]]",
+        "sub": "[[?公司或团队?]]",
+        "date": "[[?起止时间?]]",
+        "bullets": [<2-3条带[[?占位符?]]的框架描述，占位符用[[?...?]]标注，描述20到40字>]
+      },
+      "optimizedContent": []
     }
   ]
 }
-规则：①只为实际有内容的版块生成建议（没有项目经历时不生成project建议）②每条bullet不以句号结尾 ③entryIndex从0开始 ④skills的optimizedContent为[]时整条省略。${langNote}
+规则：①只为实际有内容的版块生成常规优化建议 ②bullet不以句号结尾 ③entryIndex从0开始，新增类entryIndex为-1 ④skills的optimizedContent为[]时整条省略 ⑤remove仅在整段经历与JD明显不符时使用，不得滥用 ⑥add仅在工作描述中有可提炼项目且用户项目版块薄弱时使用 ⑦fill仅在JD硬性要求而用户完全无相关背景时使用，非必要不生成。${langNote}
 
 简历信息：
 ${resumeSnippet}`
@@ -272,21 +314,21 @@ ${diffExample}
       "label": <如"工作经历·职位@公司">,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；每条20到40字；原文过短时可补充细节但总长不超过40字>]
     },
     {
       "id": "exp_1", "section": "exp", "entryIndex": 1, "field": "bullets",
       "label": <第二段工作经历>,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；每条20到40字；原文过短时可补充细节但总长不超过40字>]
     },
     {
       "id": "project_0", "section": "project", "entryIndex": 0, "field": "bullets",
       "label": <如"项目经历·项目名">,
       "tip": <检测到的主要问题类型，15字内>,
       "changeDescription": <30字内：检测到几类问题、如何处理>,
-      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；正常每条50字内，原文该条少于20字时可补充至80字>]
+      "optimizedContent": [<完整bullet列表，每条按四类问题独立处理；用diff标记标出改动；未改动原样输出；每条20到40字；原文过短时可补充细节但总长不超过40字>]
     }
   ]
 }
@@ -378,10 +420,18 @@ ${resumeSnippet}`
             s = { ...s, section: idMatch[1], entryIndex: parseInt(idMatch[2], 10) }
           }
 
-          const isBullets = (s.field === 'bullets') && (s.section === 'exp' || s.section === 'project')
+          const isActionCard = s.action === 'remove' || s.action === 'add' || s.action === 'fill'
+          const isBullets = !isActionCard && (s.field === 'bullets') && (s.section === 'exp' || s.section === 'project')
           const next: Record<string, unknown> = { ...s }
 
-          if (isBullets && Array.isArray(s.optimizedContent)) {
+          if (isActionCard) {
+            // Inject stable entryId for remove cards so client can find the right entry even if order changed
+            if (s.action === 'remove' && s.entryIndex !== undefined) {
+              const sec = s.section as string
+              const entry = (resumeData[sec] as Record<string, unknown>[] | undefined)?.[s.entryIndex as number]
+              if (entry?.id) next.entryId = entry.id
+            }
+          } else if (isBullets && Array.isArray(s.optimizedContent)) {
             // Strip AI-produced diff markers and recompute a proper word-level diff.
             const sec = s.section as string
             const entryIdx = s.entryIndex as number
@@ -419,6 +469,8 @@ ${resumeSnippet}`
         })
         // Remove skills suggestions that ended up with an empty list after filtering
         .filter(s => {
+          // Action cards always pass through
+          if ((s as Record<string, unknown>).action) return true
           if ((s as Record<string, unknown>).section === 'skills') {
             return Array.isArray(s.optimizedContent) && (s.optimizedContent as unknown[]).length > 0
           }

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X, Target, CheckCircle2, ChevronRight, FileUp, ChevronDown, ChevronUp, MessageSquare, Lightbulb } from 'lucide-react'
 import { parsedToResumeData } from '../lib/types'
-import { getDeviceId, recordUsage, getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, GUEST_ANALYZE_LIMIT } from '../lib/payment'
+import { getDeviceId, recordUsage, FREE_ANALYZE_LIMIT } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
 import LogoSweepLoader from './LogoSweepLoader'
 import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveParsedDataToCache, getCachedParsedData, RESUME_CACHED_EVENT } from '../lib/resumeCache'
@@ -26,8 +26,7 @@ function formatSkillTag(s: string): string {
     .replace(/^需需/, '需')
 }
 
-const FREE_LIMIT  = FREE_ANALYZE_LIMIT   // logged-in free users
-const GUEST_LIMIT = GUEST_ANALYZE_LIMIT  // not-logged-in guests
+const FREE_LIMIT = FREE_ANALYZE_LIMIT
 const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
 
 const SAMPLE_JDS = [
@@ -96,14 +95,12 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
   const [interviewLoading, setInterviewLoading] = useState(false)
   const [error, setError] = useState('')
   const [deviceId, setDeviceId] = useState('')
-  const [usedToday, setUsedToday] = useState(0)  // guest-only localStorage counter, populated after mount
   const [cachedFilename, setCachedFilename] = useState<string | null>(null)
   const analyzeAbortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const did = getDeviceId()
     setDeviceId(did)
-    setUsedToday(getFreeAnalyzeUsed())
     setCachedFilename(getCachedResumeName())
 
     const handler = (e: Event) => {
@@ -116,14 +113,12 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
     return () => window.removeEventListener(RESUME_CACHED_EVENT, handler)
   }, [])
 
-  // Derived quota state — always from DB (auth) for logged-in, localStorage for guests
+  // Derived quota state
   const isSubscriber = auth.loggedIn && !!auth.membership &&
     SUB_PLANS.has(auth.membership.plan) &&
     (!auth.membership.expires_at || auth.membership.expires_at > Date.now())
-  const analyzeUsed = isSubscriber ? auth.dailyAnalyzeUsed
-    : auth.loggedIn ? auth.freeAnalyzeUsed
-    : usedToday
-  const analyzeLimit = isSubscriber ? 20 : auth.loggedIn ? FREE_LIMIT : GUEST_LIMIT
+  const analyzeUsed = isSubscriber ? auth.dailyAnalyzeUsed : auth.freeAnalyzeUsed
+  const analyzeLimit = isSubscriber ? 20 : FREE_LIMIT
   const analyzeExhausted = analyzeUsed >= analyzeLimit
 
   useEffect(() => {
@@ -174,20 +169,17 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
     const fileToUse = file ?? getCachedResumeFile()
     if (!fileToUse) { setError('请上传简历文件'); return }
 
+    if (!auth.loggedIn) {
+      onLoginRequest()
+      return
+    }
+
     // Quota pre-check (server enforces authoritatively; this avoids wasted round-trips)
-    if (auth.loggedIn && analyzeExhausted) {
+    if (analyzeExhausted) {
       setError(isSubscriber
         ? `今日分析次数已达上限（20 次/天）`
         : `${FREE_LIMIT} 次免费次数已用完，升级 Pro 每天可用 20 次 `)
       return
-    }
-    if (!auth.loggedIn) {
-      const liveUsed = getFreeAnalyzeUsed()
-      if (liveUsed >= GUEST_LIMIT) {
-        setUsedToday(liveUsed)  // sync state so button shows exhausted text
-        setError('免费次数已用完，升级 Pro · 每日 20 次')
-        return
-      }
     }
 
     // Abort any previous in-flight analysis
@@ -257,10 +249,6 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
       if (auth.loggedIn) {
         // Server already updated DB via checkServerQuota; refresh auth so counts reflect in UI
         window.dispatchEvent(new Event('rc:login'))
-      } else {
-        // Guest: update localStorage counter and local display
-        recordUsage(deviceId, 'ai_analyze', { kind: 'free' })
-        setUsedToday(getFreeAnalyzeUsed())
       }
       setResult(analysisResult)
       setInterviewData(null)
@@ -591,8 +579,6 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
                     <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'landingSpin 0.8s linear infinite', flexShrink: 0 }} />
                     AI 分析中...
                   </>
-                ) : analyzeExhausted && !auth.loggedIn ? (
-                  <>登录后继续使用</>
                 ) : analyzeExhausted && auth.loggedIn ? (
                   isSubscriber ? <>今日次数已用完</> : <>免费次数已用完 · 升级 Pro</>
                 ) : jobDesc.trim() ? (
@@ -605,9 +591,7 @@ export default function LandingAnalysisSection({ onLoginRequest }: { onLoginRequ
               <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: '#94a3b8' }}>
                 {auth.loading ? ' '
                   : !auth.loggedIn
-                    ? (usedToday === 0
-                        ? '首次免费 · 登录后可解锁更多次数'
-                        : '免费次数已用完 · 登录后可使用更多')
+                    ? '登录后即可开始简历分析'
                   : isSubscriber
                     ? `今日已用 ${auth.dailyAnalyzeUsed}/20 次`
                     : FREE_LIMIT - auth.freeAnalyzeUsed > 0

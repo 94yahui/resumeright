@@ -77,12 +77,9 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
                 AI
               </em>
-              助力，极速打造
+              助力，打动 HR
             </div>
-            <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
-              专业
-            </em>
-            求职简历
+            拿下面试邀约
           </h1>
 
           <p

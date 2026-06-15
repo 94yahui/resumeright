@@ -3,9 +3,23 @@ import { useState, useEffect, useCallback } from 'react'
 import { TEMPLATES, CATEGORIES, CATEGORY_MAP, TemplateConfig } from '../lib/templates-config'
 import TemplateThumbnail from '../lib/TemplateThumbnail'
 
-const FREE_COUNT = TEMPLATES.filter(t => t.free).length
+const TOTAL_COUNT = TEMPLATES.length
 const PAGE_WIDTH = 794
 const PAGE_HEIGHT = 1123
+
+const SINGLE_LAYOUTS = new Set([
+  'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
+  'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
+])
+const FEATURED_PHOTO_LAYOUTS = new Set(['linkedin-banner', 'diagonal-photo', 'namecard-header'])
+function tplSortKey(t: TemplateConfig): number {
+  const isSingle = SINGLE_LAYOUTS.has(t.layout)
+  if (FEATURED_PHOTO_LAYOUTS.has(t.layout) && t.showPhoto) return 0
+  if (isSingle && t.showPhoto)  return 1
+  if (!isSingle && t.showPhoto) return 2
+  if (isSingle && !t.showPhoto) return 3
+  return 4
+}
 
 export default function Templates() {
   const [activeFilter, setActiveFilter] = useState('全部')
@@ -29,7 +43,7 @@ export default function Templates() {
   const catKey = CATEGORY_MAP[activeFilter]
   const filtered = TEMPLATES
     .filter(t => catKey === 'all' || t.categories.includes(catKey))
-    .sort((a, b) => (b.showPhoto ? 1 : 0) - (a.showPhoto ? 1 : 0))
+    .sort((a, b) => tplSortKey(a) - tplSortKey(b))
   const visible = filtered.slice(0, showCount)
   const hasMore = filtered.length > showCount
 
@@ -63,7 +77,7 @@ export default function Templates() {
             找到<span style={{ color: 'var(--theme-blue)' }}>属于你</span>的风格
           </h2>
           <p style={{ fontSize: '15px', color: '#64748b', marginTop: '10px', fontWeight: 400 }}>
-            多套专业设计，{FREE_COUNT} 套免费 · 更多 Pro 解锁
+            {TOTAL_COUNT} 套专业设计，全部免费使用
           </p>
         </div>
 
@@ -118,6 +132,7 @@ export default function Templates() {
             tpl={tpl}
             delay={Math.min(i, 9) * 0.04}
             onPreview={() => setPreviewTpl(tpl)}
+            categoryHint={catKey}
           />
         ))}
       </div>
@@ -156,7 +171,7 @@ export default function Templates() {
   )
 }
 
-function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: number; onPreview: () => void }) {
+function TemplateCard({ tpl, delay, onPreview, categoryHint }: { tpl: TemplateConfig; delay: number; onPreview: () => void; categoryHint?: string }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -179,7 +194,7 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
           : '0 2px 12px rgba(15, 23, 42, 0.10)',
         transition: 'box-shadow 0.22s',
       }}>
-        <TemplateThumbnail template={tpl} fillWidth />
+        <TemplateThumbnail template={tpl} fillWidth categoryHint={categoryHint} />
         {/* Hover preview button — no overlay tint */}
         <div style={{
           position: 'absolute', inset: 0,
@@ -196,13 +211,6 @@ function TemplateCard({ tpl, delay, onPreview }: { tpl: TemplateConfig; delay: n
           }}>预览</div>
         </div>
 
-        <div style={{
-          position: 'absolute', top: '10px', right: '10px',
-          background: tpl.free ? 'var(--teal)' : '#0f172a',
-          color: 'white',
-          padding: '3px 10px', borderRadius: '5px',
-          fontSize: '10px', fontWeight: 600,
-        }}>{tpl.free ? '免费' : 'Pro'}</div>
 
       </div>
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, Suspense } from 'react'
 import { flushSync } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import { Menu, Undo2, Redo2, Globe, Check } from 'lucide-react'
@@ -30,7 +30,7 @@ import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
   hasNoWatermark, checkUsage, recordUsage, cleanOldUsage, getDailyCount,
-  getFreeAnalyzeUsed, FREE_ANALYZE_LIMIT, GUEST_ANALYZE_LIMIT,
+  FREE_ANALYZE_LIMIT,
   type ProStatus,
 } from '../lib/payment'
 import type { PlanType } from '../lib/payment'
@@ -134,7 +134,8 @@ function EditorInner() {
           const next = { ...prev }
           for (const id of toUnapply) {
             const s = aiAnalysis.suggestions.find(s => s.id === id)
-            if (s && (s.section === 'exp' || s.section === 'project') && s.entryIndex !== undefined && Array.isArray(s.optimizedContent)) {
+            // Skip action cards — their optimizedContent is [] and would wipe bullets on undo
+            if (s && !s.action && (s.section === 'exp' || s.section === 'project') && s.entryIndex !== undefined && Array.isArray(s.optimizedContent)) {
               next[`${s.section}:${s.entryIndex}`] = s.optimizedContent as string[]
             }
           }
@@ -187,14 +188,13 @@ function EditorInner() {
   const [pngGenerating, setPngGenerating] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [proStatus, setProStatus] = useState<ProStatus>({ kind: 'free' })
-  const [localFreeAnalyzeUsed, setLocalFreeAnalyzeUsed] = useState(0)  // populated after mount via useEffect
   const [isStudentVerified, setIsStudentVerified] = useState(false)
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
   const [studentModalOpen, setStudentModalOpen] = useState(false)
   const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
   const appliedAtHistoryIdxRef = useRef<Map<string, number>>(new Map())
-  const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | null>(null)
+  const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | 'import' | 'ai_analyze' | null>(null)
   const translateAbortRef = useRef<AbortController | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
@@ -220,7 +220,9 @@ function EditorInner() {
   const initialized = useRef(false)
   const cloudSyncDone = useRef(false)
   // True once the canvas is safe to reveal; starts false for logged-in users so DEMO_DATA never flashes.
-  const [canvasReady, setCanvasReady] = useState(() => !hasSessionHint())
+  // Initialize to true (SSR-safe) then immediately correct on client before first paint.
+  const [canvasReady, setCanvasReady] = useState(true)
+  useLayoutEffect(() => { if (hasSessionHint()) setCanvasReady(false) }, [])
   const loggingOutRef = useRef(false)
   const loggedInRef = useRef(false)  // mirrors auth.loggedIn for use inside event handler closures
   const authRefreshRef = useRef<() => void>(() => {})
@@ -263,11 +265,8 @@ function EditorInner() {
     fontPair: fontPairOverride ?? template.fontPair,
   }
   const effectiveColor = color || template.accentColor
-  const isProTemplate = !template.free
-  // Watermark: subscription = always off; single = only off for the paid template;
-  // old single purchases (no templateId stored) keep the original no-watermark behaviour.
-  const showWatermark = proStatus.kind === 'free' ||
-    (proStatus.kind === 'single' && !!proStatus.templateId && proStatus.templateId !== templateId)
+  // Watermark: shown for free users on all templates; hidden for any paid plan.
+  const showWatermark = proStatus.kind === 'free'
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -288,7 +287,6 @@ function EditorInner() {
     const did = getDeviceId()
     setDeviceId(did)
     cleanOldUsage()
-    setLocalFreeAnalyzeUsed(getFreeAnalyzeUsed())
   }, [])
 
   // Safety valve: unblock canvas if cloud sync never fires (e.g. network error, expired token).
@@ -1241,6 +1239,8 @@ ${autoprint ? `<script>
     if (action === 'translate')  setTimeout(() => handleTranslate(), 80)
     if (action === 'compress')   setTimeout(() => handleCompress(), 80)
     if (action === 'unlock_pro') setTimeout(() => handleUnlockPro(), 80)
+    if (action === 'import')     setTimeout(() => importFileRef.current?.click(), 80)
+    if (action === 'ai_analyze') setTimeout(() => handleAIAnalyze(), 80)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.loggedIn, auth.loading])
 
@@ -1252,12 +1252,12 @@ ${autoprint ? `<script>
     }
     if (showWatermark) {
       pendingPaywallActionRef.current = { type: 'download' }
-      setPaywallTrigger(isProTemplate ? 'download_pro' : 'download_free')
+      setPaywallTrigger('download_free')
       setPaywallOpen(true)
       return
     }
     setModal('download')
-  }, [isProTemplate, showWatermark, auth.loggedIn])
+  }, [showWatermark, auth.loggedIn])
 
   const handleUnlockPro = useCallback(() => {
     if (!auth.loggedIn) {
@@ -1265,12 +1265,17 @@ ${autoprint ? `<script>
       setShowEditorLogin(true)
       return
     }
-    setPaywallTrigger('download_pro')
+    setPaywallTrigger('download_free')
     setPaywallOpen(true)
   }, [auth.loggedIn])
 
   // ============ AI Panel ============
   const handleAIAnalyze = useCallback(() => {
+    if (!auth.loggedIn) {
+      pendingLoginActionRef.current = 'ai_analyze'
+      setShowEditorLogin(true)
+      return
+    }
     // Abort any in-flight analysis from a previous panel open
     aiAnalyzeAbortRef.current?.abort()
     aiAnalyzeAbortRef.current = null
@@ -1307,12 +1312,9 @@ ${autoprint ? `<script>
         return
       }
     } else {
-      // Read lifetime counter directly from localStorage (avoids daily-counter vs lifetime mismatch)
-      const liveUsed = getFreeAnalyzeUsed()
-      if (liveUsed >= GUEST_ANALYZE_LIMIT) {
-        setLocalFreeAnalyzeUsed(liveUsed)  // sync state → button becomes disabled / banner shows
-        return
-      }
+      pendingLoginActionRef.current = 'ai_analyze'
+      setShowEditorLogin(true)
+      return
     }
     const dataSnapshot = JSON.stringify(data)  // snapshot before async gap
     setAiPanelPhase('analyzing')
@@ -1335,7 +1337,6 @@ ${autoprint ? `<script>
       if (res.ok) {
         const result = await res.json()
         recordUsage(deviceId, 'ai_analyze', proStatus)
-        setLocalFreeAnalyzeUsed(getFreeAnalyzeUsed())
         setProStatus(getProStatus(deviceId, currentHistoryId || undefined))
         // For logged-in users, refresh from server so dailyAnalyzeUsed / freeAnalyzeUsed are up to date
         if (loggedInRef.current) void authRefreshRef.current()
@@ -1392,19 +1393,42 @@ ${autoprint ? `<script>
   const handleApplySuggestion = useCallback((s: AISuggestion, checkedSkills?: string[]) => {
     appliedAtHistoryIdxRef.current.set(s.id, historyIdx)
     const stripDot = (t: string) => t.replace(/[。.！!？?]+$/, '').trim()
-    if (s.section === 'summary' && s.field === 'summary') {
+    const sec = s.section as SectionKey
+
+    if (s.action === 'remove' && (s.section === 'exp' || s.section === 'project')) {
+      setData(prev => {
+        const arr = [...(prev[sec] as Entry[])]
+        // Prefer stable entryId lookup; fall back to index only if id not found
+        const idx = s.entryId
+          ? arr.findIndex(e => e.id === s.entryId)
+          : s.entryIndex ?? -1
+        if (idx >= 0) arr.splice(idx, 1)
+        return { ...prev, [sec]: arr }
+      })
+    } else if ((s.action === 'add' || s.action === 'fill') && s.newEntry && (s.section === 'exp' || s.section === 'project')) {
+      const entry: Entry = {
+        id: `${Date.now()}-ai`,
+        title: s.newEntry.title,
+        sub: s.newEntry.sub,
+        date: s.newEntry.date,
+        bullets: s.newEntry.bullets.map(stripDot),
+      }
+      setData(prev => ({
+        ...prev,
+        [sec]: [...(prev[sec] as Entry[]), entry],
+        ...(sec === 'project' ? { hasProject: true } : {}),
+      }))
+    } else if (s.section === 'summary' && s.field === 'summary') {
       const raw = s.optimizedContent
       const content = Array.isArray(raw)
         ? (raw as string[]).map(stripDot).filter(Boolean).join(' ')
         : typeof raw === 'string' ? stripDot(raw) : ''
       if (content) updateData({ summary: content, hasSummary: true })
     } else if ((s.section === 'exp' || s.section === 'project') && s.field === 'bullets' && s.entryIndex !== undefined) {
-      // Strip diff markup, then clean trailing punctuation
       const bullets = Array.isArray(s.optimizedContent)
         ? (s.optimizedContent as string[]).map(b => stripDot(applyDiffBullet(b))).filter(Boolean)
         : []
-      if (bullets.length) updateEntry(s.section as SectionKey, s.entryIndex, { bullets })
-      // Clear diff preview for this entry
+      if (bullets.length) updateEntry(sec, s.entryIndex, { bullets })
       setBulletDiffs(prev => {
         const next = { ...prev }
         delete next[`${s.section}:${s.entryIndex}`]
@@ -1447,8 +1471,28 @@ ${autoprint ? `<script>
 
     setData(prev => {
       let next = { ...prev }
+      // Process removes first (descending index to avoid shift)
+      const removes = pending.filter(s => s.action === 'remove' && s.entryIndex !== undefined)
+        .sort((a, b) => (b.entryIndex ?? 0) - (a.entryIndex ?? 0))
+      for (const s of removes) {
+        const sec = s.section as SectionKey
+        const arr = [...(next[sec] as Entry[])]
+        arr.splice(s.entryIndex!, 1)
+        next = { ...next, [sec]: arr }
+      }
       for (const s of pending) {
-        if (s.section === 'summary' && s.field === 'summary') {
+        const sec = s.section as SectionKey
+        if (s.action === 'remove') continue
+        if ((s.action === 'add' || s.action === 'fill') && s.newEntry && (s.section === 'exp' || s.section === 'project')) {
+          const entry: Entry = {
+            id: `${Date.now()}-${s.id}`,
+            title: s.newEntry.title,
+            sub: s.newEntry.sub,
+            date: s.newEntry.date,
+            bullets: s.newEntry.bullets.map(stripDot),
+          }
+          next = { ...next, [sec]: [...(next[sec] as Entry[]), entry], ...(sec === 'project' ? { hasProject: true } : {}) }
+        } else if (s.section === 'summary' && s.field === 'summary') {
           const rawC = s.optimizedContent
           const content = Array.isArray(rawC)
             ? (rawC as string[]).map(stripDot).filter(Boolean).join(' ')
@@ -1459,8 +1503,8 @@ ${autoprint ? `<script>
             ? (s.optimizedContent as string[]).map(b => stripDot(applyDiffBullet(b))).filter(Boolean)
             : []
           if (bullets.length) {
-            const arr = [...(next[s.section as SectionKey] as Entry[])]
-            if (arr[s.entryIndex]) { arr[s.entryIndex] = { ...arr[s.entryIndex], bullets }; next = { ...next, [s.section]: arr } }
+            const arr = [...(next[sec] as Entry[])]
+            if (arr[s.entryIndex]) { arr[s.entryIndex] = { ...arr[s.entryIndex], bullets }; next = { ...next, [sec]: arr } }
           }
         } else if (s.section === 'skills' && s.field === 'skills') {
           const skills = Array.isArray(s.optimizedContent)
@@ -1603,11 +1647,9 @@ ${autoprint ? `<script>
         return
       }
     } else {
-      const check = checkUsage(deviceId, 'import', proStatus)
-      if (!check.allowed) {
-        showToast('今日导入次数已用完，登录后次数重置')
-        return
-      }
+      pendingLoginActionRef.current = 'import'
+      setShowEditorLogin(true)
+      return
     }
     importFileRef.current?.click()
   }, [deviceId, proStatus])
@@ -1928,26 +1970,21 @@ ${autoprint ? `<script>
         />
       </div>
 
-      {/* Pro-template preview banner — free users can see the template but need Pro to download */}
-      {isProTemplate && showWatermark && !noResumeOpen && !auth.loading && (
+      {/* Watermark banner — shown for free users */}
+      {showWatermark && !noResumeOpen && !auth.loading && (
         <div className="no-print" style={{
           background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
           padding: '7px 16px', display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: '10px', flexShrink: 0,
         }}>
           <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)' }}>
-            <span style={{
-              display: 'inline-block', padding: '1px 6px', borderRadius: '8px',
-              background: '#f59e0b', color: 'white', fontSize: '10px', fontWeight: 700,
-              marginRight: '8px', verticalAlign: 'middle',
-            }}>Pro 模板预览</span>
-            当前为预览模式 · 升级后可下载无水印 PDF
+            当前下载将含水印 · 升级 Pro 即可无水印导出
           </span>
           <button onClick={handleUnlockPro} style={{
             padding: '5px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
             background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
             cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
-          }}>解锁 Pro</button>
+          }}>升级 Pro</button>
         </div>
       )}
 
@@ -1998,9 +2035,6 @@ ${autoprint ? `<script>
             onClose={() => setLeftOpen(false)}
             forceTab={leftPanelTab ?? undefined}
             disabled={noResumeOpen}
-            canUseProTemplate={proStatus.kind === 'subscription' || (proStatus.kind === 'single' && !proStatus.templateId)}
-            unlockedProTemplateId={proStatus.kind === 'single' && !!proStatus.templateId ? proStatus.templateId : undefined}
-            onProTemplateLocked={handleUnlockPro}
             loggedIn={auth.loggedIn}
             onShowLogin={() => setShowEditorLogin(true)}
           />
@@ -2326,7 +2360,7 @@ ${autoprint ? `<script>
                   onGenerateInterview={handleGenerateInterview}
                   analyzeExhausted={
                     proStatus.kind === 'free'
-                      ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= GUEST_ANALYZE_LIMIT)
+                      ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT
                       : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
                       : auth.dailyAnalyzeUsed >= 20
                   }
@@ -2406,7 +2440,7 @@ ${autoprint ? `<script>
                 onGenerateInterview={handleGenerateInterview}
                 analyzeExhausted={
                   proStatus.kind === 'free'
-                    ? (auth.loggedIn ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT : localFreeAnalyzeUsed >= GUEST_ANALYZE_LIMIT)
+                    ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT
                     : proStatus.kind === 'single' ? proStatus.aiAnalyzeLeft <= 0
                     : auth.dailyAnalyzeUsed >= 20
                 }
@@ -2428,9 +2462,8 @@ ${autoprint ? `<script>
           onClose={() => setModal('none')}
           onPrintPDF={handlePrintPDF}
           onDownloadPNG={handleDownloadPNG}
-          isPro={isProTemplate}
           isPaid={proStatus.kind !== 'free'}
-          onUnlockPro={() => { setModal('none'); setPaywallTrigger('download_pro'); setPaywallOpen(true) }}
+          onUnlockPro={() => { setModal('none'); setPaywallTrigger('download_free'); setPaywallOpen(true) }}
         />
       )}
       {importModalState !== 'none' && (

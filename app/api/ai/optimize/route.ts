@@ -5,7 +5,7 @@ import { aiFetch } from '../_fetch'
 const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'deepseek-chat'
 
-const EXPERT_SYSTEM = `你是一位拥有15年招聘与人才管理经验的资深简历顾问，曾担任多家世界500强企业的人才招聘总监，深度参与过数万份简历的筛选与评估。你精通用STAR原则（Action强力动词开头/Result呈现可衡量成果）改写简历描述，熟悉互联网、金融、快消、制造、医疗等主流行业的岗位要求与筛选标准。核心能力：精准识别简历弱点，用"主导/设计/推动/实现/重构"等强力动词替换"参与/负责/协助/支持"等弱动词，在不虚构任何信息的前提下最大化候选人竞争力。`
+const EXPERT_SYSTEM = `你是专业简历改写专家，擅长将平淡、信息量不足的简历描述改写为结构完整、内容充实、吸引招聘官的bullet。你的核心能力是对每一条描述进行完整的内容重构——不是仅换一个动词，而是补全"做了什么、怎么做的、产生什么影响"三层信息，让每条描述真正有说服力。`
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.QWEN_API_KEY
@@ -28,25 +28,35 @@ export async function POST(req: NextRequest) {
       const countInstruction = isShort
         ? '返回4-5条优化后的描述（原文较简短，请充分展开）'
         : '返回3-5条优化后的描述'
-      const lengthInstruction = isShort
-        ? '每条可到70-90字，原描述过短时请基于职位性质与行业惯例充分补充行为细节与结果'
-        : '每条控制在50字以内'
+      const lengthInstruction = '每条控制在20到40字之间；原描述过短时可基于职位性质合理补充细节，但总长不超过40字'
 
-      prompt = `请优化以下工作/项目描述，使其更清晰、更具体、更吸引招聘官。
+      prompt = `请对以下工作/项目描述进行完整改写，每条输出结构完整、内容充实的简历描述。
 
 背景信息：${context || '无'}
-当前描述：
+原始描述：
 ${text}
 
-改写要求（STAR原则）：
-1. Action：每条句首用强力动词（主导/设计/推动/实现/重构/搭建），替换弱动词（参与/负责/协助/支持）
-2. Result：每条尽量呈现可衡量的结果或业务影响；若原文无数字，可基于Action合理推断结果方向，但严禁虚构具体数字
-3. 禁止使用"显著""大幅""极大"等模糊程度词，改用具体事实替代
-4. 保留原有核心信息，不删减关键技术或项目名称
-5. ${lengthInstruction}
-6. ${countInstruction}
+【改写结构（每条必须包含全部三层）】
+强力动词 ＋ 具体行为或方法 ＋ 结果或影响方向
 
-仅返回JSON（无markdown）：{"bullets": ["描述1", "描述2", "描述3"]}`
+【改写示例】
+原文："负责后台接口开发"
+改写："主导后台RESTful接口设计与实现，支撑前端多业务模块稳定高效调用"（27字）
+
+原文："参与用户增长项目"
+改写："推动用户拉新到留存全链路优化，协调产研资源保障项目按期交付"（28字）
+
+原文："协助数据分析"
+改写："独立完成用户行为数据清洗与分析，输出周报支持运营团队策略决策"（29字）
+
+【规则】
+1. 每条20到40字，绝不低于20字；若原文信息量不足，基于岗位背景补充合理行为细节
+2. 严禁虚构任何具体数字、百分比或项目名称
+3. 保留原文中的技术栈名称、产品名、公司背景
+4. 禁用"显著""大幅""极大""有效""积极"等空洞形容词
+5. ${countInstruction}
+
+仅返回JSON（无markdown）：{"bullets": ["改写后描述1", "改写后描述2", "改写后描述3"]}`
     } else {
       prompt = `请优化以下个人简介，使其更专业、更简洁。
 
@@ -74,7 +84,7 @@ ${context ? `背景：${context}` : ''}
           { role: 'user', content: prompt },
         ],
         response_format: { type: 'json_object' },
-        temperature: 0.4,
+        temperature: 0.65,
       }),
     })
 

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { useAuth } from './hooks/useAuth'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import LandingAnalysisSection from './components/LandingAnalysisSection'
@@ -16,6 +17,7 @@ import GradPromo from './components/GradPromo'
 import PaymentSuccessToast from './components/PaymentSuccessToast'
 
 export default function Home() {
+  const auth = useAuth()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const afterLoginRef = useRef<(() => void) | null>(null)
@@ -38,7 +40,7 @@ export default function Home() {
       <GradPromo onLoginRequest={openLogin} />
       <Navbar onUploadClick={() => setUploadOpen(true)} />
       <main>
-        <Hero onUploadClick={() => setUploadOpen(true)} />
+        <Hero onUploadClick={() => auth.loggedIn ? setUploadOpen(true) : openLogin(() => setUploadOpen(true))} />
         <LandingAnalysisSection onLoginRequest={() => openLogin()} />
         <Templates />
         <AISection />

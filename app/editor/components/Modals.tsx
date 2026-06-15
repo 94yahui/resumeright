@@ -531,6 +531,8 @@ export function AIPanel({
     const normalize = (s: string) => s.toLowerCase().trim();
     const existingSet = new Set((currentSkills ?? []).map(normalize));
     return (analysis?.suggestions ?? []).filter((s) => {
+      // Always pass through special action cards
+      if (s.action === "remove" || s.action === "add" || s.action === "fill") return true;
       // Drop exp/project bullet suggestions where no bullet carries diff markup (nothing changed)
       if (
         (s.section === "exp" || s.section === "project") &&
@@ -559,10 +561,15 @@ export function AIPanel({
       return true;
     });
   }, [analysis, currentSkills, currentSummary]);
-  // Summary suggestion always first
-  const suggestions = [...rawSuggestions].sort((a, b) =>
-    a.section === "summary" ? -1 : b.section === "summary" ? 1 : 0,
-  );
+  // Summary first, then regular, then action cards (remove/add/fill) at the end
+  const ACTION_ORDER: Record<string, number> = { remove: 1, add: 2, fill: 3 }
+  const suggestions = [...rawSuggestions].sort((a, b) => {
+    if (a.section === "summary" && !a.action) return -1
+    if (b.section === "summary" && !b.action) return 1
+    const aOrder = a.action ? ACTION_ORDER[a.action] ?? 0 : 0
+    const bOrder = b.action ? ACTION_ORDER[b.action] ?? 0 : 0
+    return aOrder - bOrder
+  });
   const interviewQuestions = interviewData?.questions ?? [];
   const interviewAnswers = interviewData?.answers ?? [];
   const unappliedCount = suggestions.filter(
@@ -1600,6 +1607,72 @@ export function AIPanel({
                     const existingSet = new Set(
                       (currentSkills ?? []).map(normalize),
                     );
+                    // ── Action cards: remove / add / fill ──
+                    if (s.action === "remove") {
+                      return (
+                        <div key={s.id} style={{
+                          padding: "10px 12px", borderRadius: "14px", transition: "all 0.2s",
+                          border: applied ? "1px solid #bbf7d0" : "1px solid rgba(239,68,68,0.25)",
+                          background: applied ? "#f0fdf4" : "rgba(254,242,242,0.6)",
+                        }}>
+                          <div style={{ fontSize: "10px", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "5px", color: applied ? "#16a34a" : "#dc2626" }}>
+                            {applied ? <><CheckCircle2 size={12} color="#16a34a" /> 已移除</> : <>✕ AI 建议移除</>}
+                          </div>
+                          <div style={{ fontSize: "11.5px", fontWeight: 600, color: "#0f172a", marginBottom: "2px" }}>{s.label}</div>
+                          <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500, marginBottom: s.changeDescription ? "6px" : "0" }}>{s.tip}</div>
+                          {s.changeDescription && <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#7f1d1d", lineHeight: 1.55, padding: "6px 10px", background: "rgba(239,68,68,0.07)", borderRadius: "8px" }}>{s.changeDescription}</p>}
+                          {!applied && (
+                            <button onClick={() => onApplySuggestion(s)} style={{ width: "100%", marginTop: "6px", padding: "7px", background: "#dc2626", color: "white", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                              确认移除此段经历
+                            </button>
+                          )}
+                        </div>
+                      )
+                    }
+                    if (s.action === "add" || s.action === "fill") {
+                      const isAdd = s.action === "add"
+                      const accentColor = isAdd ? "#0d9488" : "#7c3aed"
+                      const bgColor = isAdd ? "rgba(240,253,250,0.8)" : "rgba(245,243,255,0.8)"
+                      const borderColor = isAdd ? "rgba(13,148,136,0.25)" : "rgba(124,58,237,0.25)"
+                      const bullets = s.newEntry?.bullets ?? []
+                      return (
+                        <div key={s.id} style={{ padding: "10px 12px", borderRadius: "14px", transition: "all 0.2s", border: applied ? "1px solid #bbf7d0" : `1px solid ${borderColor}`, background: applied ? "#f0fdf4" : bgColor }}>
+                          <div style={{ fontSize: "10px", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "5px", color: applied ? "#16a34a" : accentColor }}>
+                            {applied ? <><CheckCircle2 size={12} color="#16a34a" /> 已添加</> : isAdd ? <>＋ AI 建议新增项目</> : <>○ AI 建议补充框架</>}
+                          </div>
+                          <div style={{ fontSize: "11.5px", fontWeight: 600, color: "#0f172a", marginBottom: "2px" }}>{s.label}</div>
+                          <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500, marginBottom: "6px" }}>{s.tip}</div>
+                          {s.changeDescription && <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#475569", lineHeight: 1.55, padding: "6px 10px", background: "rgba(0,0,0,0.03)", borderRadius: "8px" }}>{s.changeDescription}</p>}
+                          {s.newEntry && (
+                            <div style={{ background: "rgba(0,0,0,0.03)", borderRadius: "8px", padding: "8px 10px", marginBottom: "8px" }}>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#0f172a", marginBottom: "1px" }}>{s.newEntry.title}</div>
+                              <div style={{ fontSize: "10px", color: "#64748b", marginBottom: "6px" }}>{s.newEntry.sub}{s.newEntry.date ? ` · ${s.newEntry.date}` : ""}</div>
+                              <ul style={{ margin: 0, paddingLeft: "14px" }}>
+                                {bullets.map((b, bi) => (
+                                  <li key={bi} style={{ fontSize: "11px", lineHeight: 1.6, marginBottom: "2px", color: "#475569" }}>
+                                    {b.includes("[[?")
+                                      ? b.split(/(\[\[\?.+?\?\]\])/g).map((seg, si) => {
+                                          const m = seg.match(/^\[\[\?(.+?)\?\]\]$/)
+                                          return m
+                                            ? <span key={si} style={{ color: "#94a3b8", fontStyle: "italic" }}>「{m[1]}」</span>
+                                            : <span key={si}>{seg}</span>
+                                        })
+                                      : b}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {!applied && s.action === "fill" && <p style={{ margin: "0 0 6px", fontSize: "10px", color: "#94a3b8", lineHeight: 1.4 }}>添加后请在编辑器中替换占位符</p>}
+                          {!applied && (
+                            <button onClick={() => onApplySuggestion(s)} style={{ width: "100%", padding: "7px", background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`, color: "white", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                              {isAdd ? "添加到项目经历" : "以草稿形式添加"}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    }
+
                     return (
                       <div
                         key={s.id}
@@ -2831,8 +2904,8 @@ const TRIGGER_COPY: Record<PaywallTrigger, { title: string; sub: string }> = {
     sub: "去掉简历底部水印，更专业地投递",
   },
   download_pro: {
-    title: "解锁 Pro 模板",
-    sub: "付费解锁这套模板，即刻无水印下载",
+    title: "升级 Pro 享无水印下载",
+    sub: "去掉简历底部水印，更专业地投递",
   },
   ai_translate: {
     title: "一键生成英文简历",
@@ -2868,7 +2941,6 @@ const PLAN_META = {
 };
 
 const SUB_BENEFITS = [
-  "全部精美模板随心用",
   "无水印 PDF 下载",
   "AI 简历优化 20 次/天",
   "ATS 检测 5 次/天",
@@ -3724,7 +3796,7 @@ export function PaywallModal({
           </div>
 
           {/* Pay button */}
-          <div style={{ marginBottom: "10px" }}>
+          <div style={{ marginBottom: showFreeOption ? "6px" : "10px" }}>
             <button
               onClick={() => startPay(selectedPlan)}
               style={{
@@ -3744,31 +3816,53 @@ export function PaywallModal({
             </button>
           </div>
 
-          {/* Student link */}
-          <button
-            onClick={onOpenStudent}
-            style={{
-              width: "100%",
-              padding: "9px",
-              border: "none",
-              background: "transparent",
-              fontFamily: "var(--font-sans)",
-              fontSize: "12.5px",
-              color: "#64748b",
-              cursor: "pointer",
-            }}
-          >
-            <span
+          {showFreeOption && (
+            <button
+              onClick={onFreeDownload}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
+                width: "100%",
+                padding: "10px",
+                border: "none",
+                background: "transparent",
+                fontFamily: "var(--font-sans)",
+                fontSize: "12px",
+                color: "#94a3b8",
+                cursor: "pointer",
+                textDecoration: "underline",
+                marginBottom: "4px",
               }}
             >
-              <GraduationCap size={16} />
-              学生认证享全场5折 →
-            </span>
-          </button>
+              免费下载（带水印）
+            </button>
+          )}
+
+          {/* Student link — hidden once verified */}
+          {!isStudent && (
+            <button
+              onClick={onOpenStudent}
+              style={{
+                width: "100%",
+                padding: "9px",
+                border: "none",
+                background: "transparent",
+                fontFamily: "var(--font-sans)",
+                fontSize: "12.5px",
+                color: "#64748b",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                }}
+              >
+                <GraduationCap size={16} />
+                学生认证享全场5折 →
+              </span>
+            </button>
+          )}
         </>
       )}
 

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import React, { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react'
 import {
   DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -9,12 +9,27 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 import {
   Briefcase, GraduationCap, FileText, Zap, Globe, MessageSquare,
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Camera,
-  Trash2, Lock, Lightbulb, X, Check, Copy, Pencil, GripVertical,
+  Trash2, Lightbulb, X, Check, Copy, Pencil, GripVertical,
 } from 'lucide-react'
-import { TEMPLATES, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
+import { TEMPLATES, CATEGORY_MAP, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
 import { ResumeData, Entry, SectionKey } from '../../lib/types'
 import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
+
+const SINGLE_LAYOUTS = new Set([
+  'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
+  'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
+])
+
+const FEATURED_PHOTO_LAYOUTS = new Set(['linkedin-banner', 'diagonal-photo', 'namecard-header'])
+function tplSortKey(t: TemplateConfig): number {
+  const isSingle = SINGLE_LAYOUTS.has(t.layout)
+  if (FEATURED_PHOTO_LAYOUTS.has(t.layout) && t.showPhoto) return 0
+  if (isSingle && t.showPhoto)  return 1
+  if (!isSingle && t.showPhoto) return 2
+  if (isSingle && !t.showPhoto) return 3
+  return 4
+}
 
 const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   exp: 'hasExp',
@@ -224,9 +239,6 @@ interface Props {
   onClose?: () => void
   forceTab?: 'tpl' | 'mod' | 'color' | 'hist'
   disabled?: boolean
-  canUseProTemplate?: boolean
-  unlockedProTemplateId?: string  // single-plan: only this one pro template is unlocked
-  onProTemplateLocked?: () => void
   loggedIn?: boolean
   onShowLogin?: () => void
 }
@@ -236,7 +248,7 @@ export default function LeftPanel({
   currentAccentStyle, onAccentStyleChange, currentFontPair, onFontPairChange,
   onAddModule, data, onUpdate,
   onLoadHistory, onDuplicateHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
-  isMobile, onClose, forceTab, disabled, canUseProTemplate = false, unlockedProTemplateId, onProTemplateLocked,
+  isMobile, onClose, forceTab, disabled,
   loggedIn = false, onShowLogin,
 }: Props) {
   const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
@@ -249,12 +261,32 @@ export default function LeftPanel({
   useEffect(() => {
     if (forceTab) setTab(forceTab)
   }, [forceTab])
-  const [showPro, setShowPro] = useState(false)
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  const freeTpls = TEMPLATES.filter(t => t.free)
-  const proTpls = TEMPLATES.filter(t => !t.free)
+  const [catFilter, setCatFilter] = useState<string>('all')
+  const [layoutFilter, setLayoutFilter] = useState<string>('all')
+
+  const sortedTpls = TEMPLATES
+    .filter(t => {
+      if (catFilter !== 'all' && !t.categories.includes(catFilter)) return false
+      if (layoutFilter === 'photo')   return t.showPhoto
+      if (layoutFilter === 'nophoto') return !t.showPhoto
+      if (layoutFilter === 'single')  return SINGLE_LAYOUTS.has(t.layout)
+      if (layoutFilter === 'double')  return !SINGLE_LAYOUTS.has(t.layout)
+      return true
+    })
+    .sort((a, b) => tplSortKey(a) - tplSortKey(b))
+
+  // Unique-layout representatives first (one per layout+photo combo), variants after
+  const seenLayouts = new Set<string>()
+  const tplHeads: TemplateConfig[] = []
+  const tplTails: TemplateConfig[] = []
+  for (const t of sortedTpls) {
+    const key = `${t.layout}|${String(t.showPhoto)}`
+    if (seenLayouts.has(key)) { tplTails.push(t) } else { seenLayouts.add(key); tplHeads.push(t) }
+  }
+  const filteredTpls = [...tplHeads, ...tplTails]
 
   const currentLayout = TEMPLATES.find(t => t.id === templateId)?.layout ?? 'single-classic'
   const orderableKeys = getOrderableKeys(currentLayout)
@@ -327,18 +359,49 @@ export default function LeftPanel({
     return () => obs.disconnect()
   }, [])
 
-  // Scroll active template card to center — only when switching TO the tpl tab, not on template click.
-  // prevTabRef starts as '' (not 'tpl') so the initial mount also triggers centering.
+  // Stable set of currently-visible template IDs — only changes when filters change,
+  // not on every render. Used by Effect B as a dependency to re-run after filter reset.
+  const filteredIdSet = useMemo(
+    () => new Set(filteredTpls.map(t => t.id)),
+    [catFilter, layoutFilter] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  // Ref lets Effect A read the current set without adding it to its own deps.
+  const filteredIdSetRef = useRef(filteredIdSet)
+  filteredIdSetRef.current = filteredIdSet
+
   const prevTabRef = useRef<string>('')
+  const pendingScrollRef = useRef(false)
+
+  // Effect A: decide whether to reset filters and/or flag a pending scroll.
+  // Runs on tab switch and external templateId changes (loading a different resume).
   useEffect(() => {
     const prevTab = prevTabRef.current
     prevTabRef.current = tab
     if (tab !== 'tpl') return
-    if (prevTab === 'tpl') return  // already on tpl tab, templateId changed — don't scroll
-    const isPro = proTpls.some(t => t.id === templateId)
-    if (isPro) setShowPro(true)
-    // Double rAF: first fires after display:block takes effect, second after React flushes setShowPro.
-    // Faster and more reliable than a fixed 60ms timeout.
+
+    if (!filteredIdSetRef.current.has(templateId)) {
+      // Active template is hidden by current filters — reset so it becomes visible,
+      // then let Effect B scroll after the re-render.
+      pendingScrollRef.current = true
+      setCatFilter('all')
+      setLayoutFilter('all')
+    } else if (prevTab !== 'tpl') {
+      // Normal tab switch with template already in view — scroll immediately via Effect B.
+      pendingScrollRef.current = true
+    }
+    // templateId changed while already on tpl tab AND template is visible
+    // → user clicked a card, it's already in view, no scroll needed.
+  }, [tab, templateId])
+
+  // Effect B: scroll to the active template once it's present in the DOM.
+  // Runs on tab/templateId change (normal path) and on filteredIdSet change
+  // (deferred path: after filter-reset re-render makes the template visible).
+  useEffect(() => {
+    if (!pendingScrollRef.current) return
+    if (tab !== 'tpl') return
+    if (!filteredIdSet.has(templateId)) return   // still waiting for filter-reset re-render
+
+    pendingScrollRef.current = false
     let rafId: number
     const raf1 = requestAnimationFrame(() => {
       rafId = requestAnimationFrame(() => {
@@ -353,7 +416,7 @@ export default function LeftPanel({
       })
     })
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(rafId) }
-  }, [tab, templateId])
+  }, [tab, templateId, filteredIdSet])
 
   function formatDate(ts: number): string {
     const d = new Date(ts)
@@ -405,41 +468,45 @@ export default function LeftPanel({
         {/* Keep always mounted so thumbnails stay alive; CSS hides when inactive */}
         <div style={{ display: tab === 'tpl' ? 'block' : 'none' }}>
           <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
-            <div style={{ padding: '14px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--theme-blue)' }}>
-              免费模板 ({freeTpls.length})
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
-              {freeTpls.map(tpl => (
-                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} />
+            {/* Row 1: industry */}
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '10px 12px 4px' }}>
+              {[['all','全部'],['general','通用'],['student','应届生'],['tech','科技'],['design','设计'],['finance','金融'],['management','管理']].map(([val, label]) => (
+                <button key={val} onClick={() => setCatFilter(val)} style={{
+                  padding: '3px 9px', borderRadius: '20px', border: 'none',
+                  fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
+                  background: catFilter === val ? 'var(--theme-blue)' : '#f1f5f9',
+                  color: catFilter === val ? '#fff' : '#64748b',
+                }}>{label}</button>
               ))}
             </div>
-
-            <div style={{ borderTop: '1px solid #e2e8f0', padding: '10px 14px' }}>
-              <button onClick={() => setShowPro(v => !v)} style={{
-                width: '100%', padding: '10px',
-                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                border: '1px solid #f59e0b',
-                borderRadius: '12px',
-                fontSize: '12px', fontWeight: 600, color: '#92400e',
-                cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              }}>
-                <Lock size={11} /> Pro 模板 ({proTpls.length}) {showPro ? '▲' : '▼'}
-              </button>
+            {/* Row 2: layout */}
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 12px 10px' }}>
+              {[['all','全部'],['photo','带照片'],['nophoto','无照片'],['single','单栏'],['double','双栏']].map(([val, label]) => (
+                <button key={val} onClick={() => setLayoutFilter(val)} style={{
+                  padding: '3px 9px', borderRadius: '20px', border: 'none',
+                  fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
+                  background: layoutFilter === val ? '#334155' : '#f1f5f9',
+                  color: layoutFilter === val ? '#fff' : '#64748b',
+                }}>{label}</button>
+              ))}
             </div>
-
-            {showPro && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
-                {proTpls.map(tpl => {
-                  const unlocked = canUseProTemplate || tpl.id === unlockedProTemplateId
-                  return (
-                    <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id}
-                      onClick={() => onTemplateChange(tpl.id)}
-                      isPro isLocked={!unlocked} thumbW={thumbW} />
-                  )
-                })}
-              </div>
-            )}
+            {/* Count */}
+            <div style={{ padding: '0 14px 6px', fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px' }}>
+              {filteredTpls.length} 套模板
+            </div>
+            {/* Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
+              {filteredTpls.map(tpl => (
+                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} categoryHint={catFilter} />
+              ))}
+              {filteredTpls.length === 0 && (
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '32px 0', color: '#94a3b8', fontSize: '13px' }}>
+                  暂无匹配模板
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -881,8 +948,8 @@ function AccentStylePreview({ style, color }: { style: AccentStyle; color: strin
   }
 }
 
-function TplCard({ tpl, active, onClick, isPro, isLocked, thumbW }: {
-  tpl: TemplateConfig; active: boolean; onClick: () => void; isPro?: boolean; isLocked?: boolean; thumbW?: number
+function TplCard({ tpl, active, onClick, thumbW, categoryHint }: {
+  tpl: TemplateConfig; active: boolean; onClick: () => void; thumbW?: number; categoryHint?: string
 }) {
   return (
     <div data-tpl-id={tpl.id} onClick={onClick} style={{
@@ -892,25 +959,13 @@ function TplCard({ tpl, active, onClick, isPro, isLocked, thumbW }: {
       transition: 'all 0.2s',
       boxShadow: active ? '0 0 0 2px rgba(15, 23, 42, 0.1)' : 'none',
       position: 'relative', background: 'white',
-      opacity: isLocked ? 0.75 : 1,
     }}
     onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = '#94a3b8' }}
     onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#e2e8f0' }}
     >
       <div style={{ background: '#f1f5f9' }}>
-        {thumbW ? <TemplateThumbnail template={tpl} width={thumbW} /> : null}
+        {thumbW ? <TemplateThumbnail template={tpl} width={thumbW} categoryHint={categoryHint} /> : null}
       </div>
-      {isPro && (
-        <div style={{
-          position: 'absolute', top: '4px', right: '4px',
-          background: isLocked ? '#94a3b8' : '#f59e0b', color: 'white',
-          fontSize: '8px', padding: '2px 5px', borderRadius: '5px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
-          fontWeight: 700,
-        }}>
-          {isLocked && <Lock size={7} />} Pro
-        </div>
-      )}
       <div style={{ padding: '6px 8px', borderTop: '1px solid #e2e8f0' }}>
         <div style={{
           fontSize: '11px', fontWeight: 600, color: '#0f172a',

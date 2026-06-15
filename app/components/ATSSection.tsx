@@ -176,7 +176,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
   const hasCached = !!cachedFilename && !exhausted
 
   const handleButtonClick = () => {
-    if (exhausted && needLogin) { setShowLoginPrompt(true); return }
+    if (needLogin) { onLoginRequest?.(); return }  // guests always go to login directly
     if (exhausted) return  // logged-in exhausted: do nothing
     if (hasCached) { onUseCached?.(); return }  // use cached file directly
     inputRef.current?.click()
@@ -184,9 +184,10 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false)
-    if (exhausted) { if (needLogin) setShowLoginPrompt(true); return }
+    if (needLogin) { onLoginRequest?.(); return }
+    if (exhausted) return
     const f = e.dataTransfer.files[0]; if (f) onFile(f)
-  }, [onFile, exhausted, needLogin])
+  }, [onFile, exhausted, needLogin, onLoginRequest])
 
   // After login prompt is shown, the button becomes "登录/注册"
   const showLoginButton = showLoginPrompt && needLogin
@@ -356,13 +357,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
 function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; msg: string; needLogin: boolean } {
   if (auth.loading) return { exhausted: false, msg: '', needLogin: false }
   if (!auth.loggedIn) {
-    try {
-      const deviceId = getDeviceId()
-      if (localStorage.getItem(`rc_ats_exhausted_${deviceId}`) === '1') {
-        return { exhausted: true, msg: 'ATS 检测免费次数已用完，登录后每天可用 2 次，升级 Pro 可享每日 5 次。', needLogin: true }
-      }
-    } catch {}
-    return { exhausted: false, msg: '', needLogin: false }
+    return { exhausted: true, msg: '登录后每天可用 2 次 ATS 检测，升级 Pro 可享每日 5 次。', needLogin: true }
   }
   const mem = auth.membership as { plan?: string; expires_at?: number } | null | undefined
   const isPro = isActiveSub(mem?.plan, mem?.expires_at)
@@ -536,7 +531,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
   const hintText = auth.loading
     ? '支持 PDF、Word（.docx）· 不超过 5 MB'
     : !auth.loggedIn
-      ? '未登录免费 1 次 · 登录后每天可用 2 次'
+      ? '登录后每天可用 2 次 · Pro 用户每天 5 次'
       : isPro
         ? '会员账户 · 每天 5 次 ATS 检测'
         : isSingle
