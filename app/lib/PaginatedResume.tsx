@@ -100,11 +100,15 @@ export default function PaginatedResume({
     const container = measureRef.current
     if (!container) return
     const h = container.scrollHeight
-    // When content fits (h <= PAGE_HEIGHT), scrollHeight is clamped to PAGE_HEIGHT
-    // by ResumeRenderer's minHeight. Walk the DOM to find the actual content bottom
-    // so postScaleCheck can detect over-compression and scale back up.
+    // When content fits (h <= PAGE_HEIGHT), scrollHeight is clamped to PAGE_HEIGHT by
+    // ResumeRenderer's minHeight. Walk the DOM to find the actual content bottom so
+    // postScaleCheck can detect over-compression and scale back up.
+    // Exception: sidebar layouts (sidebar-left-wide/narrow, sidebar-right) have a colored
+    // sidebar background that always fills PAGE_HEIGHT, so contentBottom from [data-entry]
+    // walk would under-report — keep scrollHeight for these layouts.
+    const SIDEBAR_LAYOUTS = ['sidebar-left-wide', 'sidebar-left-narrow', 'sidebar-right']
     let reportedHeight = h
-    if (h <= PAGE_HEIGHT) {
+    if (h <= PAGE_HEIGHT && !SIDEBAR_LAYOUTS.includes(template.layout)) {
       const allEls = Array.from(container.querySelectorAll('[data-entry],[data-section-start]')) as HTMLElement[]
       let maxBottom = 0
       for (const el of allEls) {
