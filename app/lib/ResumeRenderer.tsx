@@ -877,7 +877,7 @@ export default function ResumeRenderer({
       }}>
       <div style={{
         fontFamily: headingFont,
-        fontSize: big ? '32px' : '22px',
+        fontSize: big ? s(32) : s(22),
         fontWeight: 700,
         letterSpacing: '-0.5px',
         lineHeight: 1.1,
@@ -886,7 +886,7 @@ export default function ResumeRenderer({
       {data.jobtitle && (
         <div style={{
           fontFamily: baseFont,
-          fontSize: big ? '14px' : '12px',
+          fontSize: big ? s(14) : s(12),
           fontWeight: 400,
           color: onDark ? 'rgba(255,255,255,0.75)' : '#475569',
           marginTop: '4px',
