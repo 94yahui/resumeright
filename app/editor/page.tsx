@@ -226,6 +226,7 @@ function EditorInner() {
   const canvasBreakPointsRef = useRef<number[]>([0])
   const canvasTotalHeightRef = useRef(0)
   const postScaleIterRef = useRef(0)
+  const preCompressScaleRef = useRef(1)
   const scaleWrapperRef = useRef<HTMLDivElement>(null)
   const zoomDisplayRef = useRef<HTMLSpanElement>(null)
   const zoomCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1698,10 +1699,22 @@ ${autoprint ? `<script>
     if (!postScaleCheck) return
     const id = setTimeout(() => {
       const totalH = canvasTotalHeightRef.current
+      const cs = data.fontScale ?? 1
       if (totalH > PAGE_H) {
-        const cs = data.fontScale ?? 1
+        // Still overflowing — scale down further
         const adj = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
-        if (adj < cs && postScaleIterRef.current < 2) {
+        if (adj < cs && postScaleIterRef.current < 3) {
+          postScaleIterRef.current += 1
+          replaceCurrentData({ fontScale: adj })
+          setPostScaleCheck(n => n + 1)
+          return
+        }
+      } else if (totalH < PAGE_H - 80 && postScaleIterRef.current < 3) {
+        // Content bottom is more than 80px above PAGE_H — scale up to fill toward
+        // the bottom padding (~40px). Never exceed the pre-compress scale.
+        const rawAdj = cs * (PAGE_H - 42) / totalH
+        const adj = parseFloat(Math.min(rawAdj, preCompressScaleRef.current).toFixed(4))
+        if (adj > cs) {
           postScaleIterRef.current += 1
           replaceCurrentData({ fontScale: adj })
           setPostScaleCheck(n => n + 1)
@@ -1709,7 +1722,7 @@ ${autoprint ? `<script>
         }
       }
       showToast('✓ 已压缩至 1 页（可撤销）')
-    }, 350)
+    }, 500)
     return () => clearTimeout(id)
   }, [postScaleCheck])
 
@@ -1732,13 +1745,14 @@ ${autoprint ? `<script>
     const pct = totalH > 0 ? (totalH - PAGE_H) / PAGE_H * 100 : 0
     const currentScale = data.fontScale ?? 1
 
-    if (pct <= 35) {
+    if (pct <= 100) {
       const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
+      preCompressScaleRef.current = currentScale
       postScaleIterRef.current = 0
       updateData({ fontScale: scale })
       setPostScaleCheck(n => n + 1)
     } else {
-      showToast('内容超出较多，建议删减部分经历条目或缩短描述后再压缩')
+      showToast('内容超出 2 页，建议删减部分经历条目或缩短描述后再压缩')
     }
   }, [data.fontScale, updateData, compressPhase, auth.loggedIn])
 

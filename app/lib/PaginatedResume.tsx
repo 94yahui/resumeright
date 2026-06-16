@@ -100,7 +100,20 @@ export default function PaginatedResume({
     const container = measureRef.current
     if (!container) return
     const h = container.scrollHeight
-    onMeasure?.(h)
+    // When content fits (h <= PAGE_HEIGHT), scrollHeight is clamped to PAGE_HEIGHT
+    // by ResumeRenderer's minHeight. Walk the DOM to find the actual content bottom
+    // so postScaleCheck can detect over-compression and scale back up.
+    let reportedHeight = h
+    if (h <= PAGE_HEIGHT) {
+      const allEls = Array.from(container.querySelectorAll('[data-entry],[data-section-start]')) as HTMLElement[]
+      let maxBottom = 0
+      for (const el of allEls) {
+        const bottom = getOffsetFromContainer(el, container) + el.offsetHeight
+        if (bottom > maxBottom) maxBottom = bottom
+      }
+      if (maxBottom > 0) reportedHeight = maxBottom
+    }
+    onMeasure?.(reportedHeight)
 
     // ResumeRenderer always has minHeight: PAGE_HEIGHT, so h >= PAGE_HEIGHT even for
     // sparse resumes. Use PAGE_HEIGHT (not PAGE_HEIGHT - CONTINUATION_PAD) as the
