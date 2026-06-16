@@ -1701,28 +1701,9 @@ ${autoprint ? `<script>
       const totalH = canvasTotalHeightRef.current
       const cs = data.fontScale ?? 1
       if (totalH > PAGE_H) {
-        // Still overflowing — scale down further
+        // Still overflowing after initial compress — scale down further (up to 3 passes)
         const adj = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
         if (adj < cs && postScaleIterRef.current < 3) {
-          postScaleIterRef.current += 1
-          replaceCurrentData({ fontScale: adj })
-          setPostScaleCheck(n => n + 1)
-          return
-        }
-        // Exhausted iterations, still overflowing — accept best-effort result
-        showToast('✓ 已尽量压缩（可撤销）')
-        return
-      } else if (totalH < PAGE_H - 80 && postScaleIterRef.current < 3) {
-        // Content bottom is >80px above PAGE_H — fill toward the bottom padding (~40px).
-        const rawAdj = cs * (PAGE_H - 42) / totalH
-        // If direct scale-up would exceed preCompressScale (re-overflow), binary-search
-        // the midpoint between cs and preCompressScale instead — guaranteed not to overflow.
-        const adj = parseFloat((
-          rawAdj < preCompressScaleRef.current
-            ? rawAdj
-            : (cs + preCompressScaleRef.current) / 2
-        ).toFixed(4))
-        if (adj > cs + 0.003) {
           postScaleIterRef.current += 1
           replaceCurrentData({ fontScale: adj })
           setPostScaleCheck(n => n + 1)
