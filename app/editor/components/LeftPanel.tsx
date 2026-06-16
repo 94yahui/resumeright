@@ -238,6 +238,7 @@ interface Props {
   isMobile?: boolean
   onClose?: () => void
   forceTab?: 'tpl' | 'mod' | 'color' | 'hist'
+  onForceTabConsumed?: () => void
   disabled?: boolean
   loggedIn?: boolean
   onShowLogin?: () => void
@@ -248,7 +249,7 @@ export default function LeftPanel({
   currentAccentStyle, onAccentStyleChange, currentFontPair, onFontPairChange,
   onAddModule, data, onUpdate,
   onLoadHistory, onDuplicateHistory, onHistoryDelete, historyRefreshKey, currentHistoryId, currentDocTitle,
-  isMobile, onClose, forceTab, disabled,
+  isMobile, onClose, forceTab, onForceTabConsumed, disabled,
   loggedIn = false, onShowLogin,
 }: Props) {
   const [tab, setTab] = useState<'tpl' | 'mod' | 'color' | 'hist'>('tpl')
@@ -259,8 +260,21 @@ export default function LeftPanel({
   const [thumbW, setThumbW] = useState(0)
   const [filterShadow, setFilterShadow] = useState(false)
 
+  // Keep a ref that always reflects the current forceTab value.
+  // The historyRefreshKey effect reads this to avoid switching to 'hist'
+  // when forceTab is simultaneously requesting 'tpl' (e.g. after import).
+  const forceTabRef = useRef<typeof forceTab>(forceTab)
+  forceTabRef.current = forceTab
+
   useEffect(() => {
-    if (forceTab) setTab(forceTab)
+    if (forceTab) {
+      setTab(forceTab)
+      // Signal the parent that this forced tab has been consumed so it can
+      // reset leftPanelTab to null — preventing stale forceTab from blocking
+      // future historyRefreshKey tab-switches (e.g. after duplicating a resume).
+      onForceTabConsumed?.()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forceTab])
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -343,8 +357,13 @@ export default function LeftPanel({
 
   useEffect(() => {
     if (historyRefreshKey && historyRefreshKey > 0) {
-      setTab('hist')
       setHistoryEntries(loadHistory())
+      // Don't switch to 'hist' when a forced tab ('tpl') was set in the same
+      // render batch (e.g. after landing-page import or ATS detection). The ref
+      // always holds the current render's forceTab value, so this check is safe.
+      if (!forceTabRef.current) {
+        setTab('hist')
+      }
     }
   }, [historyRefreshKey])
 

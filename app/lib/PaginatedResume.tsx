@@ -219,6 +219,7 @@ export default function PaginatedResume({
               data={data} template={template} color={color}
               interactive={interactive} pageCount={1}
               isEnglish={isEnglish}
+              skipMinHeight={true}
             />
           </div>
         </div>

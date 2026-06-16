@@ -227,6 +227,9 @@ function EditorInner() {
   const canvasTotalHeightRef = useRef(0)
   const postScaleIterRef = useRef(0)
   const preCompressScaleRef = useRef(1)
+  // Previous measurement data point used for linear-interpolation correction
+  const prevMeasuredScaleRef = useRef(1)
+  const prevMeasuredHeightRef = useRef(0)
   const scaleWrapperRef = useRef<HTMLDivElement>(null)
   const zoomDisplayRef = useRef<HTMLSpanElement>(null)
   const zoomCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1689,27 +1692,50 @@ ${autoprint ? `<script>
   // Auto-show banner again when content starts overflowing again after being fixed
   useEffect(() => { if (pageCount <= 1) setCompressWarningDismissed(false) }, [pageCount])
 
-  // Post-render correction: after font scale is applied and layout reflows,
-  // re-measure and tighten if still overflowing (text reflow is non-linear).
-  // Uses replaceCurrentData so the correction shares one undo step with the initial compress.
-  // Iterates up to 2 extra times to handle layouts with unscaled fixed elements (e.g. photos
-  // in bottom-strip) where a single pass leaves residual overflow.
+  // Post-render correction: linear interpolation between two known (scale, height) data points
+  // to predict the ideal scale in one shot. Text reflow is non-linear so the initial formula
+  // often over-compresses, leaving blank space at the bottom. The off-screen measurer uses
+  // skipMinHeight, so canvasTotalHeightRef reports the true content height (not PAGE_HEIGHT-pinned).
+  // Maximum 2 correction passes; uses replaceCurrentData so all passes share one undo step.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!postScaleCheck) return
     const id = setTimeout(() => {
       const totalH = canvasTotalHeightRef.current
       const cs = data.fontScale ?? 1
-      if (totalH > PAGE_H) {
-        // Still overflowing after initial compress — scale down further (up to 3 passes)
-        const adj = parseFloat((cs * (PAGE_H - 5) / totalH).toFixed(4))
-        if (adj < cs && postScaleIterRef.current < 3) {
+      const isOver = totalH > PAGE_H
+      const isUnder = totalH < PAGE_H - 20
+      if ((isOver || isUnder) && postScaleIterRef.current < 3) {
+        const s0 = prevMeasuredScaleRef.current
+        const h0 = prevMeasuredHeightRef.current
+        const targetH = PAGE_H - 10  // aim ~10px from page bottom
+        let adj: number
+        if (isOver) {
+          // Overflowing: simple proportional scale-down is reliable
+          adj = cs * (PAGE_H - 10) / totalH
+        } else {
+          // Under-filling: linearly interpolate between (s0,h0) and (cs,totalH) to hit targetH
+          const dh = totalH - h0
+          const ds = cs - s0
+          if (Math.abs(dh) > 20 && Math.abs(ds) > 0.001) {
+            adj = cs + ds * (targetH - totalH) / dh
+          } else {
+            adj = cs * targetH / totalH  // single-point fallback
+          }
+          // Never exceed the pre-compress scale (it was already overflowing)
+          adj = Math.min(adj, preCompressScaleRef.current * 0.999)
+        }
+        adj = parseFloat(adj.toFixed(4))
+        if (adj > 0.3 && adj !== cs) {
+          prevMeasuredScaleRef.current = cs
+          prevMeasuredHeightRef.current = totalH
           postScaleIterRef.current += 1
           replaceCurrentData({ fontScale: adj })
           setPostScaleCheck(n => n + 1)
           return
         }
       }
+      setCompressPhase('idle')
       showToast('✓ 已压缩至 1 页（可撤销）')
     }, 500)
     return () => clearTimeout(id)
@@ -1737,7 +1763,10 @@ ${autoprint ? `<script>
     if (pct <= 100) {
       const scale = parseFloat((currentScale * (PAGE_H - 5) / totalH).toFixed(4))
       preCompressScaleRef.current = currentScale
+      prevMeasuredScaleRef.current = currentScale
+      prevMeasuredHeightRef.current = totalH
       postScaleIterRef.current = 0
+      setCompressPhase('loading')
       updateData({ fontScale: scale })
       setPostScaleCheck(n => n + 1)
     } else {
@@ -2063,6 +2092,7 @@ ${autoprint ? `<script>
             isMobile={isMobile}
             onClose={() => setLeftOpen(false)}
             forceTab={leftPanelTab ?? undefined}
+            onForceTabConsumed={() => setLeftPanelTab(null)}
             disabled={noResumeOpen}
             loggedIn={auth.loggedIn}
             onShowLogin={() => setShowEditorLogin(true)}

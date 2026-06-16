@@ -37,6 +37,8 @@ interface Props {
   pendingSkills?: string[]
   /** Override language for section titles — takes precedence over data.resumeLang */
   isEnglish?: boolean
+  /** When true, omits minHeight so the off-screen measurer gets the true content height */
+  skipMinHeight?: boolean
 }
 
 const PAGE_WIDTH = 794   // A4 width @ 96dpi
@@ -44,7 +46,7 @@ const PAGE_HEIGHT = 1123 // A4 height @ 96dpi
 
 export default function ResumeRenderer({
   data, template, color, interactive = false, selection, onSelect, onPhotoUpload, onReorderSection, pageCount = 1,
-  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections, bulletDiffs, pendingSkills, isEnglish,
+  sharedDragRef, sharedDropTarget, onSharedDropTargetChange, aiSuggestionSections, bulletDiffs, pendingSkills, isEnglish, skipMinHeight,
 }: Props) {
 
   // Internal fallbacks used when not in a paginated context (thumbnails, print layer, etc.)
@@ -151,8 +153,8 @@ export default function ResumeRenderer({
         )
       case 'left-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: _s(5) }}>
-            <div style={{ width: '4px', height: '16px', background: titleColor }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(8), marginBottom: _s(5) }}>
+            <div style={{ width: '4px', height: _s(16), background: titleColor, flexShrink: 0 }} />
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
           </div>
         )
@@ -171,7 +173,7 @@ export default function ResumeRenderer({
               display: 'inline-block',
               background: onDark ? 'rgba(255,255,255,0.22)' : titleColor,
               color: '#fff',
-              padding: '4px 12px',
+              padding: `${_s(4)} 12px`,
               borderRadius: '4px',
               fontFamily: headingFont,
               fontSize: _s(12),
@@ -184,26 +186,26 @@ export default function ResumeRenderer({
         )
       case 'thin-line':
         return (
-          <div style={{ marginBottom: _s(5), borderBottom: `1px solid ${titleColor}`, paddingBottom: '4px' }}>
+          <div style={{ marginBottom: _s(5), borderBottom: `1px solid ${titleColor}`, paddingBottom: _s(4) }}>
             <div style={{ ...baseProps, marginBottom: 0, fontWeight: 500 }}>{children}</div>
           </div>
         )
       case 'double-line':
         return (
           <div style={{ marginBottom: _s(5) }}>
-            <div style={{ height: '1px', background: titleColor, marginBottom: '3px' }} />
-            <div style={{ ...baseProps, textAlign: 'center', marginBottom: '3px' }}>{children}</div>
+            <div style={{ height: '1px', background: titleColor, marginBottom: _s(3) }} />
+            <div style={{ ...baseProps, textAlign: 'center', marginBottom: _s(3) }}>{children}</div>
             <div style={{ height: '1px', background: titleColor }} />
           </div>
         )
       case 'triple-bar':
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: _s(5) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: _s(6), marginBottom: _s(5) }}>
             <div style={{ ...baseProps, marginBottom: 0 }}>{children}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-              <div style={{ width: '6px', height: '13px', background: titleColor, opacity: 1 }} />
-              <div style={{ width: '4px', height: '13px', background: titleColor, opacity: 0.6 }} />
-              <div style={{ width: '2px', height: '13px', background: titleColor, opacity: 0.35 }} />
+              <div style={{ width: '6px', height: _s(13), background: titleColor, opacity: 1 }} />
+              <div style={{ width: '4px', height: _s(13), background: titleColor, opacity: 0.6 }} />
+              <div style={{ width: '2px', height: _s(13), background: titleColor, opacity: 0.35 }} />
             </div>
           </div>
         )
@@ -211,9 +213,7 @@ export default function ResumeRenderer({
         return (
           <div style={{
             marginBottom: _s(7),
-            marginLeft: '-8px',
-            marginRight: '-8px',
-            padding: '5px 8px',
+            padding: `${_s(5)} 8px`,
             background: onDark
               ? 'linear-gradient(to right, rgba(255,255,255,0.22), rgba(255,255,255,0))'
               : `linear-gradient(to right, ${titleColor}22, transparent)`,
@@ -928,7 +928,7 @@ export default function ResumeRenderer({
   // All papers white; structural dimensions are fixed — only typography scales via s()
   const rootStyle: React.CSSProperties = {
     width: `${PAGE_WIDTH}px`,
-    minHeight: `${PAGE_HEIGHT}px`,
+    minHeight: skipMinHeight ? undefined : `${PAGE_HEIGHT}px`,
     background: '#ffffff',
     fontFamily: baseFont,
     color: '#0f172a',
@@ -940,7 +940,7 @@ export default function ResumeRenderer({
   if (template.layout === 'sidebar-left-wide') {
     return (
       <div style={rootStyle}>
-        <div style={{ display: 'flex', minHeight: `${pageCount * PAGE_HEIGHT}px` }}>
+        <div style={{ display: 'flex', minHeight: skipMinHeight ? undefined : `${pageCount * PAGE_HEIGHT}px` }}>
           {/* Dark sidebar */}
           <div style={{
             width: '252px',
@@ -960,11 +960,11 @@ export default function ResumeRenderer({
             </div>
 
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle onDark noScale>{T('contact')}</SectionTitle>
-              <ContactInline onDark vertical noScale />
+              <SectionTitle onDark>{T('contact')}</SectionTitle>
+              <ContactInline onDark vertical />
             </div>
 
-            <SkillsBlock onDark noScale />
+            <SkillsBlock onDark />
           </div>
 
           {/* Main */}
@@ -980,7 +980,7 @@ export default function ResumeRenderer({
   if (template.layout === 'sidebar-left-narrow') {
     return (
       <div style={rootStyle}>
-        <div style={{ display: 'flex', minHeight: `${pageCount * PAGE_HEIGHT}px` }}>
+        <div style={{ display: 'flex', minHeight: skipMinHeight ? undefined : `${pageCount * PAGE_HEIGHT}px` }}>
           {/* Light sidebar with thin border */}
           <div style={{
             width: '210px',
@@ -998,10 +998,10 @@ export default function ResumeRenderer({
               <NameBlock centered big={false} />
             </div>
             <div style={{ marginBottom: '10px' }}>
-              <SectionTitle noScale>{T('contact')}</SectionTitle>
-              <ContactInline vertical noScale />
+              <SectionTitle>{T('contact')}</SectionTitle>
+              <ContactInline vertical />
             </div>
-            <SkillsBlock noScale />
+            <SkillsBlock />
           </div>
           <div style={{ flex: 1, padding: '40px 36px' }}>
             <MainBody />
@@ -1015,7 +1015,7 @@ export default function ResumeRenderer({
   if (template.layout === 'sidebar-right') {
     return (
       <div style={rootStyle}>
-        <div style={{ display: 'flex', minHeight: `${pageCount * PAGE_HEIGHT}px` }}>
+        <div style={{ display: 'flex', minHeight: skipMinHeight ? undefined : `${pageCount * PAGE_HEIGHT}px` }}>
           <div style={{ flex: 1, padding: '40px 36px' }}>
             <NameBlock big />
             <div style={{ height: '12px' }} />
@@ -1035,7 +1035,7 @@ export default function ResumeRenderer({
                 <PhotoBlock size={100} />
               </div>
             )}
-            <SkillsBlock noScale />
+            <SkillsBlock />
           </div>
         </div>
       </div>
@@ -1055,7 +1055,7 @@ export default function ResumeRenderer({
           <div style={{ flex: 1 }}>
             <NameBlock onDark big />
             <div style={{ height: '10px' }} />
-            <ContactInline onDark noScale />
+            <ContactInline onDark />
           </div>
         </div>
         <div style={{ padding: '16px 48px' }}>
@@ -1082,7 +1082,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
-              <ContactInline noScale />
+              <ContactInline />
             </div>
           </div>
         </div>
@@ -1105,7 +1105,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '8px' }} />
-              <ContactInline noScale />
+              <ContactInline />
             </div>
           </div>
         </div>
@@ -1118,11 +1118,11 @@ export default function ResumeRenderer({
               .map(key => renderSection(key))}
           </div>
           <div style={{ flex: 1 }}>
-            <Section sec="edu" label={T('edu')} items={data.edu} noScale />
-            <SkillsBlock noScale />
-            {data.hasLanguage && <LanguageSection noScale />}
-            {data.hasAward && <Section sec="award" label={T('award')} items={data.award} noScale />}
-            {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} noScale />}
+            <Section sec="edu" label={T('edu')} items={data.edu} />
+            <SkillsBlock />
+            {data.hasLanguage && <LanguageSection />}
+            {data.hasAward && <Section sec="award" label={T('award')} items={data.award} />}
+            {data.hasCert && <Section sec="cert" label={T('cert')} items={data.cert} />}
           </div>
         </div>
       </div>
@@ -1140,7 +1140,7 @@ export default function ResumeRenderer({
               <div style={{ flex: 1 }}>
                 <NameBlock big />
                 <div style={{ height: '10px' }} />
-                <ContactInline noScale />
+                <ContactInline />
               </div>
               <PhotoBlock size={100} />
             </div>
@@ -1164,7 +1164,7 @@ export default function ResumeRenderer({
               <div>
                 <NameBlock big />
                 <div style={{ height: '8px' }} />
-                <ContactInline noScale />
+                <ContactInline />
               </div>
             </div>
           </div>
@@ -1191,7 +1191,7 @@ export default function ResumeRenderer({
               <NameBlock centered big />
               <div style={{ height: '10px' }} />
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <ContactInline noScale />
+                <ContactInline />
               </div>
             </div>
             <PhotoBlock size={100} />
@@ -1217,7 +1217,7 @@ export default function ResumeRenderer({
             <NameBlock centered big />
             <div style={{ height: '12px' }} />
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <ContactInline noScale />
+              <ContactInline />
             </div>
             <div style={{ width: '40px', height: '3px', background: accent, margin: '24px auto 0', borderRadius: '2px' }} />
           </div>
@@ -1232,7 +1232,7 @@ export default function ResumeRenderer({
     // ── default: photo centered above name ──
     return (
       <div style={rootStyle}>
-        <div style={{ padding: '40px 48px 28px', textAlign: 'center' }}>
+        <div style={{ padding: '40px 48px 12px', textAlign: 'center' }}>
           {template.showPhoto && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
               <PhotoBlock size={100} />
@@ -1241,10 +1241,10 @@ export default function ResumeRenderer({
           <NameBlock centered big />
           <div style={{ height: '10px' }} />
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ContactInline noScale />
+            <ContactInline />
           </div>
         </div>
-        <div style={{ padding: '4px 48px 40px' }}>
+        <div style={{ padding: '6px 48px 40px' }}>
           <MainBody />
           <SkillsBlock />
         </div>
@@ -1290,7 +1290,7 @@ export default function ResumeRenderer({
         {/* Contact: starts below photo bottom */}
         <div style={{ padding: '0 48px' }}>
           <div style={{ paddingTop: (data.photoMeta?.shape ?? 'rounded') === 'circle' ? '22px' : '48px', paddingBottom: '12px' }}>
-            <ContactInline noScale />
+            <ContactInline />
           </div>
           <div style={{ height: '1.5px', background: `${accent}30` }} />
         </div>
@@ -1324,7 +1324,7 @@ export default function ResumeRenderer({
           </div>
           <div style={{ width: '1px', height: '60px', background: `${accent}25`, flexShrink: 0 }} />
           <div style={{ flexShrink: 0, maxWidth: '210px' }}>
-            <ContactInline vertical noScale />
+            <ContactInline vertical />
           </div>
         </div>
         <div style={{ padding: '16px 48px 40px' }}>
@@ -1355,7 +1355,7 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '12px' }} />
-              <ContactInline noScale />
+              <ContactInline />
             </div>
             {template.showPhoto && (
               <div style={{ flexShrink: 0, position: 'relative', zIndex: 1 }}>
@@ -1376,7 +1376,7 @@ export default function ResumeRenderer({
   // ============ LAYOUT: ACCENT STRIPE (left full-height stripe) ============
   if (template.layout === 'accent-stripe') {
     return (
-      <div style={{ ...rootStyle, position: 'relative', minHeight: `${pageCount * PAGE_HEIGHT}px` }}>
+      <div style={{ ...rootStyle, position: 'relative', minHeight: skipMinHeight ? undefined : `${pageCount * PAGE_HEIGHT}px` }}>
         {/* Full-height accent stripe — extends to cover all pages regardless of content length */}
         <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '8px', background: accent }} />
         <div style={{ padding: '40px 48px 0' }}>
@@ -1386,14 +1386,14 @@ export default function ResumeRenderer({
               <div style={{ flex: 1 }}>
                 <NameBlock big />
                 <div style={{ height: '10px' }} />
-                <ContactInline noScale />
+                <ContactInline />
               </div>
             </div>
           ) : (
             <>
               <NameBlock big />
               <div style={{ height: '10px' }} />
-              <ContactInline noScale />
+              <ContactInline />
             </>
           )}
           <div style={{ height: '2px', background: `${accent}45`, marginTop: '20px' }} />
@@ -1429,7 +1429,7 @@ export default function ResumeRenderer({
         </div>
         {/* Bottom contact strip */}
         <div style={{ backgroundColor: accent, padding: '14px 48px' }}>
-          <ContactInline onDark centered noScale />
+          <ContactInline onDark centered />
         </div>
       </div>
     )
@@ -1445,14 +1445,14 @@ export default function ResumeRenderer({
             <div style={{ flex: 1 }}>
               <NameBlock big />
               <div style={{ height: '10px' }} />
-              <ContactInline noScale />
+              <ContactInline />
             </div>
           </div>
         ) : (
           <>
             <NameBlock big />
             <div style={{ height: '10px' }} />
-            <ContactInline noScale />
+            <ContactInline />
           </>
         )}
         <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
