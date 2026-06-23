@@ -291,7 +291,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
           }}>Check again</button>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '28px', flexWrap: 'wrap' }}>
+        <div className="ats-score-cards" style={{ display: 'flex', gap: '16px', marginBottom: '28px', flexWrap: 'wrap' }}>
           <div style={{
             flex: '1 1 0', minWidth: '180px', background: 'white', borderRadius: '16px',
             border: '1px solid #e2e8f0', padding: '32px 24px',
@@ -587,6 +587,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
         @media (max-width: 680px) {
           #ats { padding: 56px 0 !important; }
           #ats h2 { font-size: 28px !important; }
+          .ats-score-cards { flex-direction: column !important; }
         }
         @media (max-width: 480px) {
           .ats-upload-card { padding: 32px 24px 28px !important; }
