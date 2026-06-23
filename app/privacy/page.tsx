@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 
-export const metadata = { title: "隐私政策 — 简力全开" };
+export const metadata = { title: "Privacy Policy — ResumeRight" };
 
 export default function PrivacyPage() {
   return (
@@ -26,127 +26,144 @@ export default function PrivacyPage() {
               letterSpacing: "-1px",
             }}
           >
-            隐私政策
+            Privacy Policy
           </h1>
           <p
             style={{ color: "#64748b", marginBottom: "48px", fontSize: "14px" }}
           >
-            最后更新：2026年1月1日
+            Last updated: January 1, 2026
           </p>
 
           <p style={p}>
-            简力全开（以下简称"本产品"或"我们"）高度重视用户的隐私权。本隐私政策说明我们如何收集、使用和保护您的信息。
+            ResumeRight (&quot;the product&quot; or &quot;we&quot;) takes your
+            privacy seriously. This policy explains what we collect, how we use
+            it, and how we protect it.
           </p>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>1. 我们收集哪些信息</h2>
-            <h3 style={h3}>设备标识（Device ID）</h3>
+            <h2 style={h2}>1. What we collect</h2>
+            <h3 style={h3}>Device ID</h3>
             <p style={p}>
-              本产品采用设备唯一标识（UUID）替代用户账号体系。该标识通过浏览器
-              Cookie 和 localStorage 双写存储，有效期 1
-              年，仅用于区分不同设备、记录购买记录和使用量配额，不包含任何可识别个人身份的信息。
+              Instead of user accounts, the product uses a random per-device
+              identifier (UUID), stored in your browser via cookies and
+              localStorage. It only distinguishes devices and tracks usage for
+              abuse prevention, and contains no personally identifiable
+              information.
             </p>
-            <h3 style={h3}>简历内容</h3>
+            <h3 style={h3}>Resume content</h3>
             <p style={p}>
-              您在编辑器中填写的简历内容默认仅存储在您的本地浏览器（localStorage）中，不会主动上传至我们的服务器。当您使用以下功能时，相关内容会被临时发送至服务器处理：
+              The resume content you enter in the editor is stored only in your
+              local browser (localStorage) and is not uploaded to our servers by
+              default. When you use the following features, the relevant content
+              is temporarily sent to the server for processing:
             </p>
             <ul style={ul}>
               <li style={li}>
-                <strong>AI 内容优化</strong>
-                ：您的工作/项目描述或个人简介将发送至阿里云通义千问 API 进行处理
+                <strong>AI content optimization</strong>: your work/project
+                descriptions or summary are sent to our AI provider&apos;s API
+                for processing
               </li>
               <li style={li}>
-                <strong>岗位匹配分析</strong>
-                ：您的简历结构化数据和岗位描述将发送至阿里云通义千问 API
-                进行分析
+                <strong>Job match analysis</strong>: your structured resume data
+                and the job description are sent to our AI provider&apos;s API
+                for analysis
               </li>
               <li style={li}>
-                <strong>简历解析</strong>：您上传的 PDF/Word
-                文件将发送至服务器进行文字提取，再转发至 AI 模型
+                <strong>Resume parsing</strong>: the PDF/Word file you upload is
+                sent to the server for text extraction, then forwarded to the AI
+                model
               </li>
               <li style={li}>
-                <strong>PDF 下载</strong>：简历 HTML 内容将发送至服务器以生成
-                PDF 文件
+                <strong>PDF download</strong>: your resume HTML is sent to the
+                server to render the PDF
               </li>
             </ul>
             <p style={p}>
-              上述内容均为一次性处理，处理完成后服务器不会留存您的简历数据。
-            </p>
-            <h3 style={h3}>支付信息</h3>
-            <p style={p}>
-              支付成功后，我们仅记录订单 ID、设备
-              ID、套餐类型、购买时间等基本订单信息，不收集、存储任何银行卡号、支付宝账号等金融敏感信息。
+              All of the above is one-time processing; the server does not
+              retain your resume data afterward.
             </p>
           </section>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>2. 我们如何使用信息</h2>
-            <p style={p}>收集的信息仅用于以下目的：</p>
+            <h2 style={h2}>2. How we use information</h2>
+            <p style={p}>Collected information is used only to:</p>
             <ul style={ul}>
-              <li style={li}>提供 AI 功能服务（优化、分析、解析）</li>
-              <li style={li}>验证购买状态和使用配额</li>
-              <li style={li}>改善产品功能和用户体验</li>
-              <li style={li}>防止滥用行为（如 API 限速）</li>
+              <li style={li}>
+                Provide the AI features (optimization, analysis, parsing)
+              </li>
+              <li style={li}>Improve product features and user experience</li>
+              <li style={li}>Prevent abuse (e.g. API rate limiting)</li>
             </ul>
             <p style={p}>
-              我们不会将您的信息出售给任何第三方，也不会用于广告投放或用户画像建立。
+              We never sell your information to third parties, and never use it
+              for advertising or profiling.
             </p>
           </section>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>3. Cookie 与本地存储</h2>
+            <h2 style={h2}>3. Cookies &amp; local storage</h2>
             <p style={p}>
-              我们使用 Cookie 和 localStorage
-              存储设备标识及购买记录，以确保您在同一设备上的购买记录和编辑历史可以持久保留。清除浏览器数据可能导致这些记录丢失。
+              We use a cookie and localStorage to store the device ID and your
+              edit history so they persist on the same device. Clearing your
+              browser data may remove these records.
             </p>
-            <p style={p}>我们不使用第三方追踪 Cookie，不集成任何广告 SDK。</p>
+            <p style={p}>
+              We use no third-party tracking cookies and integrate no
+              advertising SDKs.
+            </p>
           </section>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>4. 第三方服务</h2>
-            <p style={p}>本产品使用以下第三方服务：</p>
+            <h2 style={h2}>4. Third-party services</h2>
+            <p style={p}>
+              The product uses the following third-party services:
+            </p>
             <ul style={ul}>
               <li style={li}>
-                <strong>阿里云通义千问（Qwen）</strong>：AI
-                功能的底层模型，受阿里云隐私政策约束
+                <strong>AI provider</strong>: the underlying model behind the AI
+                features, governed by its own privacy policy
               </li>
               <li style={li}>
-                <strong>Google Fonts</strong>：字体加载服务，您的 IP 地址可能被
-                Google 记录
+                <strong>Google Fonts</strong>: font delivery; your IP address
+                may be recorded by Google
               </li>
               <li style={li}>
-                <strong>Vercel</strong>：网站托管平台，可能记录基本的访问日志
+                <strong>Vercel</strong>: website hosting, which may record basic
+                access logs
               </li>
             </ul>
           </section>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>5. 数据安全</h2>
+            <h2 style={h2}>5. Data security</h2>
             <p style={p}>
-              我们通过 HTTPS 加密传输、服务端 API 鉴权、IP
-              限速等手段保护数据安全。简历核心内容存储在您的本地设备，不经过我们的数据库。
+              We protect data with HTTPS encryption in transit, server-side API
+              checks, and IP rate limiting. Your core resume content lives on
+              your local device and does not pass through our database.
             </p>
           </section>
 
           <section style={{ marginBottom: "36px" }}>
-            <h2 style={h2}>6. 您的权利</h2>
+            <h2 style={h2}>6. Your rights</h2>
             <p style={p}>
-              由于本产品不关联任何账号，您的简历数据完全由您本人控制：
+              Because the product is not tied to any account, your resume data
+              is entirely under your control:
             </p>
             <ul style={ul}>
               <li style={li}>
-                您可随时通过清除浏览器数据来删除所有本地存储的简历和购买记录
+                You can delete all locally stored resumes at any time by
+                clearing your browser data
               </li>
-              <li style={li}>如需删除订单记录，请联系我们的客服邮箱</li>
+              <li style={li}>For any other requests, contact us by email</li>
             </ul>
           </section>
 
           <section>
-            <h2 style={h2}>7. 联系我们</h2>
+            <h2 style={h2}>7. Contact</h2>
             <p style={p}>
-              如对本隐私政策有任何疑问，请发邮件至：
+              Questions about this policy? Email us at{" "}
               <a
-                href="mailto:privacy@jianliquankai.com"
+                href="mailto:839081822@qq.com"
                 style={{ color: "#0789ec", textDecoration: "none" }}
               >
                 839081822@qq.com
@@ -169,7 +186,7 @@ export default function PrivacyPage() {
                 fontSize: "14px",
               }}
             >
-              返回首页
+              Back to home
             </Link>
           </div>
         </div>

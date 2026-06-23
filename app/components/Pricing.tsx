@@ -1,703 +1,187 @@
-"use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CheckCircle2, Star, GraduationCap } from "lucide-react";
-import { getDeviceId, isFirstPurchase, getProStatus } from "../lib/payment";
-import { PaywallModal, StudentModal } from "../editor/components/Modals";
-import type { PaywallTrigger } from "../editor/components/Modals";
-import { useAuth } from "../hooks/useAuth";
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Check, Sparkles } from 'lucide-react'
+import { PASS_PLANS, PRICES, AI_QUOTA, formatUsd, type PassPlan } from '../lib/payment'
+
+const ACCENT = '#0789ec'
 
 const FREE_FEATURES = [
-  "全部 199 套模板随心选",
-  "在线编辑",
-  "PDF 下载（含水印）",
-  "AI 简历分析 2 次（终身）",
-  "ATS 检测 2 次/天",
-];
+  'All 30+ professional templates',
+  'Online editor — edit anywhere, WYSIWYG',
+  'PDF export (with watermark)',
+  `${AI_QUOTA.free.optimize} AI optimizations`,
+  `${AI_QUOTA.free.ats} ATS checks`,
+  `${AI_QUOTA.free.import} Smart imports — old PDF/Word into a template`,
+  `${AI_QUOTA.free.coverLetter} Cover letter — tailored to each job`,
+]
+
+const PAYG_FEATURES = [
+  'Watermark-free PDF — one resume',
+  'Permanent re-download, no time limit',
+  `${AI_QUOTA.single.optimize} AI optimizations`,
+  `${AI_QUOTA.single.ats} ATS checks`,
+  `${AI_QUOTA.single.import} Smart imports — old PDF/Word into a template`,
+  `${AI_QUOTA.single.coverLetter} Cover letters — tailored to each job`,
+  'One-time — yours forever, no subscription',
+]
 
 const PRO_FEATURES = [
-  "无水印 PDF 下载",
-  "AI 简历优化 20 次/天",
-  "ATS 检测 5 次/天",
-  "岗位匹配分析 & 面试题预测",
-  "一键生成英文简历（5 次/天）",
-  "一键压缩至 1 页",
-  "简历智能导入（10 次/天）",
-];
+  'Unlimited watermark-free PDF',
+  `${AI_QUOTA.pro.optimize} AI optimizations / day`,
+  `${AI_QUOTA.pro.ats} ATS checks / day`,
+  `${AI_QUOTA.pro.import} Smart imports / day — old PDF/Word into a template`,
+  `${AI_QUOTA.pro.coverLetter} Cover letters / day — tailored to each job`,
+  'Job-match analysis & interview prep',
+  'One-click fit to a single page',
+]
 
-const SINGLE_FEATURES = [
-  "本份简历无水印下载",
-  "永久重新下载",
-  "AI 简历优化 5 次",
-  "ATS 检测 3 次/天",
-];
+function FeatureList({ items }: { items: string[] }) {
+  return (
+    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '11px' }}>
+      {items.map((f) => (
+        <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', fontSize: '13.5px', color: '#334155', lineHeight: 1.5 }}>
+          <Check size={15} color={ACCENT} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <span>{f}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
-const SUB_PLANS = [
-  { key: "monthly", label: "月卡", price: 29, studentPrice: 14.9, saving: "" },
-  {
-    key: "quarterly",
-    label: "季卡",
-    price: 69,
-    studentPrice: 34.9,
-    saving: "省21%",
-  },
-  {
-    key: "yearly",
-    label: "年卡",
-    price: 168,
-    studentPrice: 84,
-    saving: "省52%",
-  },
-] as const;
+export default function Pricing() {
+  const router = useRouter()
+  const [pass, setPass] = useState<PassPlan>(
+    PASS_PLANS.find((p) => p.badge === 'Most popular') ?? PASS_PLANS[0],
+  )
 
-type SubPlanKey = (typeof SUB_PLANS)[number]["key"];
+  // No checkout backend yet — every CTA routes into the editor for now.
+  // TODO: wire each plan to Stripe Checkout once payments are connected.
+  const choose = (_planKey: string) => router.push('/editor')
 
-export default function Pricing({
-  onLoginRequest,
-}: {
-  onLoginRequest: (afterLogin: () => void) => void;
-}) {
-  const router = useRouter();
-  const auth = useAuth();
-  const [selPlan, setSelPlan] = useState<SubPlanKey>("quarterly");
-  const [paywallOpen, setPaywallOpen] = useState(false);
-  const [paywallTrigger, setPaywallTrigger] =
-    useState<PaywallTrigger>("upgrade");
-  const [studentOpen, setStudentOpen] = useState(false);
-  const [deviceId, setDeviceId] = useState("");
-  const [isFirst, setIsFirst] = useState(true);
+  const perPeriod =
+    pass.key === 'day3' ? '/ 3 days' :
+    pass.key === 'weekly' ? '/ week' :
+    pass.key === 'monthly' ? '/ month' : '/ quarter'
 
-  // Student status: trust server when logged in; false when logged out
-  const isStudent = auth.loggedIn && !auth.loading ? auth.isStudent : false;
-
-  useEffect(() => {
-    const did = getDeviceId();
-    setDeviceId(did);
-    setIsFirst(isFirstPurchase(did));
-  }, []);
-
-  // After in-page student verification, refresh auth so server truth is reflected
-  useEffect(() => {
-    function onVerified() {
-      auth.refresh();
-    }
-    window.addEventListener("rc:studentVerified", onVerified);
-    return () => window.removeEventListener("rc:studentVerified", onVerified);
-  }, [auth.refresh]);
-
-  const activePlan = SUB_PLANS.find((p) => p.key === selPlan)!;
-  const displayPrice = isStudent ? activePlan.studentPrice : activePlan.price;
-  const singlePrice = isFirst ? 0.99 : isStudent ? 4.9 : 9.9;
-
-  function openPaywall(trigger: PaywallTrigger) {
-    if (!auth.loggedIn) {
-      onLoginRequest(() => {
-        setPaywallTrigger(trigger);
-        setPaywallOpen(true);
-      });
-      return;
-    }
-    setPaywallTrigger(trigger);
-    setPaywallOpen(true);
+  const card: React.CSSProperties = {
+    background: '#ffffff', border: '1px solid #e7ecf3', borderRadius: '18px',
+    padding: '28px 26px', display: 'flex', flexDirection: 'column', gap: '20px',
   }
-
-  function onPaySuccess() {
-    setPaywallOpen(false);
-    if (deviceId) setIsFirst(isFirstPurchase(deviceId));
-    router.push("/editor");
+  const cta: React.CSSProperties = {
+    marginTop: 'auto', padding: '12px 18px', borderRadius: '10px', border: 'none',
+    fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+    transition: 'opacity 0.2s, transform 0.15s',
   }
 
   return (
-    <section
-      id="pricing"
-      style={{
-        background: "#060d1a",
-        padding: "88px 32px 72px",
-      }}
-    >
-      <div
-        style={{ textAlign: "center", marginBottom: "56px" }}
-        className="fade-in"
-      >
-        <div
-          style={{
-            fontSize: "11px",
-            letterSpacing: "3px",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.45)",
-            fontWeight: 500,
-            marginBottom: "12px",
-          }}
-        >
-          定价方案
+    <section style={{ background: '#f8fafc', padding: '72px 24px 96px' }}>
+      <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+        {/* Heading */}
+        <div style={{ textAlign: 'center', marginBottom: '44px' }}>
+          <h1 style={{ fontSize: 'clamp(30px, 4vw, 44px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px', marginBottom: '12px' }}>
+            Simple, honest pricing
+          </h1>
+          <p style={{ fontSize: '16px', color: '#64748b', maxWidth: '560px', margin: '0 auto', lineHeight: 1.6 }}>
+            Pay only while you’re job-hunting. Short passes are one-time and never auto-renew —
+            or just unlock a single resume, once.
+          </p>
         </div>
-        <h2
-          style={{
-            fontSize: "clamp(26px, 4vw, 36px)",
-            letterSpacing: "-1px",
-            color: "white",
-            margin: 0,
-          }}
-        >
-          选择适合你的
-          <em style={{ fontStyle: "italic", color: "var(--theme-blue)" }}>
-            方案
-          </em>
-        </h2>
-        <p
-          style={{
-            color: "rgba(255,255,255,0.5)",
-            marginTop: "10px",
-            fontWeight: 300,
-            fontSize: "15px",
-          }}
-        >
-          灵活选择，按需付费
+
+        {/* Cards */}
+        <div className="pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', alignItems: 'stretch' }}>
+          {/* Free */}
+          <div style={card}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Free</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '8px' }}>
+                <span style={{ fontSize: '34px', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px' }}>$0</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '4px' }}>Try it, no card needed</div>
+            </div>
+            <FeatureList items={FREE_FEATURES} />
+            <button onClick={() => choose('free')} style={{ ...cta, background: '#f1f5f9', color: '#0f172a' }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}>
+              Start free
+            </button>
+          </div>
+
+          {/* Pay-as-you-go */}
+          <div style={card}>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Pay-as-you-go</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '8px' }}>
+                <span style={{ fontSize: '34px', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px' }}>{formatUsd(PRICES.single)}</span>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>one-time</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '4px' }}>Unlock one resume, forever</div>
+            </div>
+            <FeatureList items={PAYG_FEATURES} />
+            <button onClick={() => choose('single')} style={{ ...cta, background: '#0f172a', color: '#ffffff' }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}>
+              Unlock one resume
+            </button>
+          </div>
+
+          {/* Pro (passes) */}
+          <div style={{ ...card, border: `1.5px solid ${ACCENT}`, boxShadow: '0 12px 40px rgba(7,137,236,0.14)', position: 'relative' }}>
+            {pass.badge && (
+              <div style={{
+                position: 'absolute', top: '-11px', left: '50%', transform: 'translateX(-50%)',
+                background: ACCENT, color: '#fff', fontSize: '11px', fontWeight: 700,
+                padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap',
+              }}>{pass.badge}</div>
+            )}
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Pro</div>
+
+              {/* Pass selector */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', margin: '12px 0 14px' }}>
+                {PASS_PLANS.map((p) => {
+                  const active = p.key === pass.key
+                  return (
+                    <button key={p.key} onClick={() => setPass(p)} style={{
+                      padding: '7px 8px', borderRadius: '9px', cursor: 'pointer',
+                      border: `1px solid ${active ? ACCENT : '#e2e8f0'}`,
+                      background: active ? 'rgba(7,137,236,0.08)' : '#fff',
+                      color: active ? ACCENT : '#475569', fontFamily: 'var(--font-sans)',
+                      fontSize: '12px', fontWeight: 600, lineHeight: 1.3,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                      transition: 'border-color 0.15s, background 0.15s',
+                    }}>
+                      <span>{p.label}</span>
+                      <span style={{ fontSize: '11px', opacity: 0.75 }}>{formatUsd(p.cents)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '34px', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px' }}>{formatUsd(pass.cents)}</span>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>{perPeriod}</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: pass.autoRenew ? '#94a3b8' : '#059669', marginTop: '4px', fontWeight: pass.autoRenew ? 400 : 600 }}>
+                {pass.autoRenew ? 'Auto-renews · cancel anytime' : 'One-time · no auto-renew'}
+              </div>
+            </div>
+            <FeatureList items={PRO_FEATURES} />
+            <button onClick={() => choose(pass.key)} style={{ ...cta, background: ACCENT, color: '#ffffff' }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}>
+              Get Pro — {pass.label}
+            </button>
+          </div>
+        </div>
+
+        {/* Honesty footnote */}
+        <p style={{ textAlign: 'center', fontSize: '12.5px', color: '#94a3b8', marginTop: '28px', lineHeight: 1.6 }}>
+          No hidden charges. Short passes never renew automatically. 7-day refund on any purchase.
         </p>
       </div>
 
-      <div
-        style={{
-          maxWidth: "960px",
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "20px",
-          alignItems: "stretch",
-        }}
-        className="pricing-grid"
-      >
-        {/* ── Free ── */}
-        <div className="fade-in" style={{ transitionDelay: "0s" }}>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "16px",
-              padding: "32px 28px",
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.4)",
-                marginBottom: "20px",
-              }}
-            >
-              免费版
-            </div>
-            <div style={{ marginBottom: "6px" }}>
-              <span
-                style={{
-                  fontSize: "44px",
-                  fontWeight: 800,
-                  color: "white",
-                  letterSpacing: "-2px",
-                  lineHeight: 1,
-                }}
-              >
-                ¥0
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.35)",
-                marginBottom: "28px",
-              }}
-            >
-              永久免费
-            </div>
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: "0 0 auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              {FREE_FEATURES.map((f) => (
-                <li
-                  key={f}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "9px",
-                    fontSize: "13.5px",
-                    color: "rgba(255,255,255,0.7)",
-                  }}
-                >
-                  <CheckCircle2
-                    size={14}
-                    color="rgba(255,255,255,0.35)"
-                    style={{ flexShrink: 0 }}
-                  />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/editor"
-              style={{
-                display: "block",
-                marginTop: "28px",
-                padding: "13px",
-                borderRadius: "10px",
-                textAlign: "center",
-                fontSize: "14px",
-                fontWeight: 600,
-                textDecoration: "none",
-                background: "transparent",
-                color: "rgba(255,255,255,0.7)",
-                border: "1.5px solid rgba(255,255,255,0.18)",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.7)";
-              }}
-            >
-              立即开始
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Pro (featured) ── */}
-        <div className="fade-in" style={{ transitionDelay: "0.1s" }}>
-          <div
-            style={{
-              background: "white",
-              borderRadius: "16px",
-              padding: "32px 28px",
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-              position: "relative",
-              boxShadow:
-                "0 0 0 2px var(--theme-blue), 0 20px 60px rgba(7,137,236,0.25)",
-              transform: "scale(1.04)",
-            }}
-          >
-            {/* Badge */}
-            <div
-              style={{
-                position: "absolute",
-                top: "-13px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                background: "var(--theme-blue)",
-                color: "white",
-                padding: "4px 16px",
-                borderRadius: "20px",
-                fontSize: "11px",
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <Star size={10} fill="white" strokeWidth={0} />
-              求职季首选
-            </div>
-
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                color: "#94a3b8",
-                marginBottom: "20px",
-              }}
-            >
-              Pro 会员
-            </div>
-
-            {/* Plan selector */}
-            <div
-              style={{
-                display: "flex",
-                gap: "5px",
-                background: "#f1f5f9",
-                borderRadius: "8px",
-                padding: "3px",
-                marginBottom: "16px",
-              }}
-            >
-              {SUB_PLANS.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setSelPlan(p.key)}
-                  style={{
-                    flex: 1,
-                    padding: "6px 4px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "var(--font-sans)",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    transition: "all 0.15s",
-                    background: selPlan === p.key ? "white" : "transparent",
-                    color: selPlan === p.key ? "#0f172a" : "#94a3b8",
-                    boxShadow:
-                      selPlan === p.key ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Price */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-end",
-                gap: "8px",
-                marginBottom: "4px",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "44px",
-                  fontWeight: 800,
-                  color: "#0f172a",
-                  letterSpacing: "-2px",
-                  lineHeight: 1,
-                }}
-              >
-                ¥{displayPrice}
-              </span>
-              {isStudent && (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "white",
-                    background: "#0d9488",
-                    borderRadius: "5px",
-                    padding: "2px 7px",
-                    marginBottom: "6px",
-                  }}
-                >
-                  学生价
-                </span>
-              )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "13px",
-                color: "#94a3b8",
-                marginBottom: "24px",
-              }}
-            >
-              <span>/{activePlan.label.replace("卡", "")}</span>
-              {activePlan.saving && (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "#16a34a",
-                    background: "#f0fdf4",
-                    borderRadius: "4px",
-                    padding: "1px 6px",
-                  }}
-                >
-                  {activePlan.saving}
-                </span>
-              )}
-            </div>
-
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: "0 0 auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              {PRO_FEATURES.map((f) => (
-                <li
-                  key={f}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "9px",
-                    fontSize: "13.5px",
-                    color: "#334155",
-                  }}
-                >
-                  <CheckCircle2
-                    size={14}
-                    color="var(--theme-blue)"
-                    style={{ flexShrink: 0 }}
-                  />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={() => openPaywall("upgrade")}
-              style={{
-                display: "block",
-                marginTop: "28px",
-                padding: "14px",
-                borderRadius: "10px",
-                textAlign: "center",
-                fontSize: "14px",
-                fontWeight: 700,
-                cursor: "pointer",
-                background: "var(--theme-blue)",
-                color: "white",
-                border: "none",
-                fontFamily: "var(--font-sans)",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#0567c4";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--theme-blue)";
-              }}
-            >
-              订阅 Pro
-            </button>
-          </div>
-        </div>
-
-        {/* ── Single ── */}
-        <div className="fade-in" style={{ transitionDelay: "0.2s" }}>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "16px",
-              padding: "32px 28px",
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.4)",
-                marginBottom: "20px",
-              }}
-            >
-              单次购买
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginBottom: "4px",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "44px",
-                  fontWeight: 800,
-                  color: "white",
-                  letterSpacing: "-2px",
-                  lineHeight: 1,
-                }}
-              >
-                ¥{singlePrice}
-              </span>
-              {isFirst && (
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "white",
-                    background: "#ef4444",
-                    borderRadius: "5px",
-                    padding: "2px 8px",
-                    alignSelf: "flex-end",
-                    marginBottom: "6px",
-                  }}
-                >
-                  首单特惠
-                </span>
-              )}
-            </div>
-            <div
-              style={{
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.35)",
-                marginBottom: "28px",
-              }}
-            >
-              /份简历 · 永久使用
-            </div>
-
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: "0 0 auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              {SINGLE_FEATURES.map((f) => (
-                <li
-                  key={f}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "9px",
-                    fontSize: "13.5px",
-                    color: "rgba(255,255,255,0.7)",
-                  }}
-                >
-                  <CheckCircle2
-                    size={14}
-                    color="rgba(255,255,255,0.35)"
-                    style={{ flexShrink: 0 }}
-                  />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              onClick={() => {
-                const el = document.getElementById("templates");
-                if (el)
-                  window.scrollTo({
-                    top: el.getBoundingClientRect().top + window.scrollY,
-                    behavior: "smooth",
-                  });
-              }}
-              style={{
-                display: "block",
-                width: "100%",
-                marginTop: "28px",
-                padding: "13px",
-                borderRadius: "10px",
-                textAlign: "center",
-                fontSize: "14px",
-                fontWeight: 600,
-                background: "transparent",
-                color: "rgba(255,255,255,0.7)",
-                border: "1.5px solid rgba(255,255,255,0.18)",
-                transition: "all 0.2s",
-                cursor: "pointer",
-                fontFamily: "var(--font-sans)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
-                e.currentTarget.style.color = "white";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.7)";
-              }}
-            >
-              浏览模板
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Student link — hidden once verified */}
-      {!isStudent && <div style={{ textAlign: "center", marginTop: "32px" }}>
-        <button
-          onClick={() => {
-            if (!auth.loggedIn) {
-              onLoginRequest(() => setStudentOpen(true));
-              return;
-            }
-            setStudentOpen(true);
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "13px",
-            color: "rgba(255,255,255,0.45)",
-            fontFamily: "var(--font-sans)",
-            transition: "color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "rgba(255,255,255,0.8)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "rgba(255,255,255,0.45)";
-          }}
-        >
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
-          >
-            <GraduationCap size={16} />
-            学生认证可享全场 5 折 →
-          </span>
-        </button>
-      </div>}
-
-      {/* Modals */}
-      {paywallOpen && deviceId && (
-        <PaywallModal
-          trigger={paywallTrigger}
-          hideSingle
-          deviceId={deviceId}
-          isStudent={isStudent}
-          isFirstOrder={isFirst}
-          onClose={() => setPaywallOpen(false)}
-          onSuccess={onPaySuccess}
-          onOpenStudent={() => {
-            setPaywallOpen(false);
-            setStudentOpen(true);
-          }}
-        />
-      )}
-
-      {studentOpen && deviceId && (
-        <StudentModal
-          deviceId={deviceId}
-          onClose={() => setStudentOpen(false)}
-          onSuccess={() => {
-            auth.refresh();
-            if (deviceId) setIsFirst(isFirstPurchase(deviceId));
-          }}
-        />
-      )}
-
-      <style>{`
-        @media (max-width: 720px) {
-          .pricing-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+      <style>{`@media (max-width: 820px){ .pricing-grid{ grid-template-columns: 1fr !important; max-width: 420px; margin: 0 auto; } }`}</style>
     </section>
-  );
+  )
 }

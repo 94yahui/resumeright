@@ -1,13 +1,87 @@
 "use client";
-import React from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Upload, Pencil, Mail, Phone, Globe, Cloud, Users, FileText, Target } from "lucide-react";
+import { Upload, Pencil, Cloud, FileText, Target } from "lucide-react";
+import TemplateThumbnail from "../lib/TemplateThumbnail";
+import { getTemplate } from "../lib/templates-config";
+import { sampleResumeData } from "../lib/types";
+
+// Hero preview: single-column sample, 3 bullets per project entry, no Languages section.
+const heroSample = (() => {
+  const d = sampleResumeData({ single: true });
+  return {
+    ...d,
+    hasLanguage: false,
+    project: d.project.map((p) => ({ ...p, bullets: p.bullets.slice(0, 3) })),
+  };
+})();
+
+// Adjectives cycled in the hero headline ("___ resume"). First word matches the
+// original copy so the initial paint is unchanged. Each carries a distinct meaning.
+const ROTATING_WORDS = [
+  "high-impact",  // makes an impression
+  "job-matched",  // tailored to the target role
+  "ATS-friendly", // passes applicant-tracking systems
+];
+
+// The indefinite article ("a"/"an") for a word, by its leading sound. Our word list
+// has no tricky cases (silent-h / vowel-letter-consonant-sound), so a vowel-letter
+// check is enough — "ATS-friendly" → "an" ("ay-tee-ess"), "high-impact" → "a".
+function articleFor(word: string): "a" | "an" {
+  return /^[aeiou]/i.test(word) ? "an" : "a";
+}
+
+// Typewriter loop: types a word, holds, deletes it, advances to the next, forever.
+// Returns the visible text plus the current target word so the caller can pick the
+// matching article. The article flips while the line is empty (between words), so it
+// never disagrees with what's on screen.
+function useTypewriter(words: string[]) {
+  const [wordIdx, setWordIdx] = useState(0);
+  const [text, setText] = useState(words[0]);
+  const [phase, setPhase] = useState<"typing" | "deleting">("typing");
+
+  useEffect(() => {
+    const current = words[wordIdx];
+    let timer: ReturnType<typeof setTimeout>;
+    if (phase === "typing") {
+      timer = text.length < current.length
+        ? setTimeout(() => setText(current.slice(0, text.length + 1)), 95)  // type next char
+        : setTimeout(() => setPhase("deleting"), 2000);                     // hold, then erase
+    } else {
+      timer = text.length > 0
+        ? setTimeout(() => setText(current.slice(0, text.length - 1)), 45)  // erase a char
+        : setTimeout(() => {                                                // pause, then next word
+            setWordIdx((i) => (i + 1) % words.length);
+            setPhase("typing");
+          }, 400);
+    }
+    return () => clearTimeout(timer);
+  }, [phase, text, wordIdx, words]);
+
+  return { text, word: words[wordIdx] };
+}
+
+// Renders the typed text + blinking cursor. The reserved-width spacer (sized to the
+// widest word) keeps the trailing "resume" from jittering as the word length changes.
+function TypedWord({ text, words }: { text: string; words: string[] }) {
+  const longest = words.reduce((a, b) => (b.length > a.length ? b : a), "");
+  return (
+    <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap" }}>
+      <span aria-hidden style={{ visibility: "hidden" }}>{longest}</span>
+      <span style={{ position: "absolute", left: 0, top: 0, color: "var(--paper)" }}>
+        {text}
+        <span className="tw-cursor" aria-hidden>|</span>
+      </span>
+    </span>
+  );
+}
 
 export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
+  const { text: typedWord, word: currentWord } = useTypewriter(ROTATING_WORDS);
   return (
     <div
       style={{
-        background: "linear-gradient(65deg, #5465ff, #d2b7e5)",
+        background: "linear-gradient(to top, #06b6d4, var(--paper3))",
         minHeight: "90vh",
         display: "flex",
         flexDirection: "column",
@@ -61,7 +135,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               backdropFilter: "blur(1px)",
             }}
           >
-            ✦ AI 驱动 · 多场景专业模板
+            ✦ AI-powered · Professional templates
           </div>
 
           <h1
@@ -73,13 +147,11 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               marginBottom: "30px",
             }}
           >
-            <div style={{ marginBottom: '15px' }}>
-              <em style={{ fontStyle: "italic", color: "var(--paper)", marginRight: "8px" }}>
-                AI
-              </em>
-              助力，快速打造
+            <div style={{ marginBottom: '15px'}}>
+              Build {articleFor(currentWord)}{" "}
+              <TypedWord text={typedWord} words={ROTATING_WORDS} />
             </div>
-            高命中率简历
+            resume that gets read
           </h1>
 
           <p
@@ -91,9 +163,9 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               fontWeight: 300,
             }}
           >
-            模块化编辑 · AI 深度定向优化 · 专业模板一键套用
+            Modular editing · deep AI optimization · professional templates
             <br />
-            几分钟完成一份让你脱颖而出的简历
+            Build a resume that stands out in minutes
           </p>
 
           <div
@@ -130,7 +202,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              创建简历
+              Create resume
             </Link>
 
             <button
@@ -159,7 +231,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                 e.currentTarget.style.color = "var(--paper)";
               }}
             >
-              <Upload size={15} /> 上传已有简历
+              <Upload size={15} /> Upload
             </button>
           </div>
 
@@ -169,10 +241,9 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             style={{ display: "flex", gap: "20px", marginTop: "44px", alignItems: "center", flexWrap: "wrap" }}
           >
             {[
-              { icon: Cloud,    label: "多端同步" },
-              { icon: Target,   label: "岗位精准匹配" },
-              { icon: Users,    label: "AI 面试题预测" },
-              { icon: FileText, label: "压缩一页" },
+              { icon: Cloud,    label: "Cross-device sync" },
+              { icon: Target,   label: "Precise job matching" },
+              { icon: FileText, label: "Fit to one page" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div style={{ height: "34px", display: "flex", alignItems: "center" }}>
@@ -196,7 +267,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             position: "absolute",
             top: "16px", left: "16px", right: "-16px", bottom: "-16px",
             background: "rgba(255,255,255,0.45)",
-            borderRadius: "16px",
+            borderRadius: "0",
             border: "1px solid rgba(255,255,255,0.5)",
             boxShadow: "0 6px 24px rgba(26,24,20,0.08)",
             animation: "heroTilt5 0.9s cubic-bezier(0.34,1.56,0.64,1) .8s both",
@@ -206,7 +277,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             position: "absolute",
             top: "8px", left: "8px", right: "-8px", bottom: "-8px",
             background: "rgba(255,255,255,0.65)",
-            borderRadius: "16px",
+            borderRadius: "0",
             border: "1px solid rgba(255,255,255,0.6)",
             boxShadow: "0 6px 20px rgba(26,24,20,0.08)",
             animation: "heroTilt2 0.7s cubic-bezier(0.34,1.56,0.64,1) .9s both",
@@ -217,7 +288,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             style={{
               background: "rgba(255, 255, 255, 0.2)",
               backdropFilter: "blur(5px)",
-              borderRadius: "16px",
+              borderRadius: "0",
               boxShadow:
                 "0 16px 50px rgba(26,24,20,0.18), 0 4px 12px rgba(26,24,20,0.08)",
               overflow: "hidden",
@@ -226,125 +297,15 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
               zIndex: 2,
             }}
           >
-            <div
-              style={{
-                background: "rgba(0, 37, 255, 0.7)",
-                backdropFilter: "blur(12px)",
-                padding: "28px 32px 24px",
-                color: "white",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "4px" }}>
-                <img
-                  src="/virtual_photo.png"
-                  alt=""
-                  style={{
-                    width: "48px", height: "60px",
-                    borderRadius: "10%",
-                    objectFit: "cover",
-                    objectPosition: "top",
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    flexShrink: 0,
-                    marginTop: "10px",
-                  }}
-                />
-                <div>
-                  <div
-                    style={{
-                      fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
-                      fontSize: "24px",
-                      marginBottom: "2px",
-                    }}
-                  >
-                    陈梦瑶
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      letterSpacing: "1px",
-                      textTransform: "uppercase",
-                      fontWeight: 400,
-                    }}
-                  >
-                    资深产品经理
-                  </div>
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  rowGap: "5px",
-                  columnGap: "14px",
-                  marginTop: "14px",
-                  flexWrap: "wrap",
-                  border: "1px white solid",
-                  padding: "2px",
-                  borderRadius: "4px",
-                }}
-              >
-                {(
-                  [
-                    { Icon: Mail, text: "meng@example.com"},
-                    { Icon: Phone, text: "138 0000 0000"},
-                    { Icon: Globe, text: "portfolio.io"},
-                  ] as { Icon: React.ElementType; text: string;}[]
-                ).map(({ Icon, text}) => (
-                  <div
-                    key={text}
-                    onClick={(e) => e.preventDefault()}
-                    style={{
-                      fontSize: "11px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      color: "inherit",
-                      textDecoration: "none",
-                    }}
-                  >
-                    <Icon size={10} /> {text}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: "24px 32px 32px" }}>
-              {[
-                { label: "工作经历", bars: [100, 85, 65, 90, 70] },
-                { label: "项目经历", bars: [100, 75, 55] },
-                { label: "教育背景", bars: [100, 70] },
-              ].map((sec, i) => (
-                <div key={sec.label} style={{ marginBottom: i < 2 ? "22px" : "18px" }}>
-                  <div style={{
-                    fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-                    color: "var(--ink3)", fontWeight: 600,
-                    borderBottom: "1px solid var(--paper3)",
-                    paddingBottom: "6px", marginBottom: "10px",
-                  }}>
-                    {sec.label}
-                  </div>
-                  {sec.bars.map((w, j) => (
-                    <div key={j} style={{
-                      height: "7px", background: "rgba(198, 198, 198, 0.27)",
-                      borderRadius: "3px", marginBottom: "5px", width: `${w}%`,
-                    }} />
-                  ))}
-                </div>
-              ))}
-              <div>
-                <div style={{
-                  fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase",
-                  color: "var(--ink3)", fontWeight: 600,
-                  borderBottom: "1px solid var(--paper3)",
-                  paddingBottom: "6px", marginBottom: "10px",
-                }}>专业技能</div>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {[60, 70, 50, 80, 55, 65].map((w, j) => (
-                    <div key={j} style={{
-                      height: "18px", width: `${w}px`,
-                      background: "rgba(198, 198, 198, 0.27)", borderRadius: "12px",
-                    }} />
-                  ))}
-                </div>
-              </div>
+            {/* Real no-photo resume template preview (top portion) */}
+            <div style={{ position: "relative", maxHeight: "680px", overflow: "hidden", background: "#ffffff" }}>
+              <TemplateThumbnail template={getTemplate("classic-pro")} fillWidth data={heroSample} />
+              {/* Soften the bottom clip so the page looks like it continues */}
+              <div style={{
+                position: "absolute", left: 0, right: 0, bottom: 0, height: "90px",
+                background: "linear-gradient(rgba(255,255,255,0), #ffffff)",
+                pointerEvents: "none",
+              }} />
             </div>
           </div>
 
@@ -353,7 +314,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
             style={{
               position: "absolute",
               zIndex: 5,
-              top: "105px",
+              top: "150px",
               right: "-16px",
               background: "linear-gradient(90deg, #ff6b35, #ef4444)",
               color: "var(--paper)",
@@ -377,7 +338,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                 marginRight: "4px",
               }}
             />{" "}
-            点击任意模块开始编辑
+            Click any block to start editing
             {/* Arrow: rotated square with consistent 1px white border */}
             <div style={{
               position: "absolute",
@@ -423,7 +384,7 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
                 borderRadius: "50%",
               }}
             />
-            AI 正在优化您的描述...
+            Optimizing your experience…
           </div>
         </div>
       </section>

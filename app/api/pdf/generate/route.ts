@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
       })
     })
 
-    const safe = (docTitle ?? '简历').replace(/[/\\:*?"<>|]/g, '').trim() || '简历'
+    const safe = (docTitle ?? 'Resume').replace(/[/\\:*?"<>|]/g, '').trim() || 'Resume'
 
     if (format === 'png') {
       const pageCount: number = await page.evaluate(() =>

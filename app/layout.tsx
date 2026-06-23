@@ -1,28 +1,34 @@
-import type { Metadata } from 'next'
-import Script from 'next/script'
-import './globals.css'
+import type { Metadata } from "next";
+import Script from "next/script";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: '简力全开 — AI赋能专业简历制作',
-  description: '模块化编辑，AI 智能优化，一键下载。打造令人印象深刻的简历。',
+  title: "ResumeRight — AI-powered professional resume builder",
+  description:
+    "Modular editing, smart AI optimization, one-click download. Build a resume that impresses.",
   icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico' },
-    ],
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
-        <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"
+        />
+        <meta
+          name="format-detection"
+          content="telephone=no, date=no, email=no, address=no"
+        />
       </head>
       <body>
         {children}
@@ -40,5 +46,5 @@ export default function RootLayout({
         </Script>
       </body>
     </html>
-  )
+  );
 }

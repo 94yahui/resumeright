@@ -4,13 +4,6 @@ import { getDeviceId } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
 import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveATSResultToCache, getCachedATSResult, RESUME_CACHED_EVENT } from '../lib/resumeCache'
 
-const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
-function isActiveSub(plan?: string | null, expiresAt?: number): boolean {
-  if (!plan || !SUB_PLANS.has(plan)) return false
-  if (expiresAt != null && expiresAt <= Date.now()) return false
-  return true
-}
-
 interface ATSDimension { key: string; name: string; score: number; feedback: string }
 interface ATSResult {
   name: string; jobtitle: string; totalScore: number; overview: string
@@ -19,20 +12,20 @@ interface ATSResult {
 
 // ── Progress bar loading ──────────────────────────────────────────────────────
 const PHASES = [
-  { at: 0,  label: '读取简历内容…' },
-  { at: 12, label: '提取文字内容…' },
-  { at: 28, label: '检测编码规范…' },
-  { at: 44, label: '分析版面结构…' },
-  { at: 60, label: '识别字段信息…' },
-  { at: 74, label: '检测文件格式…' },
-  { at: 88, label: '生成分析报告…' },
+  { at: 0,  label: 'Reading resume…' },
+  { at: 12, label: 'Extracting text…' },
+  { at: 28, label: 'Checking encoding…' },
+  { at: 44, label: 'Analyzing layout…' },
+  { at: 60, label: 'Identifying fields…' },
+  { at: 74, label: 'Checking file format…' },
+  { at: 88, label: 'Generating report…' },
 ]
 
 function LoadingState({ apiDone, onComplete, filename }: {
   apiDone: boolean; onComplete: () => void; filename: string
 }) {
   const [progress, setProgress] = useState(0)
-  const [label, setLabel] = useState('读取简历内容…')
+  const [label, setLabel] = useState('Reading resume…')
   const progressRef = useRef(0)
   const apiDoneRef = useRef(false)
   const completedRef = useRef(false)
@@ -78,7 +71,7 @@ function LoadingState({ apiDone, onComplete, filename }: {
   return (
     <div style={{ padding: '64px 24px', maxWidth: '520px', margin: '0 auto', textAlign: 'center' }}>
       <div style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-        正在分析：{filename}
+        Analyzing: {filename}
       </div>
       <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '32px' }}>{label}</div>
 
@@ -189,7 +182,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
     const f = e.dataTransfer.files[0]; if (f) onFile(f)
   }, [onFile, exhausted, needLogin, onLoginRequest])
 
-  // After login prompt is shown, the button becomes "登录/注册"
+  // After login prompt is shown, the button becomes "Sign in"
   const showLoginButton = showLoginPrompt && needLogin
 
   return (
@@ -206,21 +199,21 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
       <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 14px', lineHeight: 1.35 }}>
-        测一测你的简历能否通过ATS筛选？
+        Will your resume pass the ATS screening?
       </h3>
       <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 24px' }}>
-        从<span style={{ color: '#0789ec', fontWeight: 600 }}>文字提取、编码规范、版面结构、字段识别、文件格式</span>五个 ATS 技术角度检测兼容性
+        Check compatibility across five ATS dimensions: <span style={{ color: '#0789ec', fontWeight: 600 }}>text extraction, encoding, layout structure, field detection, and file format</span>
       </p>
 
       {/* ── Cached file indicator ── */}
       {hasCached && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', fontSize: '13px', color: '#64748b' }}>
-          <span>上次上传：</span>
+          <span>Last upload:</span>
           <span style={{ color: '#0f172a', fontWeight: 500, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cachedFilename}</span>
           <button
             onClick={e => { e.stopPropagation(); inputRef.current?.click() }}
             style={{ textDecoration: 'underline', cursor: 'pointer', color: '#94a3b8', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', flexShrink: 0 }}
-          >重新上传</button>
+          >Re-upload</button>
         </div>
       )}
 
@@ -234,7 +227,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
         }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
-        >登录</button>
+        >Sign in</button>
       ) : (
         /* ── Normal / logged-in exhausted / cached: primary action button ── */
         <button onClick={handleButtonClick} style={{
@@ -249,7 +242,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
           onMouseEnter={e => { if (!(exhausted && !needLogin)) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' } }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; if (!(exhausted && !needLogin)) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
         >
-          {hasCached ? '开始 ATS 检测' : '上传你的简历'}
+          {hasCached ? 'Start ATS check' : 'Upload your resume'}
           {hasCached && !exhausted && (
             <span style={{ marginLeft: '6px', letterSpacing: '-1px' }}>
               <span style={{ opacity: 1 }}>›</span>
@@ -272,7 +265,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
       )}
 
       <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '16px', textAlign: 'center', lineHeight: 1.7 }}>
-        支持 PDF、Word（.docx）· 不超过 5 MB<br />{hintText}
+        PDF or Word (.docx) · Max 5 MB<br />{hintText}
       </div>
     </div>
   )
@@ -284,7 +277,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
   onGoEditor: () => void; goingToEditor: boolean
 }) {
   const scoreColor = result.totalScore >= 80 ? '#0789ec' : result.totalScore >= 60 ? '#d97706' : '#dc2626'
-  const scoreLabel = result.totalScore >= 80 ? '优秀' : result.totalScore >= 60 ? '良好' : '待改善'
+  const scoreLabel = result.totalScore >= 80 ? 'Excellent' : result.totalScore >= 60 ? 'Good' : 'Needs work'
   return (
     <>
       {/* Constrained top */}
@@ -295,7 +288,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
           <button onClick={onReset} style={{
             marginTop: '14px', padding: '7px 18px', borderRadius: '9999px', fontSize: '13px', fontWeight: 600,
             border: '1.5px solid #e2e8f0', background: 'white', color: '#64748b', cursor: 'pointer', fontFamily: 'var(--font-sans)',
-          }}>重新检测</button>
+          }}>Check again</button>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '28px', flexWrap: 'wrap' }}>
@@ -308,7 +301,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
             <div style={{ fontSize: '88px', fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-3px' }}>{result.totalScore}</div>
             <div style={{ fontSize: '16px', color: '#94a3b8', marginTop: '4px' }}>/ 100</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: scoreColor, marginTop: '8px' }}>{scoreLabel}</div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '12px' }}>ATS 综合评分</div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '12px' }}>Overall ATS score</div>
           </div>
           <div style={{
             flex: '1 1 0', minWidth: '180px',
@@ -316,7 +309,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
             borderRadius: '16px', border: '1px solid #dbeafe',
             padding: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0789ec', marginBottom: '14px' }}>评分说明</div>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0789ec', marginBottom: '14px' }}>Score summary</div>
             <p style={{ fontSize: '15px', color: '#334155', lineHeight: 1.85, margin: 0 }}>{result.overview}</p>
           </div>
         </div>
@@ -346,7 +339,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
           onMouseEnter={e => { if (!goingToEditor) (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = '' }}
         >
-          {goingToEditor ? '加载中…' : '前往编辑器优化简历 →'}
+          {goingToEditor ? 'Loading…' : 'Open in editor to improve →'}
         </button>
       </div>
     </>
@@ -356,21 +349,7 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
 // ── Quota pre-check ───────────────────────────────────────────────────────────
 function getQuotaCheck(auth: ReturnType<typeof useAuth>): { exhausted: boolean; msg: string; needLogin: boolean } {
   if (auth.loading) return { exhausted: false, msg: '', needLogin: false }
-  if (!auth.loggedIn) {
-    return { exhausted: true, msg: '登录后每天可用 2 次 ATS 检测，升级 Pro 可享每日 5 次。', needLogin: true }
-  }
-  const mem = auth.membership as { plan?: string; expires_at?: number } | null | undefined
-  const isPro = isActiveSub(mem?.plan, mem?.expires_at)
-  if (isPro) {
-    if (auth.dailyAtsUsed >= 5)
-      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（5 次/天），明天再来吧。', needLogin: false }
-  } else if (mem?.plan === 'single') {
-    if (auth.dailyAtsUsed >= 3)
-      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（3 次/天），明天再来吧。', needLogin: false }
-  } else {
-    if (auth.dailyAtsUsed >= 2)
-      return { exhausted: true, msg: '今日 ATS 检测次数已达上限（2 次/天），明天再来吧。', needLogin: false }
-  }
+  // Access is unlimited and free — never exhausted, never requires login.
   return { exhausted: false, msg: '', needLogin: false }
 }
 
@@ -490,7 +469,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
         if (res.status === 429 && !auth.loggedIn) {
           try { localStorage.setItem(`rc_ats_exhausted_${deviceId}`, '1') } catch {}
         }
-        pendingError.current = { msg: data.error || '分析失败，请重试', needLogin: res.status === 429 }
+        pendingError.current = { msg: data.error || 'Analysis failed, please try again', needLogin: res.status === 429 }
       } else {
         pendingResult.current = data
         saveATSResultToCache(data)
@@ -512,7 +491,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
         }
       }
     } catch {
-      pendingError.current = { msg: '网络错误，请稍后重试', needLogin: false }
+      pendingError.current = { msg: 'Network error, please try again later', needLogin: false }
     }
     setApiDone(true)
   }
@@ -534,19 +513,7 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
     window.location.href = '/editor?from_ats=1'
   }
 
-  // Auth-aware hint text
-  const mem = auth.membership as { plan?: string; expires_at?: number } | null | undefined
-  const isPro = !auth.loading && auth.loggedIn && isActiveSub(mem?.plan, mem?.expires_at)
-  const isSingle = !auth.loading && auth.loggedIn && mem?.plan === 'single'
-  const hintText = auth.loading
-    ? '支持 PDF、Word（.docx）· 不超过 5 MB'
-    : !auth.loggedIn
-      ? '登录后每天可用 2 次 · Pro 用户每天 5 次'
-      : isPro
-        ? '会员账户 · 每天 5 次 ATS 检测'
-        : isSingle
-          ? '单次购买 · 每天 3 次 ATS 检测'
-          : '免费账户 · 每天 2 次 ATS 检测'
+  const hintText = 'Free · unlimited ATS checks'
 
   return (
     <section id="ats" style={{ padding: '88px 0', position: 'relative', overflow: 'hidden', background: 'white' }}>
@@ -557,10 +524,10 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
           <div style={{ maxWidth: '1060px', margin: '0 auto', padding: '0 24px', display: 'flex', gap: '56px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 280px', minWidth: '240px', position: 'relative' }}>
               <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 800, color: '#0f172a', margin: '0 0 20px', lineHeight: 1.15 }}>
-                你的简历<br />能过大厂筛选吗？
+                Will your resume<br />pass the screening?
               </h2>
               <p style={{ fontSize: 'clamp(14px,2vw,17px)', color: '#64748b', lineHeight: 1.8, margin: 0 }}>
-                超过 90% 的大公司使用 ATS 自动过滤简历，绝大多数求职者在这一环节出局，却浑然不知。上传简历，AI 实时给出评分与改进建议。
+                Over 90% of large companies use an ATS to auto-filter resumes, and most applicants get screened out here without ever knowing. Upload your resume and get instant AI scoring and improvement tips.
               </p>
             </div>
             <div style={{ flex: '0 1 420px', minWidth: '0', maxWidth: '460px', width: '100%', position: 'relative' }}>
@@ -599,9 +566,9 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
             <div style={{ fontSize: '17px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>{errorMsg}</div>
             {needLogin && (
-              <button onClick={onLoginRequest} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, background: 'var(--highlight)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>登录 / 注册</button>
+              <button onClick={onLoginRequest} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 700, background: 'var(--highlight)', color: 'white', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Sign in</button>
             )}
-            <button onClick={() => { setPhase('upload'); setApiDone(false) }} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 600, background: 'white', color: '#334155', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>重新上传</button>
+            <button onClick={() => { setPhase('upload'); setApiDone(false) }} style={{ margin: '10px 8px 0', padding: '11px 28px', borderRadius: '9999px', fontSize: '15px', fontWeight: 600, background: 'white', color: '#334155', border: '1.5px solid #e2e8f0', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Re-upload</button>
           </div>
         )}
       </div>

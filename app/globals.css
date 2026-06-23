@@ -13,7 +13,7 @@
   --paper3: #e2e8f0;
   --theme-blue: #0789ec;
   --gold2: #0edad3;
-  --gold-light: #fef3c7;
+  --gold-light: #f3f1e8;
   --teal: #0d9488;
   --highlight: #ff6700;
   --ai-highlight: #ff6700;
@@ -53,6 +53,8 @@ body {
 @keyframes importSlide { 0% { left: -44%; } 100% { left: 106%; } }
 @keyframes ddSlide { from { opacity:0; transform:translateY(-6px) scale(0.96) } to { opacity:1; transform:translateY(0) scale(1) } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes twBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.tw-cursor { display: inline-block; margin-left: 2px; font-weight: 300; color: var(--paper); animation: twBlink 1s step-end infinite; }
 
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }

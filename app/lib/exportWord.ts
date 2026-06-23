@@ -40,47 +40,47 @@ export function generateWordBlob(data: ResumeData): Blob {
 
   // ── Summary ───────────────────────────────────────────────
   if (data.hasSummary && data.summary)
-    body += section('个人简介', `<p>${esc(data.summary)}</p>`)
+    body += section('Professional Summary', `<p>${esc(data.summary)}</p>`)
 
   // ── Experience ────────────────────────────────────────────
   if (data.exp.length)
-    body += section('工作经历', data.exp.map(entryBlock).join(''))
+    body += section('Work Experience', data.exp.map(entryBlock).join(''))
 
   // ── Education ─────────────────────────────────────────────
   if (data.edu.length)
-    body += section('教育背景', data.edu.map(entryBlock).join(''))
+    body += section('Education', data.edu.map(entryBlock).join(''))
 
   // ── Skills ────────────────────────────────────────────────
   if (data.hasSkills && data.skills.filter(Boolean).length)
-    body += section('专业技能', `<p>${data.skills.filter(Boolean).map(esc).join(' · ')}</p>`)
+    body += section('Skills', `<p>${data.skills.filter(Boolean).map(esc).join(' · ')}</p>`)
 
   // ── Projects ──────────────────────────────────────────────
   if (data.hasProject && data.project.length)
-    body += section('项目经历', data.project.map(entryBlock).join(''))
+    body += section('Projects', data.project.map(entryBlock).join(''))
 
   // ── Awards ────────────────────────────────────────────────
   if (data.hasAward && data.award.length)
-    body += section('荣誉奖项', data.award.map(entryBlock).join(''))
+    body += section('Awards & Honors', data.award.map(entryBlock).join(''))
 
   // ── Certs ─────────────────────────────────────────────────
   if (data.hasCert && data.cert.length)
-    body += section('资质证书',
+    body += section('Certifications',
       data.cert.map(e => `<p>${esc(e.title)}${e.sub ? ` · ${esc(e.sub)}` : ''}${e.date ? ` (${esc(e.date)})` : ''}</p>`).join('')
     )
 
   // ── Languages ─────────────────────────────────────────────
   if (data.hasLanguage && data.language.length)
-    body += section('语言能力',
+    body += section('Languages',
       data.language.map(e => `<p>${esc(e.title)}${e.sub ? ` — ${esc(e.sub)}` : ''}</p>`).join('')
     )
 
   // ── Volunteer ─────────────────────────────────────────────
   if (data.hasVolunteer && data.volunteer.length)
-    body += section('志愿服务', data.volunteer.map(entryBlock).join(''))
+    body += section('Volunteering', data.volunteer.map(entryBlock).join(''))
 
   // ── Interests ─────────────────────────────────────────────
   if (data.hasInterest && data.interest.filter(e => e.title).length)
-    body += section('兴趣爱好',
+    body += section('Interests',
       `<p>${data.interest.filter(e => e.title).map(e => esc(e.title)).join(' · ')}</p>`
     )
 

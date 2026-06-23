@@ -14,6 +14,13 @@ export async function POST(req: NextRequest) {
   try {
     const { type, text, context, deviceId } = await req.json()
 
+    // Detect English input so we can force English output (overrides the Chinese rules below).
+    const CJK = /[\u4e00-\u9fff]/
+    const isEN = typeof text === 'string' && text.trim().length > 0 && !CJK.test(text)
+    const langNote = isEN
+      ? '\n\nIMPORTANT — ENGLISH OUTPUT: The input is in English. Write ALL output in English. Use strong action verbs (Led, Built, Designed, Implemented, Optimized, Delivered, Drove, Scaled). Target 15–25 words per bullet and ignore any Chinese character-count limits above.'
+      : ''
+
     const guard = guardAI(req, deviceId)
     if (guard) return guard
 
@@ -70,6 +77,8 @@ ${context ? `背景：${context}` : ''}
 
 仅返回JSON（无markdown）：{"summary": "优化后的个人简介"}`
     }
+
+    prompt += langNote
 
     const res = await aiFetch(`${QWEN_BASE}/chat/completions`, {
       method: 'POST',

@@ -73,7 +73,7 @@ export default function ResumeRenderer({
     interest: '兴趣爱好', language: '语言能力',
     summary: '个人简介', skills: '专业技能', contact: '联系方式',
   }
-  const T = (k: string): string => data.sectionLabels?.[k] ?? ((isEnglish ?? data.resumeLang === 'en') ? EN : ZH)[k] ?? k
+  const T = (k: string): string => data.sectionLabels?.[k] ?? ((isEnglish ?? data.resumeLang !== 'zh') ? EN : ZH)[k] ?? k
 
   // Scale font sizes and vertical spacings only — structural dimensions (widths, sidebar fills) are untouched
   const sc = data.fontScale ?? 1
@@ -90,7 +90,7 @@ export default function ResumeRenderer({
       fontSize: '10px', color: 'white', fontWeight: 700,
       flexShrink: 0, whiteSpace: 'nowrap', cursor: 'default',
       lineHeight: 1.4,
-    }}>✦ AI建议</div>
+    }}>✦ AI</div>
   )
 
   const fontMap = {
@@ -447,7 +447,7 @@ export default function ResumeRenderer({
 
   // ============ SECTION ============
   // ============ LANGUAGE — horizontal wrapping pills ============
-  const LanguageSection = ({ onDark = false, noScale = false }: { onDark?: boolean; noScale?: boolean }) => {
+  const LanguageSection = ({ onDark = false, noScale = false, hideTitle = false }: { onDark?: boolean; noScale?: boolean; hideTitle?: boolean }) => {
     if (!data.hasLanguage || data.language.length === 0) return null
     const _s = noScale ? s0 : s
     const langStyle = data.languageStyle ?? 'pills'
@@ -472,7 +472,7 @@ export default function ResumeRenderer({
                 transition: 'border-color 0.1s, background 0.1s, box-shadow 0.1s',
                 boxShadow: sel ? `inset 0 0 0 1.5px ${accent}` : 'none',
               }}>
-              <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
+              <span style={{ fontWeight: 600 }}>{entry.title || 'Language'}</span>
               {entry.sub && (
                 <><span style={{ opacity: 0.35 }}>·</span><span style={{ opacity: 0.75 }}>{entry.sub}</span></>
               )}
@@ -495,7 +495,7 @@ export default function ResumeRenderer({
                 borderRadius: '3px', padding: sel ? '0 2px' : 0,
               }}>
               {idx > 0 && <span style={{ color: textC, opacity: 0.35, margin: '0 6px' }}>·</span>}
-              <span style={{ fontWeight: 600 }}>{entry.title || '语言'}</span>
+              <span style={{ fontWeight: 600 }}>{entry.title || 'Language'}</span>
               {entry.sub && <span style={{ opacity: 0.65 }}> {entry.sub}</span>}
             </span>
           )
@@ -517,7 +517,7 @@ export default function ResumeRenderer({
                 borderRadius: '4px', padding: sel ? '2px 4px' : '0',
                 margin: sel ? '-2px -4px' : '0',
               }}>
-              <span style={{ fontSize: _s(12.5), fontWeight: 600, color: onDark ? 'rgba(255,255,255,0.9)' : '#0f172a', minWidth: _s(48) }}>{entry.title || '语言'}</span>
+              <span style={{ fontSize: _s(12.5), fontWeight: 600, color: onDark ? 'rgba(255,255,255,0.9)' : '#0f172a', minWidth: _s(48) }}>{entry.title || 'Language'}</span>
               {entry.sub && <span style={{ fontSize: _s(11.5), color: textC, opacity: 0.75 }}>{entry.sub}</span>}
             </div>
           )
@@ -527,7 +527,7 @@ export default function ResumeRenderer({
 
     return (
       <div data-section-start="1" style={{ marginBottom: _s(10) }}>
-        <SectionTitle onDark={onDark} noScale={noScale}>{T('language')}</SectionTitle>
+        {!hideTitle && <SectionTitle onDark={onDark} noScale={noScale}>{T('language')}</SectionTitle>}
         {langStyle === 'pills' && renderPills()}
         {langStyle === 'plain' && renderPlain()}
         {langStyle === 'list' && renderList()}
@@ -535,8 +535,8 @@ export default function ResumeRenderer({
     )
   }
 
-  const Section = ({ sec, label, items, onDark = false, noScale = false }: {
-    sec: SectionKey; label: string; items: Entry[]; onDark?: boolean; noScale?: boolean
+  const Section = ({ sec, label, items, onDark = false, noScale = false, hideTitle = false }: {
+    sec: SectionKey; label: string; items: Entry[]; onDark?: boolean; noScale?: boolean; hideTitle?: boolean
   }) => {
     if (!items || items.length === 0) return null
     const _s = noScale ? s0 : s
@@ -545,7 +545,7 @@ export default function ResumeRenderer({
       <div style={{ marginBottom: _s(10) }}>
         <div data-section-start="1" style={hasSectionAI ? { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' } : undefined}>
           <div style={hasSectionAI ? { flex: 1 } : undefined}>
-            <SectionTitle onDark={onDark} noScale={noScale}>{label}</SectionTitle>
+            {!hideTitle && <SectionTitle onDark={onDark} noScale={noScale}>{label}</SectionTitle>}
           </div>
         </div>
         {items.map((entry, idx) => (
@@ -556,15 +556,17 @@ export default function ResumeRenderer({
   }
 
   // ============ SUMMARY ============
-  const SummaryBlock = ({ onDark = false }: { onDark?: boolean }) => {
+  const SummaryBlock = ({ onDark = false, hideTitle = false }: { onDark?: boolean; hideTitle?: boolean }) => {
     if (!data.hasSummary) return null
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#334155'
     return (
       <div data-section-start="1" style={{ marginBottom: s(10) }}>
+        {!hideTitle && (
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
           <div style={{ flex: 1 }}><SectionTitle onDark={onDark}>{T('summary')}</SectionTitle></div>
           {interactive && aiSectionSet.has('summary') && <AIChip />}
         </div>
+        )}
         <p onClick={click({ kind: 'field', field: 'summary' })}
           style={{
             ...editStyle({ kind: 'field', field: 'summary' }),
@@ -579,7 +581,7 @@ export default function ResumeRenderer({
   }
 
   // ============ SKILLS ============
-  const SkillsBlock = ({ onDark = false, noScale = false }: { onDark?: boolean; noScale?: boolean }) => {
+  const SkillsBlock = ({ onDark = false, noScale = false, hideTitle = false }: { onDark?: boolean; noScale?: boolean; hideTitle?: boolean }) => {
     const _s = noScale ? s0 : s
     const hasPending = !!pendingSkills && pendingSkills.length > 0
     const hasCategories = (data.skillCategories?.length ?? 0) > 0
@@ -650,7 +652,7 @@ export default function ResumeRenderer({
       ...extra,
     })
 
-    const header = (
+    const header = hideTitle ? null : (
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
         <div style={{ flex: 1 }}><SectionTitle onDark={onDark} noScale={noScale}>{T('skills')}</SectionTitle></div>
         {interactive && aiSectionSet.has('skills') && <AIChip />}
@@ -687,7 +689,7 @@ export default function ResumeRenderer({
                   fontSize: _s(11.5), fontWeight: 600, flexShrink: 0,
                   color: onDark ? 'rgba(255,255,255,0.85)' : '#0f172a',
                   lineHeight: skillStyle === 'tags' ? '23px' : 1.6,
-                }}>新增技能：</span>
+                }}>New skills: </span>
                 {skillStyle === 'plain' ? (
                   <div style={{ flex: 1, overflowWrap: 'break-word', fontSize: _s(11.5), lineHeight: 1.6 }}>
                     {renderPlainText([], pendingSkills!)}
@@ -740,8 +742,8 @@ export default function ResumeRenderer({
         .map(makeCustomItem),
     ].filter(Boolean) as { icon: React.ReactNode; text: string; href?: string }[]
     const infoItems: { icon: React.ReactNode; text: string; href?: string }[] = [
-      (!data.hideGender && data.gender) && { icon: null, text: (isEnglish ?? data.resumeLang === 'en') ? `Gender: ${data.gender}` : `性别: ${data.gender}` },
-      (!data.hideAge && data.age) && { icon: null, text: (isEnglish ?? data.resumeLang === 'en') ? `Age: ${data.age}` : `年龄: ${data.age}` },
+      (!data.hideGender && data.gender) && { icon: null, text: (isEnglish ?? data.resumeLang !== 'zh') ? `Gender: ${data.gender}` : `性别: ${data.gender}` },
+      (!data.hideAge && data.age) && { icon: null, text: (isEnglish ?? data.resumeLang !== 'zh') ? `Age: ${data.age}` : `年龄: ${data.age}` },
       ...(data.customContacts || [])
         .filter(ci => !ci.hidden && ci.label && ci.value && ci.isInfo === true)
         .map(makeCustomItem),
@@ -786,7 +788,7 @@ export default function ResumeRenderer({
             : <span style={{ color: onDark ? 'rgba(255,255,255,0.3)' : '#cbd5e1', alignSelf: 'center', lineHeight: 1, fontSize: _s(11) }}>|</span>
           )}
           {vertical && (
-            <span style={{ fontSize: _s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>{(isEnglish ?? data.resumeLang === 'en') ? 'Personal Info' : '基本信息'}</span>
+            <span style={{ fontSize: _s(9), fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' as const, color: onDark ? 'rgba(255,255,255,0.5)' : '#94a3b8' }}>{(isEnglish ?? data.resumeLang !== 'zh') ? 'Personal Info' : '基本信息'}</span>
           )}
           {infoItems.map((it, i) => renderItem(it, `info_${i}`))}
         </>}
@@ -797,7 +799,7 @@ export default function ResumeRenderer({
   // ============ PHOTO ============
   const PhotoBlock = ({ size = 100, onDark = false }: { size?: number; onDark?: boolean }) => {
     const meta = data.photoMeta
-    const photoShape = meta?.shape ?? 'rounded'
+    const photoShape = meta?.shape ?? 'circle'
     const PORTRAIT_RATIO = 4 / 3
     const containerW = size
     const containerH = photoShape === 'rounded' ? Math.round(size * PORTRAIT_RATIO) : size
@@ -859,7 +861,7 @@ export default function ResumeRenderer({
             position: 'absolute', bottom: 0, left: 0, right: 0,
             background: 'rgba(0,0,0,0.6)', color: 'white',
             fontSize: '9px', textAlign: 'center', padding: '2px',
-          }}>上传</div>
+          }}>Upload</div>
         )}
       </div>
     )
@@ -903,16 +905,16 @@ export default function ResumeRenderer({
     return [...stored, ...DEFAULT_SECTION_ORDER.filter(k => !storedSet.has(k))]
   })()
 
-  const renderSection = (key: SectionKey, onDark = false, noScale = false): React.ReactNode => {
+  const renderSection = (key: SectionKey, onDark = false, noScale = false, hideTitle = false): React.ReactNode => {
     switch (key) {
-      case 'exp':       return data.hasExp !== false ? <Section key="exp" sec="exp" label={T('exp')} items={data.exp} onDark={onDark} noScale={noScale} /> : null
-      case 'edu':       return data.hasEdu !== false ? <Section key="edu" sec="edu" label={T('edu')} items={data.edu} onDark={onDark} noScale={noScale} /> : null
-      case 'project':   return data.hasProject ? <Section key="project" sec="project" label={T('project')} items={data.project} onDark={onDark} noScale={noScale} /> : null
-      case 'language':  return data.hasLanguage ? <LanguageSection key="language" onDark={onDark} noScale={noScale} /> : null
-      case 'award':     return data.hasAward ? <Section key="award" sec="award" label={T('award')} items={data.award} onDark={onDark} noScale={noScale} /> : null
-      case 'cert':      return data.hasCert ? <Section key="cert" sec="cert" label={T('cert')} items={data.cert} onDark={onDark} noScale={noScale} /> : null
-      case 'volunteer': return data.hasVolunteer ? <Section key="volunteer" sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} noScale={noScale} /> : null
-      case 'interest':  return data.hasInterest ? <Section key="interest" sec="interest" label={T('interest')} items={data.interest} onDark={onDark} noScale={noScale} /> : null
+      case 'exp':       return data.hasExp !== false ? <Section key="exp" sec="exp" label={T('exp')} items={data.exp} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'edu':       return data.hasEdu !== false ? <Section key="edu" sec="edu" label={T('edu')} items={data.edu} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'project':   return data.hasProject ? <Section key="project" sec="project" label={T('project')} items={data.project} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'language':  return data.hasLanguage ? <LanguageSection key="language" onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'award':     return data.hasAward ? <Section key="award" sec="award" label={T('award')} items={data.award} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'cert':      return data.hasCert ? <Section key="cert" sec="cert" label={T('cert')} items={data.cert} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'volunteer': return data.hasVolunteer ? <Section key="volunteer" sec="volunteer" label={T('volunteer')} items={data.volunteer} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
+      case 'interest':  return data.hasInterest ? <Section key="interest" sec="interest" label={T('interest')} items={data.interest} onDark={onDark} noScale={noScale} hideTitle={hideTitle} /> : null
       default:          return null
     }
   }
@@ -923,6 +925,43 @@ export default function ResumeRenderer({
       {effectiveSectionOrder.map(key => renderSection(key, onDark))}
     </>
   )
+
+  // True only when a section is enabled AND actually has entries — used so wrapping
+  // layouts (section cards, timeline, hanging headings) don't render an empty card
+  // for a module whose content was all deleted.
+  const sectionHasContent = (key: SectionKey): boolean => {
+    switch (key) {
+      case 'exp':       return data.hasExp !== false && data.exp.length > 0
+      case 'edu':       return data.hasEdu !== false && data.edu.length > 0
+      case 'project':   return !!data.hasProject && data.project.length > 0
+      case 'language':  return !!data.hasLanguage && data.language.length > 0
+      case 'award':     return !!data.hasAward && data.award.length > 0
+      case 'cert':      return !!data.hasCert && data.cert.length > 0
+      case 'volunteer': return !!data.hasVolunteer && data.volunteer.length > 0
+      case 'interest':  return !!data.hasInterest && data.interest.length > 0
+      default:          return false
+    }
+  }
+
+  // Ordered content blocks (summary → sections → skills) with labels, for single-column
+  // layouts that wrap each block (timeline rail, section cards, hanging headings).
+  const bodyBlocks = (hideTitle = false): { key: string; label: string; node: React.ReactNode }[] => {
+    const blocks: { key: string; label: string; node: React.ReactNode }[] = []
+    if (data.hasSummary && data.summary) blocks.push({ key: 'summary', label: T('summary'), node: <SummaryBlock hideTitle={hideTitle} /> })
+    for (const key of effectiveSectionOrder) {
+      if (!sectionHasContent(key)) continue
+      const node = renderSection(key, false, false, hideTitle)
+      if (node) blocks.push({ key, label: T(key), node })
+    }
+    const skillsHasItems = (data.skillCategories?.length ?? 0) > 0
+      ? data.skillCategories!.some(c => c.items.length > 0)
+      : data.skills.length > 0
+    const skillsPending = (pendingSkills?.length ?? 0) > 0
+    if (data.hasSkills && (skillsHasItems || skillsPending)) {
+      blocks.push({ key: 'skills', label: T('skills'), node: <SkillsBlock hideTitle={hideTitle} /> })
+    }
+    return blocks
+  }
 
   // ============ ROOT ============
   // All papers white; structural dimensions are fixed — only typography scales via s()
@@ -936,7 +975,7 @@ export default function ResumeRenderer({
     overflow: 'hidden',
   }
 
-  // ============ LAYOUT: SIDEBAR LEFT WIDE (深色侧栏) ============
+  // ============ LAYOUT: SIDEBAR LEFT WIDE (dark sidebar) ============
   if (template.layout === 'sidebar-left-wide') {
     return (
       <div style={rootStyle}>
@@ -976,7 +1015,7 @@ export default function ResumeRenderer({
     )
   }
 
-  // ============ LAYOUT: SIDEBAR LEFT NARROW (淡色侧栏) ============
+  // ============ LAYOUT: SIDEBAR LEFT NARROW (light sidebar) ============
   if (template.layout === 'sidebar-left-narrow') {
     return (
       <div style={rootStyle}>
@@ -1430,6 +1469,145 @@ export default function ResumeRenderer({
         {/* Bottom contact strip */}
         <div style={{ backgroundColor: accent, padding: '14px 48px' }}>
           <ContactInline onDark centered />
+        </div>
+      </div>
+    )
+  }
+
+  // Shared single-column header (name + contact, optional photo on the left).
+  const StdHeader = () => (
+    template.showPhoto ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <PhotoBlock size={100} />
+        <div style={{ flex: 1 }}>
+          <NameBlock big />
+          <div style={{ height: '10px' }} />
+          <ContactInline />
+        </div>
+      </div>
+    ) : (
+      <>
+        <NameBlock big />
+        <div style={{ height: '10px' }} />
+        <ContactInline />
+      </>
+    )
+  )
+
+  // ============ LAYOUT: TIMELINE RAIL (left rail + dot per section) ============
+  if (template.layout === 'timeline-rail') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ padding: '40px 48px 0' }}>
+          <StdHeader />
+          <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
+        </div>
+        <div style={{ padding: '16px 48px 40px' }}>
+          <div style={{ position: 'relative', paddingLeft: '24px' }}>
+            <div style={{ position: 'absolute', left: '5px', top: '4px', bottom: '4px', width: '2px', background: `${accent}30` }} />
+            {bodyBlocks().map(b => (
+              <div key={b.key} style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '-23px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: accent, boxShadow: '0 0 0 2px #fff' }} />
+                {b.node}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: EDITORIAL (centered masthead with rules) ============
+  if (template.layout === 'editorial') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ padding: '46px 56px 0', textAlign: 'center' }}>
+          <div style={{ height: '1px', background: accent, marginBottom: '20px' }} />
+          {template.showPhoto && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+              <PhotoBlock size={92} />
+            </div>
+          )}
+          <NameBlock centered big />
+          <div style={{ height: '10px' }} />
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <ContactInline centered />
+          </div>
+          <div style={{ marginTop: '18px' }}>
+            <div style={{ height: '2px', background: accent }} />
+            <div style={{ height: '2px' }} />
+            <div style={{ height: '1px', background: accent }} />
+          </div>
+        </div>
+        <div style={{ padding: '20px 56px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: SECTION CARDS (each section in a soft card) ============
+  if (template.layout === 'section-cards') {
+    const cardStyle: React.CSSProperties = {
+      background: '#f8fafc', border: '1px solid #eef2f7', borderRadius: '12px',
+      padding: '14px 16px 6px', marginBottom: '12px',
+    }
+    return (
+      <div style={rootStyle}>
+        <div style={{ padding: '40px 44px 0' }}>
+          <StdHeader />
+          <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
+        </div>
+        <div style={{ padding: '16px 44px 40px' }}>
+          {bodyBlocks().map(b => (
+            <div key={b.key} style={cardStyle}>{b.node}</div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: HANGING HEADINGS (section label in left gutter) ============
+  if (template.layout === 'hanging-headings') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ padding: '40px 48px 0' }}>
+          <StdHeader />
+          <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
+        </div>
+        <div style={{ padding: '18px 48px 40px' }}>
+          {bodyBlocks(true).map(b => (
+            <div key={b.key} style={{ display: 'flex', gap: '20px', marginBottom: '4px', alignItems: 'flex-start' }}>
+              <div style={{ width: '116px', flexShrink: 0, paddingTop: '1px' }}>
+                <div style={{ fontFamily: headingFont, fontSize: s(12), fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: accent, lineHeight: 1.3 }}>{b.label}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>{b.node}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: TOP BAND (two-tier color masthead) ============
+  if (template.layout === 'top-band') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ background: accent }}>
+          <div style={{ padding: '30px 48px 16px', display: 'flex', alignItems: 'center', gap: '22px' }}>
+            {template.showPhoto && <PhotoBlock size={92} onDark />}
+            <div style={{ flex: 1 }}>
+              <NameBlock onDark big />
+            </div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.14)', padding: '10px 48px' }}>
+            <ContactInline onDark />
+          </div>
+        </div>
+        <div style={{ padding: '22px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
         </div>
       </div>
     )

@@ -35,7 +35,16 @@
       "Bash(sed -i '' -e 's/borderRadius: \"12px 12px 0 0\"/borderRadius: \"6px 6px 0 0\"/g' -e 's/borderRadius: \"0 0 12px 12px\"/borderRadius: \"0 0 6px 6px\"/g' -e 's/borderRadius: '\\\\''20px'\\\\''/borderRadius: '\\\\''8px'\\\\''/g' -e 's/borderRadius: '\\\\''24px'\\\\''/borderRadius: '\\\\''10px'\\\\''/g' -e 's/borderRadius: \"24px\"/borderRadius: \"10px\"/g' -e 's/borderRadius: \"14px\"/borderRadius: \"6px\"/g' -e 's/borderRadius: \"12px\"/borderRadius: \"6px\"/g' -e 's/borderRadius: \"10px\"/borderRadius: \"5px\"/g' -e 's/borderRadius: \"8px\"/borderRadius: \"4px\"/g' app/editor/components/Modals.tsx)",
       "Bash(git checkout *)",
       "Bash(echo \"Started PID $!\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(xargs ls -la)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npx eslint *)",
+      "Bash(grep -vE \"react-hooks/|Calling setState|Cannot access|Cannot update|Effects are|^\\\\*|external system|body of an effect|react.dev|^\\\\s*$|Subscribe for\")",
+      "Bash(pkill -f \"next-server\")",
+      "Bash(rm -f /tmp/fit.mjs /tmp/nat.mjs /tmp/shot.mjs /tmp/shot2.mjs /tmp/gallery.png /tmp/gallery_all.png)",
+      "Bash(perl -0pi -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(perl -0pi -e 's/\\\\n\\\\s*interviewData=\\\\{interviewData\\\\}\\\\n\\\\s*interviewLoading=\\\\{interviewLoading\\\\}\\\\n\\\\s*onGenerateInterview=\\\\{handleGenerateInterview\\\\}//g' app/editor/page.tsx)"
     ]
   }
 }

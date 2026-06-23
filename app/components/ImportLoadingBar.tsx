@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react'
 
 const DEFAULT_STAGES = [
-  { after: 0,     msg: '正在上传并扫描文档…' },
-  { after: 2000,  msg: '提取个人信息与联系方式…' },
-  { after: 5000,  msg: '识别工作经历与技能模块…' },
-  { after: 8000,  msg: '解析教育背景与项目经历…' },
-  { after: 12000, msg: '生成结构化简历数据…' },
-  { after: 16000, msg: '正在填入专业模版…' },
+  { after: 0,     msg: 'Uploading and scanning document…' },
+  { after: 2000,  msg: 'Extracting personal info and contacts…' },
+  { after: 5000,  msg: 'Detecting experience and skills…' },
+  { after: 8000,  msg: 'Parsing education and projects…' },
+  { after: 12000, msg: 'Building structured resume data…' },
+  { after: 16000, msg: 'Filling the template…' },
 ]
 
 interface Props {

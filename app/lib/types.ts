@@ -92,7 +92,7 @@ export interface AISuggestion {
   field: 'bullets' | 'summary' | 'skills'
   // remove: delete the entry; add: insert newEntry into section; fill: insert newEntry with [[?placeholder?]] text
   action?: 'remove' | 'add' | 'fill'
-  label: string                          // human-readable label, e.g. "工作经历 · 前端工程师"
+  label: string                          // human-readable label, e.g. "Work Experience · Frontend Engineer"
   tip: string                            // short improvement hint
   changeDescription?: string             // brief: which module, what changed, core advantage
   // bullets strings may contain [[+added+]] and [[~deleted~]] inline diff markers
@@ -178,15 +178,18 @@ export function textToBullets(text: string): string[] {
 // Default demo data
 // ============================================================
 export const DEMO_DATA: ResumeData = {
-  name: '简力全开',
-  jobtitle: '高级软件工程师',
-  email: 'resume@jianliquankai.com',
-  phone: '138-0000-0000',
-  city: '上海',
-  website: 'jianliquankai.com',
+  name: 'Alex Morgan',
+  jobtitle: 'Senior Software Engineer',
+  email: 'alex.morgan@example.com',
+  phone: '(XXX) 555-0182',
+  city: 'San Francisco, CA',
+  website: 'alexmorgan.example.com',
   customContacts: [],
   photo: '/virtual_photo.png',
-  summary: '5 年前端开发经验，专注高性能 Web 应用与用户体验优化。熟悉大型业务系统的架构设计与迭代，有跨团队协作及技术方案落地经验。',
+  summary: 'Senior software engineer with 6 years designing and scaling full-stack web services. Strong in distributed systems, API design, and performance, with a track record of leading work across frontend, backend, and cloud infrastructure.',
+  resumeLang: 'en',
+  skillsStyle: 'plain',
+  languageStyle: 'plain',
   hasSummary: true,
   hasSkills: true,
   hasProject: true,
@@ -198,77 +201,70 @@ export const DEMO_DATA: ResumeData = {
   exp: [
     {
       id: 'e1',
-      title: '高级前端工程师',
-      sub: '字节跳动 · 抖音事业部',
-      date: '2022.03 — 至今',
+      title: 'Senior Software Engineer',
+      sub: 'Stripe · Payments Platform',
+      date: 'Mar 2022 — Present',
       bullets: [
-        '负责直播间互动模块的架构升级与日常迭代，持续改善渲染性能与稳定性',
-        '主导搭建内部低代码平台，支持运营团队自助配置活动页面，减少开发排期依赖',
-        '参与制定前端工程规范，推动代码审查流程落地，提升团队交付质量',
+        'Designed and shipped an idempotent payment-events service in Go and PostgreSQL processing 20M+ events/day with exactly-once semantics',
+        'Led decomposition of a Rails monolith into Kubernetes microservices, cutting deploy time 70% and improving p99 latency',
+        'Built a GraphQL gateway unifying 8 backend services, reducing client round-trips and standardizing auth',
+        'Mentored 3 engineers and introduced contract tests, lowering production incidents 35%',
       ],
     },
     {
       id: 'e2',
-      title: '前端工程师',
-      sub: '美团 · 到家事业群',
-      date: '2020.07 — 2022.02',
+      title: 'Software Engineer',
+      sub: 'Airbnb · Growth',
+      date: 'Jul 2019 — Feb 2022',
       bullets: [
-        '参与外卖 App H5 核心交互功能开发，负责下单链路页面的维护与优化',
-        '建设前端性能监控体系，收集关键指标并推动针对性优化',
-        '协作排查线上异常，完善错误上报机制，改善用户端稳定性',
+        'Built React and TypeScript booking flows served to millions of users with SSR and edge caching',
+        'Cut Largest Contentful Paint 40% via code-splitting, image optimization, and route prefetching',
+        'Developed a Node.js and Kafka event pipeline powering A/B experiments and funnel analytics',
+        'Optimized Postgres queries and added Redis caching, reducing API latency from 800ms to 120ms',
       ],
     },
   ],
   edu: [
     {
       id: 'd1',
-      title: '计算机科学与技术 · 本科',
-      sub: '上海交通大学',
+      title: 'B.S. in Computer Science',
+      sub: 'University of California, Berkeley',
       date: '2016 — 2020',
-      bullets: ['GPA 3.8/4.0，校级优秀毕业生'],
+      bullets: ['GPA 3.8/4.0 · Dean’s List'],
     },
   ],
-  skills: ['React', 'TypeScript', 'Vue 3', 'Node.js', 'Webpack', '性能优化', '微前端', 'Git'],
+  skills: ['TypeScript', 'React', 'Node.js', 'Python', 'Go', 'PostgreSQL', 'Redis', 'GraphQL', 'Docker', 'Kubernetes', 'AWS', 'CI/CD'],
   project: [
     {
       id: 'p1',
-      title: '低代码可视化搭建平台',
-      sub: '技术负责人',
-      date: '2023.01 — 至今',
+      title: 'Distributed Job Scheduler',
+      sub: 'Open Source',
+      date: '2023',
       bullets: [
-        '设计并实现组件拖拽引擎与属性面板，支持运营人员自助搭建活动落地页',
-        '接入 AI 辅助生成模块，帮助非技术人员快速完成页面初稿',
-        '针对复杂列表场景引入虚拟滚动方案，解决大数据量下的渲染卡顿问题',
+        'Built a fault-tolerant scheduler in Go with at-least-once delivery and cron semantics',
+        'Implemented leader election and partition sharding via etcd for horizontal scaling',
+        'Added Prometheus metrics and Grafana dashboards for end-to-end observability',
+        'Published on GitHub with 1.2k stars and an active contributor community',
       ],
     },
     {
       id: 'p2',
-      title: '直播间互动模块重构',
-      sub: '核心开发',
-      date: '2022.06 — 2022.12',
+      title: 'Real-Time Collaboration Engine',
+      sub: 'Side Project',
+      date: '2022',
       bullets: [
-        '将旧版轮询方案迁移至 WebSocket 长连接，降低服务端压力并改善消息实时性',
-        '引入虚拟列表优化弹幕渲染，解决高并发弹幕下页面掉帧的问题',
-        '整理并沉淀互动组件库，方便后续业务复用与扩展',
-      ],
-    },
-    {
-      id: 'p3',
-      title: '前端性能监控平台',
-      sub: '主要开发者',
-      date: '2021.03 — 2021.09',
-      bullets: [
-        '设计数据采集 SDK，覆盖页面加载、接口耗时、JS 异常等核心指标',
-        '搭建可视化看板，支持按页面、版本、设备类型多维度筛选与趋势分析',
-        '推动监控数据与告警系统打通，帮助团队更快定位线上问题',
+        'Implemented a CRDT sync layer over WebSocket for conflict-free concurrent editing',
+        'Designed offline queueing and reconnection with automatic state reconciliation',
+        'Cut sync bandwidth 60% with binary diffing and message batching',
+        'Wrote load tests simulating 10k concurrent clients to validate throughput',
       ],
     },
   ],
   award: [
     {
       id: 'aw1',
-      title: '奖项名称',
-      sub: '颁奖机构',
+      title: 'Award Name',
+      sub: 'Issuer',
       date: '',
       bullets: [],
     },
@@ -287,15 +283,15 @@ export const DEMO_DATA: ResumeData = {
   language: [
     {
       id: 'ln1',
-      title: '英语',
-      sub: 'CET-6 · 流利读写',
+      title: 'English',
+      sub: 'Native',
       date: '',
       bullets: [],
     },
     {
       id: 'ln2',
-      title: '日语',
-      sub: 'JLPT N2',
+      title: 'Spanish',
+      sub: 'Professional',
       date: '',
       bullets: [],
     },
@@ -338,7 +334,7 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     : undefined
 
   // Normalize links: collect ALL URLs from website + extraWebsites, then distribute:
-  // first URL → website field, rest → extraWebsites array (mirrors editor's "添加链接" flow).
+  // first URL → website field, rest → extraWebsites array (mirrors the editor's "Add link" flow).
   // LLMs often ignore extraWebsites and pack multiple URLs into one string.
   const isUrl = (s: string) =>
     s.includes('://') || s.startsWith('http') || /[a-z0-9]\.[a-z]{2,}/i.test(s)
@@ -391,7 +387,7 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     photo: '',
     summary: stripTrailingPeriod(String(raw.summary ?? '')),
     hasSummary: !!raw.hasSummary || String(raw.summary ?? '').length > 0,
-    hasSkills: !!raw.hasSkills || skills.length > 0,
+    hasSkills: !!raw.hasSkills || skills.length > 0 || !!(skillCategories && skillCategories.some(c => c.items.length > 0)),
     hasProject: !!raw.hasProject || project.length > 0,
     hasLanguage: !!raw.hasLanguage || language.length > 0,
     hasAward: !!raw.hasAward || award.length > 0,
@@ -401,321 +397,277 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     resumeLang,
     exp, edu, project, award, cert, volunteer, interest, language, skills,
     ...(skillCategories !== undefined ? { skillCategories } : {}),
+    // Categorized skills default to the plain style and open category mode in the editor.
+    ...(skillCategories && skillCategories.some(c => c.items.length > 0) ? { skillsStyle: 'plain' as const } : {}),
     ...(basicInfoContacts.length > 0 ? { customContacts: basicInfoContacts } : {}),
   }
 }
 
 export const THUMB_DATA: ResumeData = {
   ...DEMO_DATA,
-  summary: '5年前端开发经验，专注高性能Web应用构建与用户体验优化。主导字节跳动核心互动模块重构，曾带领3人小组完成百万级DAU产品的全链路性能治理。',
-  hasSummary: false,
-  hasProject: true,
-  hasLanguage: true,
-  hasAward: true,
-  hasCert: true,
-  skills: ['React', 'TypeScript', 'Vue 3', 'Node.js', 'WebGL', '性能优化', '微前端', 'Git'],
-  project: [
-    {
-      id: 'p1',
-      title: '低代码可视化搭建平台',
-      sub: '技术负责人',
-      date: '2023.01 — 至今',
-      bullets: [
-        '设计组件拖拽引擎，支持 200+ 内部团队自助搭建活动页',
-        '接入 AI 生成模块，页面制作效率提升 3 倍，月活用户 5 万+',
-        '通过虚拟滚动与懒加载优化，首屏渲染时间降低 55%',
-      ],
-    },
-    {
-      id: 'p2',
-      title: '直播间互动实时重构',
-      sub: '核心开发',
-      date: '2022.06 — 2022.12',
-      bullets: [
-        '将旧版 Flash 方案迁移至 WebRTC，首屏速度降低 40%',
-        '引入虚拟列表优化弹幕渲染，帧率从 30fps 提升至 60fps',
-      ],
-    },
-  ],
-  award: [
-    {
-      id: 'aw1',
-      title: '年度技术创新奖',
-      sub: '字节跳动',
-      date: '2023',
-      bullets: [],
-    },
-  ],
-  cert: [
-    {
-      id: 'cr1',
-      title: 'AWS Certified Solutions Architect',
-      sub: 'Amazon Web Services',
-      date: '2022',
-      bullets: [],
-    },
-  ],
-  language: [
-    {
-      id: 'ln1',
-      title: '英语',
-      sub: 'CET-6 · 流利读写',
-      date: '',
-      bullets: [],
-    },
-    {
-      id: 'ln2',
-      title: '日语',
-      sub: 'JLPT N2',
-      date: '',
-      bullets: [],
-    },
-  ],
+  summary: 'Senior software engineer, 6 years across full-stack web services — distributed systems, API design, and performance. Led a payments-platform service at scale and mentored a small team.',
+}
+
+/**
+ * Sample resume content for template previews and new-from-template.
+ * Single-column → plain skill/language styling; two-column → tag/pill styling.
+ * Two-column trims experience/projects to 3 bullets (narrower main column); single-column
+ * keeps the full set. `maxBullets` overrides the bullet cap explicitly (e.g. Hero preview).
+ */
+/**
+ * Sample resume content for template previews and new-from-template.
+ * Full content (no trimming) — previews compress it to one page via fontScale.
+ * Single-column → plain skill/language styling; two-column → tag/pill styling.
+ */
+export function sampleResumeData(opts: { single: boolean }): ResumeData {
+  return opts.single
+    ? { ...THUMB_DATA, skillsStyle: 'plain', languageStyle: 'plain' }
+    : { ...THUMB_DATA, skillsStyle: 'tags', languageStyle: 'pills' }
 }
 
 export const THUMB_DATA_STUDENT: ResumeData = {
   ...DEMO_DATA,
-  jobtitle: '应届本科毕业生',
-  summary: '市场营销专业应届生，具备扎实的数据分析与运营实习经验。在校期间主导多项校园活动策划，善于跨团队沟通协作，期待在快消/互联网领域发展。',
+  jobtitle: 'New Graduate',
+  summary: 'Marketing new grad with solid data analysis and operations internship experience. Led several campus events, strong at cross-team communication, eager to grow in consumer/internet roles.',
   hasSummary: true,
   hasProject: true,
   hasLanguage: true,
   hasAward: true,
   hasCert: true,
   hasSkills: true,
-  skills: ['数据分析', 'Excel/VBA', 'Python基础', 'PS/剪映', '文案写作', 'Notion', '项目管理'],
+  skills: ['Data Analysis', 'Excel/VBA', 'Python Basics', 'Photoshop', 'Copywriting', 'Notion', 'Project Management'],
   exp: [
     {
       id: 'e1',
-      title: '市场运营实习生',
-      sub: '小红书 · 品牌合作部',
+      title: 'Marketing Operations Intern',
+      sub: 'Xiaohongshu · Brand Partnerships',
       date: '2024.07 — 2024.12',
       bullets: [
-        '协助策划 3 场品牌联名活动，累计曝光量超 200 万次',
-        '负责日常数据追踪与周报输出，辅助团队优化投放策略',
-        '参与 KOL 筛选与对接，维护 50+ 达人资源库',
+        'Helped plan 3 brand collab campaigns with 2M+ total impressions',
+        'Tracked daily metrics and produced weekly reports to optimize ad strategy',
+        'Sourced and managed a 50+ influencer database',
       ],
     },
     {
       id: 'e2',
-      title: '校园大使',
-      sub: '网易有道 · 校园推广',
+      title: 'Campus Ambassador',
+      sub: 'NetEase Youdao · Campus Marketing',
       date: '2023.09 — 2024.06',
       bullets: [
-        '负责校内线下推广，带动 300+ 同学完成产品注册',
-        '组织线上打卡活动，获评年度优秀校园大使',
+        'Ran on-campus promotion, driving 300+ student sign-ups',
+        'Organized online challenges; named Ambassador of the Year',
       ],
     },
   ],
   edu: [
     {
       id: 'd1',
-      title: '市场营销 · 本科',
-      sub: '中国人民大学',
+      title: 'B.A. in Marketing',
+      sub: 'Renmin University of China',
       date: '2021 — 2025',
-      bullets: ['GPA 3.7/4.0，连续三年获得校级奖学金', '学生会宣传部部长，主导校报改版'],
+      bullets: ['GPA 3.7/4.0, scholarship three years running', 'Head of Student Union PR; led the campus paper redesign'],
     },
   ],
   project: [
     {
       id: 'p1',
-      title: '校园消费行为调研',
-      sub: '课题负责人',
+      title: 'Campus Consumer Behavior Study',
+      sub: 'Project Lead',
       date: '2024.03 — 2024.06',
       bullets: [
-        '设计调查问卷，收集 500+ 份有效样本并完成数据清洗',
-        '使用 Python 进行描述性统计分析，输出 15 页研究报告',
-        '研究成果获院级优秀毕业论文提名',
+        'Designed surveys, collected 500+ valid responses, and cleaned the data',
+        'Ran descriptive statistics in Python and produced a 15-page report',
+        'Nominated for outstanding thesis at the department level',
       ],
     },
   ],
   award: [
-    { id: 'aw1', title: '国家励志奖学金', sub: '教育部', date: '2023', bullets: [] },
-    { id: 'aw2', title: '校级优秀学生干部', sub: '中国人民大学', date: '2024', bullets: [] },
+    { id: 'aw1', title: 'National Scholarship', sub: 'Ministry of Education', date: '2023', bullets: [] },
+    { id: 'aw2', title: 'Outstanding Student Leader', sub: 'Renmin University of China', date: '2024', bullets: [] },
   ],
   cert: [
-    { id: 'cr1', title: 'CET-6（562分）', sub: '大学英语六级', date: '2023', bullets: [] },
-    { id: 'cr2', title: 'Google Analytics 认证', sub: 'Google', date: '2024', bullets: [] },
+    { id: 'cr1', title: 'TOEFL 105', sub: 'ETS', date: '2023', bullets: [] },
+    { id: 'cr2', title: 'Google Analytics Certified', sub: 'Google', date: '2024', bullets: [] },
   ],
   language: [
-    { id: 'ln1', title: '英语', sub: 'CET-6 · 良好读写', date: '', bullets: [] },
+    { id: 'ln1', title: 'English', sub: 'Professional', date: '', bullets: [] },
   ],
 }
 
 export const THUMB_DATA_FINANCE: ResumeData = {
   ...DEMO_DATA,
-  jobtitle: '高级金融分析师',
-  summary: '6年银行及证券从业经验，专注股权投资与企业并购估值。主导完成多项 IPO 项目财务尽调，DCF 建模与行业研究能力突出，具备 CFA Level III 资质。',
+  jobtitle: 'Senior Financial Analyst',
+  summary: '6 years in banking and securities focused on equity investment and M&A valuation. Led financial due diligence for multiple IPOs; strong DCF modeling and industry research; CFA Level III candidate.',
   hasSummary: false,
   hasProject: true,
   hasLanguage: true,
   hasAward: true,
   hasCert: true,
   hasSkills: true,
-  skills: ['财务建模', 'DCF估值', 'Bloomberg', 'Excel/VBA', 'Wind数据库', 'Python', '行业研究', '项目管理'],
+  skills: ['Financial Modeling', 'DCF Valuation', 'Bloomberg', 'Excel/VBA', 'Capital IQ', 'Python', 'Industry Research', 'Project Management'],
   exp: [
     {
       id: 'e1',
-      title: '高级股权研究分析师',
-      sub: '中信证券 · 研究部',
-      date: '2021.06 — 至今',
+      title: 'Senior Equity Research Analyst',
+      sub: 'CITIC Securities · Research',
+      date: 'Jun 2021 — Present',
       bullets: [
-        '覆盖消费与零售板块 15 家上市公司，管理组合市值逾 30 亿元',
-        '主导 3 项 A 股 IPO 项目财务尽职调查，协助完成询价定价方案',
-        '独立撰写深度行业报告，获评年度最佳研究员（消费组）',
+        'Covered 15 listed consumer & retail companies, managing a portfolio worth over $400M',
+        'Led financial due diligence for 3 IPOs and helped set pricing',
+        'Authored in-depth industry reports; named Analyst of the Year (Consumer)',
       ],
     },
     {
       id: 'e2',
-      title: '投资分析师',
-      sub: '工商银行 · 投资银行部',
+      title: 'Investment Analyst',
+      sub: 'ICBC · Investment Banking',
       date: '2019.07 — 2021.05',
       bullets: [
-        '参与企业并购项目估值建模，完成超 20 份 DCF / 可比公司分析报告',
-        '协助客户完成债券发行路演材料制作及机构推介',
+        'Built valuation models for M&A deals, producing 20+ DCF / comparable-company analyses',
+        'Prepared bond issuance roadshow materials and institutional pitches',
       ],
     },
   ],
   edu: [
     {
       id: 'd1',
-      title: '金融学 · 硕士',
-      sub: '上海交通大学',
+      title: 'M.S. in Finance',
+      sub: 'Shanghai Jiao Tong University',
       date: '2017 — 2019',
-      bullets: ['GPA 3.9/4.0，研究方向：资产定价与衍生品'],
+      bullets: ['GPA 3.9/4.0, research focus: asset pricing and derivatives'],
     },
   ],
   project: [
     {
       id: 'p1',
-      title: '消费龙头并购估值项目',
-      sub: '项目负责人',
+      title: 'Consumer Leader M&A Valuation',
+      sub: 'Project Lead',
       date: '2023.04 — 2023.10',
       bullets: [
-        '构建三张报表联动财务模型，情景敏感性分析覆盖 8 个关键假设',
-        '采用 EV/EBITDA、DCF 双法估值，出具最终并购定价建议',
-        '项目成功落地，客户反馈满意度 4.9/5',
+        'Built a three-statement financial model with sensitivity analysis across 8 key assumptions',
+        'Valued via EV/EBITDA and DCF and delivered final acquisition pricing recommendations',
+        'Deal closed successfully with 4.9/5 client satisfaction',
       ],
     },
   ],
   award: [
-    { id: 'aw1', title: '年度最佳研究员', sub: '中信证券', date: '2023', bullets: [] },
+    { id: 'aw1', title: 'Analyst of the Year', sub: 'CITIC Securities', date: '2023', bullets: [] },
   ],
   cert: [
     { id: 'cr1', title: 'CFA Level III', sub: 'CFA Institute', date: '2022', bullets: [] },
     { id: 'cr2', title: 'FRM Part II', sub: 'GARP', date: '2021', bullets: [] },
   ],
   language: [
-    { id: 'ln1', title: '英语', sub: 'TOEFL 108 · 商务流利', date: '', bullets: [] },
+    { id: 'ln1', title: 'English', sub: 'TOEFL 108 · Business fluent', date: '', bullets: [] },
   ],
 }
 
 export const THUMB_DATA_DESIGN: ResumeData = {
   ...DEMO_DATA,
-  jobtitle: '资深 UI/UX 设计师',
-  summary: '7年互联网产品设计经验，擅长从用户研究到交互原型全链路把控。主导过月活千万级 App 的设计体系建设，推动设计驱动业务转化的落地实践。',
+  jobtitle: 'Senior UI/UX Designer',
+  summary: '7 years of product design experience, owning everything from user research to interactive prototypes. Built the design system for an app with tens of millions of MAU and drove design-led conversion gains.',
   hasSummary: false,
   hasProject: true,
   hasLanguage: true,
   hasAward: true,
   hasCert: false,
   hasSkills: true,
-  skills: ['Figma', 'Sketch', 'Principle', 'Photoshop', 'Illustrator', '用户研究', '设计系统', '动效设计'],
+  skills: ['Figma', 'Sketch', 'Principle', 'Photoshop', 'Illustrator', 'User Research', 'Design Systems', 'Motion Design'],
   exp: [
     {
       id: 'e1',
-      title: '资深交互设计师',
-      sub: '腾讯 · 微信事业群',
-      date: '2021.03 — 至今',
+      title: 'Senior Interaction Designer',
+      sub: 'Tencent · WeChat Group',
+      date: 'Mar 2021 — Present',
       bullets: [
-        '负责微信视频号创作者工具的全链路交互设计，版本迭代覆盖 1.2 亿用户',
-        '主导搭建创作者端设计系统，统一 120+ 组件规范，研发提效 30%',
-        '推动 A/B 测试机制落地，关键路径转化率提升 18%',
+        'Owned end-to-end interaction design for creator tools reaching 120M users',
+        'Built the creator-side design system, unifying 120+ components and boosting dev efficiency 30%',
+        'Drove A/B testing adoption, lifting key-path conversion 18%',
       ],
     },
     {
       id: 'e2',
-      title: 'UI/UX 设计师',
-      sub: '网易 · 严选事业部',
+      title: 'UI/UX Designer',
+      sub: 'NetEase · Yanxuan',
       date: '2018.07 — 2021.02',
       bullets: [
-        '参与严选 App 4.0 全面改版，负责商品详情页与购物车交互重设计',
-        '主导用研访谈 20+ 场，输出用户旅程图指导产品决策',
+        'Contributed to the app 4.0 redesign, reworking product detail and cart interactions',
+        'Led 20+ user research interviews and produced journey maps to guide decisions',
       ],
     },
   ],
   edu: [
     {
       id: 'd1',
-      title: '视觉传达设计 · 本科',
-      sub: '中央美术学院',
+      title: 'B.A. in Visual Communication Design',
+      sub: 'Central Academy of Fine Arts',
       date: '2014 — 2018',
-      bullets: ['毕业设计获优秀奖，作品入选年度院展'],
+      bullets: ['Graduation project won an award and was selected for the annual exhibition'],
     },
   ],
   project: [
     {
       id: 'p1',
-      title: '视频号创作者设计系统',
-      sub: '设计 TL',
+      title: 'Creator Design System',
+      sub: 'Design Lead',
       date: '2022.01 — 2022.12',
       bullets: [
-        '从零搭建设计 Token 体系与组件库，覆盖移动端 / Web 双平台',
-        '与研发深度协作落地 Handoff 规范，跨组交付效率提升 35%',
-        '设计系统在腾讯内部获评优秀基础设施项目',
+        'Built a design token system and component library from scratch across mobile and web',
+        'Partnered with engineering on handoff standards, improving cross-team delivery 35%',
+        'The design system was recognized internally as an outstanding infrastructure project',
       ],
     },
   ],
   award: [
-    { id: 'aw1', title: 'Red Dot Award · 优胜奖', sub: 'Red Dot Design Award', date: '2023', bullets: [] },
-    { id: 'aw2', title: '腾讯年度优秀员工', sub: '腾讯', date: '2022', bullets: [] },
+    { id: 'aw1', title: 'Red Dot Award · Winner', sub: 'Red Dot Design Award', date: '2023', bullets: [] },
+    { id: 'aw2', title: 'Employee of the Year', sub: 'Tencent', date: '2022', bullets: [] },
   ],
   cert: [],
   language: [
-    { id: 'ln1', title: '英语', sub: 'CET-6 · 流利读写', date: '', bullets: [] },
+    { id: 'ln1', title: 'English', sub: 'Fluent', date: '', bullets: [] },
   ],
 }
 
 export const THUMB_DATA_MANAGEMENT: ResumeData = {
   ...DEMO_DATA,
-  jobtitle: '运营总监',
-  summary: '10年互联网运营管理经验，擅长从0到1搭建高绩效团队，主导过月GMV过亿的业务板块增长。具备P&L全面负责经验，专注用数据驱动运营决策。',
+  jobtitle: 'Director of Operations',
+  summary: '10 years of internet operations management, skilled at building high-performing teams from scratch and driving growth for business lines with $100M+ monthly GMV. Full P&L ownership and data-driven decision making.',
   hasSummary: false,
   hasProject: true,
   hasLanguage: false,
   hasAward: true,
   hasCert: false,
   hasSkills: true,
-  skills: ['团队管理', '战略规划', 'P&L管理', '数据分析', '项目管理', '商务谈判', 'OKR', '业务增长'],
+  skills: ['Team Management', 'Strategic Planning', 'P&L Management', 'Data Analysis', 'Project Management', 'Negotiation', 'OKR', 'Growth'],
   exp: [
     {
       id: 'e1',
-      title: '用户增长总监',
-      sub: '京东 · 零售事业部',
-      date: '2020.09 — 至今',
+      title: 'Director of User Growth',
+      sub: 'JD.com · Retail',
+      date: 'Sep 2020 — Present',
       bullets: [
-        '统筹管理 45 人增长团队，负责年度 GMV 目标制定与分解执行',
-        '推动私域运营体系建设，年度会员留存率从 62% 提升至 81%',
-        '主导大促活动全链路运营，2023 年 618 单日 GMV 破 3.2 亿元',
+        'Led a 45-person growth team and owned annual GMV target setting and execution',
+        'Built a member operations system, raising annual retention from 62% to 81%',
+        'Ran end-to-end operations for major sales events, hitting $45M single-day GMV in 2023',
       ],
     },
     {
       id: 'e2',
-      title: '高级运营经理',
-      sub: '拼多多 · 百亿补贴项目组',
+      title: 'Senior Operations Manager',
+      sub: 'Pinduoduo · Subsidy Program',
       date: '2017.06 — 2020.08',
       bullets: [
-        '负责 3C 品类补贴策略设计与执行，管理年度补贴预算 1.5 亿元',
-        '组建并带领 12 人运营小组，通过精细化选品将 ROI 提升至 3.8',
-        '推动供应商直采机制落地，降低采购成本 22%',
+        'Designed and ran subsidy strategy for electronics, managing a $20M annual budget',
+        'Built and led a 12-person team, raising ROI to 3.8 through careful product selection',
+        'Rolled out direct sourcing, cutting procurement costs 22%',
       ],
     },
   ],
   edu: [
     {
       id: 'd1',
-      title: '工商管理 · 硕士（MBA）',
-      sub: '北京大学光华管理学院',
+      title: 'MBA',
+      sub: 'Peking University, Guanghua School of Management',
       date: '2015 — 2017',
       bullets: [],
     },
@@ -723,19 +675,19 @@ export const THUMB_DATA_MANAGEMENT: ResumeData = {
   project: [
     {
       id: 'p1',
-      title: '私域流量增长体系建设',
-      sub: '项目负责人',
+      title: 'Member Growth System',
+      sub: 'Project Lead',
       date: '2021.01 — 2021.12',
       bullets: [
-        '从零搭建企业微信社群运营 SOP，沉淀付费会员 80 万+',
-        '设计积分权益体系，复购周期从 45 天缩短至 28 天',
-        '项目获集团年度最佳创新实践奖',
+        'Built community operations SOPs from scratch, reaching 800k+ paying members',
+        'Designed a points & perks system, shortening the repurchase cycle from 45 to 28 days',
+        'Project won the group\'s annual best innovation award',
       ],
     },
   ],
   award: [
-    { id: 'aw1', title: '年度最佳管理者', sub: '京东', date: '2023', bullets: [] },
-    { id: 'aw2', title: '优秀项目团队奖', sub: '拼多多', date: '2019', bullets: [] },
+    { id: 'aw1', title: 'Manager of the Year', sub: 'JD.com', date: '2023', bullets: [] },
+    { id: 'aw2', title: 'Outstanding Team Award', sub: 'Pinduoduo', date: '2019', bullets: [] },
   ],
   cert: [],
   language: [],

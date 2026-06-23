@@ -1,24 +1,20 @@
 'use client'
-import { useState, useCallback, useRef, useEffect, useLayoutEffect, Suspense } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, Suspense } from 'react'
 import { flushSync } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
-import { Menu, Undo2, Redo2, Globe, Check } from 'lucide-react'
+import { Menu, Undo2, Redo2 } from 'lucide-react'
 import EditorTopbar from './components/EditorTopbar'
 import LeftPanel from './components/LeftPanel'
 import RightPanel from './components/RightPanel'
-import { DownloadModal, AIPanel, ImportModal, ContinueModal, PhotoCropModal, PaywallModal, StudentModal, NewResumeWizardModal } from './components/Modals'
-import WechatLoginModal from '../components/WechatLoginModal'
-import ImportLoadingBar from '../components/ImportLoadingBar'
-import { KickedOutModal } from '../components/UserProfile'
-import PaymentSuccessToast from '../components/PaymentSuccessToast'
+import { DownloadModal, AIPanel, ImportModal, PhotoCropModal, PaywallModal, StudentModal, CoverLetterModal } from './components/Modals'
 import type { PaywallTrigger } from './components/Modals'
 import PaginatedResume from '../lib/PaginatedResume'
 import ResumeRenderer from '../lib/ResumeRenderer'
-import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, DEMO_DATA, THUMB_DATA, CATEGORY_THUMB_DATA, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
+import { ResumeData, SelectionType, SectionKey, Entry, AISuggestion, SkillCategory, DEMO_DATA, THUMB_DATA, sampleResumeData, parsedToResumeData, hasDiffMarkup, applyDiffBullet } from '../lib/types'
 import { takePendingImport } from '../lib/pendingImport'
-import { getTemplate, TEMPLATES, AccentStyle, FontPair } from '../lib/templates-config'
+import { getTemplate, isSingleColumn, AccentStyle, FontPair, VALID_ACCENT_STYLES } from '../lib/templates-config'
 import {
-  loadDraft, saveDraft, clearDraft, clearLocalResumeData,
+  loadDraft, saveDraft, clearDraft,
   loadHistory, saveToHistory, deleteHistory, updateHistoryEntry, sortAndSaveHistory,
   loadPaidTemplates, addPaidTemplate, uniqueHistoryName,
   upsertCloudResume, deleteCloudResume, syncResumesWithCloud,
@@ -29,7 +25,7 @@ import {
 import { generateWordBlob } from '../lib/exportWord'
 import {
   getDeviceId, getProStatus, isStudent as isStudentUser, isFirstPurchase,
-  hasNoWatermark, checkUsage, recordUsage, cleanOldUsage, getDailyCount,
+  hasNoWatermark, recordUsage, cleanOldUsage, getDailyCount,
   FREE_ANALYZE_LIMIT,
   type ProStatus,
 } from '../lib/payment'
@@ -44,19 +40,52 @@ function hasSubHintCookie(): boolean {
   return document.cookie.split(';').some(c => c.trim().startsWith('rc_mem_hint=1'))
 }
 
-const CJK = /[一-鿿　-〿＀-￯]/
-function looksEnglish(d: ResumeData): boolean {
-  const texts = [d.jobtitle, d.summary, ...(d.exp ?? []).flatMap(e => e.bullets ?? []).slice(0, 4)].filter(Boolean)
-  return texts.length > 0 && !texts.some(t => CJK.test(t))
+// Merge AI-suggested skills into the resume, respecting category mode.
+// In category mode the new skills are appended to an "其他 / Additional" category
+// (created if absent) so they actually render — the flat `skills` array is ignored
+// by the renderer when skillCategories is present. Dedup is case-insensitive.
+function addSkillsToResume(prev: ResumeData, rawSkills: string[]): ResumeData {
+  const incoming = rawSkills.map(s => s.trim()).filter(Boolean)
+  if (incoming.length === 0) return prev
+  const cats = prev.skillCategories
+  if (cats && cats.length > 0) {
+    const existing = new Set(cats.flatMap(c => c.items.map(i => i.toLowerCase().trim())))
+    const toAdd: string[] = []
+    for (const sk of incoming) {
+      const k = sk.toLowerCase().trim()
+      if (existing.has(k)) continue
+      existing.add(k)
+      toAdd.push(sk)
+    }
+    if (toAdd.length === 0) return { ...prev, hasSkills: true }
+    const isEn = prev.resumeLang === 'en'
+    const matchNames = isEn
+      ? /^(additional|other|others|new skills?|misc)/i
+      : /(其他|其它|补充|新增)/
+    const idx = cats.findIndex(c => matchNames.test(c.name.trim()))
+    const nextCats: SkillCategory[] = idx >= 0
+      ? cats.map((c, i) => i === idx ? { ...c, items: [...c.items, ...toAdd] } : c)
+      : [...cats, { id: `${Date.now()}-aiskills`, name: isEn ? 'Additional' : '其他', items: toAdd }]
+    return { ...prev, skillCategories: nextCats, hasSkills: true }
+  }
+  const existing = new Set(prev.skills.map(s => s.toLowerCase().trim()))
+  const toAdd = incoming.filter(sk => !existing.has(sk.toLowerCase().trim()))
+  if (toAdd.length === 0) return { ...prev, hasSkills: true }
+  return { ...prev, skills: [...prev.skills, ...toAdd], hasSkills: true }
 }
 
-const TRANSLATE_STAGES = [
-  { after: 0,     msg: '正在解析简历结构…' },
-  { after: 3000,  msg: '翻译专业术语与描述…' },
-  { after: 7000,  msg: '优化英文表达方式…' },
-  { after: 12000, msg: '生成英文版本…' },
-  { after: 18000, msg: '即将完成，请稍候…' },
-]
+const CJK = /[一-鿿　-〿＀-￯]/
+function looksEnglish(d: ResumeData): boolean {
+  // Scan the main content fields (not the name — it can be CJK on an otherwise-English resume).
+  // English resume → some text, no CJK → true. Chinese resume → CJK present → false.
+  const texts = [
+    d.jobtitle, d.summary,
+    ...(d.exp ?? []).flatMap(e => [e.title, e.sub, ...(e.bullets ?? [])]),
+    ...(d.project ?? []).flatMap(e => [e.title, e.sub, ...(e.bullets ?? [])]),
+    ...(d.skills ?? []),
+  ].filter(Boolean) as string[]
+  return texts.length > 0 && !texts.some(t => CJK.test(t))
+}
 
 
 // Deferred guest-clear timer — cancelled if the editor remounts before it fires (React StrictMode).
@@ -64,7 +93,7 @@ let _guestClearTimer: ReturnType<typeof setTimeout> | null = null
 
 // Strings that are never real user content — added as defaults when a new entry is created.
 // Filtered from the PDF print layer so users don't accidentally export placeholder text.
-const PLACEHOLDER_BULLETS = new Set(['描述工作职责和成就...', '项目详情...'])
+const PLACEHOLDER_BULLETS = new Set(['Describe your responsibilities and achievements...', 'Project details...'])
 function cleanDataForPrint(d: ResumeData): ResumeData {
   const clean = (arr: Entry[]) => arr.map(e => ({
     ...e,
@@ -79,11 +108,7 @@ function cleanDataForPrint(d: ResumeData): ResumeData {
 }
 
 function getInitData(tplId: string): ResumeData {
-  const tpl = TEMPLATES.find(t => t.id === tplId)
-  for (const cat of tpl?.categories ?? []) {
-    if (CATEGORY_THUMB_DATA[cat]) return CATEGORY_THUMB_DATA[cat]
-  }
-  return THUMB_DATA
+  return sampleResumeData({ single: isSingleColumn(getTemplate(tplId).layout) })
 }
 
 function isBlankData(d: ResumeData): boolean {
@@ -92,13 +117,21 @@ function isBlankData(d: ResumeData): boolean {
 
 function EditorInner() {
   const searchParams = useSearchParams()
-  const initTemplate = searchParams.get('template') || 'banner-warm'
+  const initTemplate = searchParams.get('template') || 'classic-pro'
   const auth = useAuth()
 
   // ============ Undo/Redo history stack ============
   const [history, setHistory] = useState<ResumeData[]>([getInitData(initTemplate)])
   const [historyIdx, setHistoryIdx] = useState(0)
   const data = history[historyIdx]
+
+  // Skills the AI panel should treat as "already in the resume" — includes both the
+  // flat skills array AND every category's items, so skills applied in category mode
+  // (which only land in skillCategories) are recognized and not re-offered as "new".
+  const currentSkillsForAI = useMemo(
+    () => [...data.skills, ...(data.skillCategories?.flatMap(c => c.items) ?? [])],
+    [data.skills, data.skillCategories],
+  )
 
   const setData = useCallback((updater: ResumeData | ((prev: ResumeData) => ResumeData)) => {
     setHistory(prev => {
@@ -118,14 +151,14 @@ function EditorInner() {
   const [fontPairOverride, setFontPairOverride] = useState<FontPair | undefined>(undefined)
   const [selection, setSelection] = useState<SelectionType>({ kind: 'none' })
   const [zoom, setZoom] = useState(70)
-  const [docTitle, setDocTitle] = useState('我的简历')
-  const [showEditorLogin, setShowEditorLogin] = useState(false)
+  const [docTitle, setDocTitle] = useState('My Resume')
+  // Login removed — keep a no-op setter so legacy call sites compile harmlessly.
+  const setShowEditorLogin = (_v?: boolean) => {}
   const [modal, setModal] = useState<'none' | 'download'>('none')
+  const [coverLetterOpen, setCoverLetterOpen] = useState(false)
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [aiPanelPhase, setAiPanelPhase] = useState<'entry' | 'analyzing' | 'result' | 'applying'>('entry')
   const [aiAnalysis, setAiAnalysis] = useState<{ hasOfferRate?: boolean; offerRate?: number; overview: string; suggestions: AISuggestion[]; missingSkills?: string[]; jobInfo?: { title: string | null; company: string | null; location: string | null; type: string | null } | null; matchBreakdown?: { experience: number; skills: number; other: number } | null } | null>(null)
-  const [interviewData, setInterviewData] = useState<{ questions: string[]; answers: string[] } | null>(null)
-  const [interviewLoading, setInterviewLoading] = useState(false)
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<string>>(new Set())
   const [bulletDiffs, setBulletDiffs] = useState<Record<string, string[]>>({})
 
@@ -204,10 +237,9 @@ function EditorInner() {
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>('download_free')
   const [studentModalOpen, setStudentModalOpen] = useState(false)
-  const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'ai_translate' } | { type: 'compress' } | null>(null)
+  const pendingPaywallActionRef = useRef<{ type: 'download' } | { type: 'ai_analyze' } | { type: 'compress' } | null>(null)
   const appliedAtHistoryIdxRef = useRef<Map<string, number>>(new Map())
-  const pendingLoginActionRef = useRef<'download' | 'save' | 'translate' | 'compress' | 'unlock_pro' | 'import' | 'ai_analyze' | null>(null)
-  const translateAbortRef = useRef<AbortController | null>(null)
+  const pendingLoginActionRef = useRef<'download' | 'save' | 'compress' | 'unlock_pro' | 'import' | 'ai_analyze' | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -245,7 +277,6 @@ function EditorInner() {
   const authFreeAnalyzeUsedRef = useRef(0)
   const authDailyAnalyzeUsedRef = useRef(0)
   const authDailyImportUsedRef = useRef(0)
-  const authDailyTranslateUsedRef = useRef(0)
   const cloudPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Immediately apply a zoom value: cancels any pending gesture debounce, syncs
@@ -283,7 +314,6 @@ function EditorInner() {
   const effectiveColor = color || template.accentColor
   // Watermark: shown for free users on all templates; hidden for any paid plan.
   const showWatermark = proStatus.kind === 'free'
-  const [watermarkBannerDismissed, setWatermarkBannerDismissed] = useState(false)
 
   // Build the set of section keys that have unapplied AI suggestions (for badges in renderer)
   const aiSuggestionSections = undefined
@@ -322,7 +352,7 @@ function EditorInner() {
       if (m.plan !== 'single') {
         // Subscription confirmed by server
         if (!m.expires_at || m.expires_at > now) {
-          const planLabel = (m.plan === 'trial7' ? 'monthly' : m.plan) as 'monthly' | 'quarterly' | 'yearly'
+          const planLabel = m.plan as 'day3' | 'weekly' | 'monthly' | 'quarterly'
           setProStatus({ kind: 'subscription', plan: planLabel, expiresAt: m.expires_at ?? now + 365 * 86_400_000 })
         } else {
           setProStatus({ kind: 'free' })
@@ -433,7 +463,7 @@ function EditorInner() {
     }
   }, [auth.loading, auth.loggedIn])
 
-  // For guests with no history: create the initial entry after auth resolves so "我的" shows it.
+  // For guests with no history: create the initial entry after auth resolves so "Mine" shows it.
   // Skip if the user just logged out (they want a clean slate, not a new blank entry).
   // This must run AFTER auth, not during init, to avoid uploading a blank entry to logged-in users' cloud.
   useEffect(() => {
@@ -451,7 +481,7 @@ function EditorInner() {
       }
     } catch {}
     const { data: d, docTitle: dt, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo } = latestForAutoSave.current
-    const newId = saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
+    const newId = saveToHistory({ name: dt || 'My Resume', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
     if (newId) {
       loadedFromHistoryId.current = newId
       setCurrentHistoryId(newId)
@@ -467,14 +497,14 @@ function EditorInner() {
     const paid = loadPaidTemplates()
     setPaidTemplates(paid)
 
-    // Quick import: user clicked "直接导入" on landing page — parse is in-flight in a module-level promise
+    // Quick import: user clicked "Import" on landing page — parse is in-flight in a module-level promise
     const pendingImport = takePendingImport()
     if (pendingImport) {
       // Mark as in-flight so the guest-entry-creation effect doesn't race and create a blank entry
       loadedFromHistoryId.current = 'pending'
       importCancelledRef.current = false
       setImportModalState('loading')
-      setImportingFile('正在导入简历...')
+      setImportingFile('Importing resume...')
       pendingImport
         .then(({ data: importedRaw, filename }) => {
           if (importCancelledRef.current) return
@@ -482,19 +512,19 @@ function EditorInner() {
           const currentHistory = loadHistory()
           const mountLimit = getProStatus(getDeviceId(), undefined).kind === 'free' ? 20 : 100
           if (currentHistory.length >= mountLimit) {
-            showToast(`简历数量已达上限（${mountLimit} 份），请先删除旧简历`)
+            showToast(`Resume limit reached (${mountLimit}). Please delete an old resume first.`)
             setImportModalState('none')
             setImportingFile('')
             return
           }
-          const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
-          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+          const uniqueName = uniqueHistoryName(filename || 'Uploaded resume', currentHistory)
+          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
           setCurrentHistoryId(newId || null)
           setDocTitle(uniqueName)
           setHistory([parsed])
           setHistoryIdx(0)
-          setTemplateId('banner-warm')
+          setTemplateId('classic-pro')
           setColor(undefined)
           setHistoryRefreshKey(k => k + 1)
           setIsCurrentEnglish(looksEnglish(parsed))
@@ -506,7 +536,7 @@ function EditorInner() {
           if (importCancelledRef.current) return
           setImportModalState('none')
           setImportingFile('')
-          showToast(e?.message === 'empty' ? '未检测到简历内容，请上传有效的简历文件' : '导入失败，请在编辑器中重新上传')
+          showToast(e?.message === 'empty' ? 'No resume content detected, please upload a valid resume file' : 'Import failed, please re-upload in the editor')
         })
       return
     }
@@ -517,22 +547,22 @@ function EditorInner() {
       if (raw) {
         sessionStorage.removeItem('resumecraft_landing_import')
         try {
-          const { data: importedRaw, filename, analysis, interviewData: importedInterviewData } = JSON.parse(raw)
+          const { data: importedRaw, filename, analysis } = JSON.parse(raw)
           const parsed = parsedToResumeData(importedRaw ?? {})
           const currentHistory = loadHistory()
           const mountLimit = getProStatus(getDeviceId(), undefined).kind === 'free' ? 20 : 100
           if (currentHistory.length >= mountLimit) {
-            showToast(`简历数量已达上限（${mountLimit} 份），请先删除旧简历`)
+            showToast(`Resume limit reached (${mountLimit}). Please delete an old resume first.`)
             return
           }
-          const uniqueName = uniqueHistoryName(filename || '上传简历', currentHistory)
-          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+          const uniqueName = uniqueHistoryName(filename || 'Uploaded resume', currentHistory)
+          const newId = saveToHistory({ name: uniqueName, data: parsed, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
           loadedFromHistoryId.current = newId || null
           setCurrentHistoryId(newId || null)
           setDocTitle(uniqueName)
           setHistory([parsed])
           setHistoryIdx(0)
-          setTemplateId('banner-warm')
+          setTemplateId('classic-pro')
           setColor(undefined)
           setHistoryRefreshKey(k => k + 1)
           setIsCurrentEnglish(looksEnglish(parsed))
@@ -542,9 +572,6 @@ function EditorInner() {
             setAiAnalysis(analysis)
             setAiPanelOpen(true)
             setAiPanelPhase('result')
-            if (importedInterviewData?.questions?.length) {
-              setInterviewData(importedInterviewData)
-            }
           }
           // Simple upload flow: no AI panel — canvas shows parsed data right away
           return
@@ -570,9 +597,10 @@ function EditorInner() {
           console.log('[ATS import] raw resume data:', raw)
           const resumeData = parsedToResumeData(raw)
           console.log('[ATS import] parsed ResumeData:', { name: resumeData.name, expCount: resumeData.exp?.length, eduCount: resumeData.edu?.length })
+          const atsEnglish = looksEnglish(resumeData)
           const currentHistory = loadHistory()
-          const newName = uniqueHistoryName(filename || raw.name || '我的简历', currentHistory)
-          const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+          const newName = uniqueHistoryName(filename || raw.name || 'My Resume', currentHistory)
+          const newId = saveToHistory({ name: newName, data: resumeData, templateId: 'classic-pro', color: undefined, isEnglish: atsEnglish, savedAt: Date.now() })
           if (newId) {
             loadedFromHistoryId.current = newId
             setCurrentHistoryId(newId)
@@ -580,7 +608,8 @@ function EditorInner() {
           }
           setHistory([resumeData])
           setHistoryIdx(0)
-          setTemplateId('banner-warm')
+          setTemplateId('classic-pro')
+          setIsCurrentEnglish(atsEnglish)
           setDocTitle(newName)
           setNoResumeOpen(false)
           setLeftPanelTab('tpl')
@@ -591,19 +620,30 @@ function EditorInner() {
       } catch {}
     }
 
-    // Template card (?template=xxx): start fresh with chosen template
+    // Template card (?template=xxx): start fresh with chosen template.
+    // Optional ?accent / ?color carry the heading-style and color picked on the landing page.
     if (searchParams.get('template')) {
+      const accentParam = searchParams.get('accent')
+      const colorParam = searchParams.get('color')
+      const accentOverride = accentParam && (VALID_ACCENT_STYLES as readonly string[]).includes(accentParam)
+        ? accentParam as AccentStyle : undefined
+      const colorOverride = colorParam && /^#[0-9a-fA-F]{6}$/.test(colorParam) ? colorParam : undefined
+      const initData = getInitData(initTemplate)
+      const initEnglish = looksEnglish(initData)
       const currentHistory = loadHistory()
-      const initName = uniqueHistoryName('我的简历', currentHistory)
-      const newId = saveToHistory({ name: initName, data: getInitData(initTemplate), templateId: initTemplate, color: undefined, savedAt: Date.now() })
+      const initName = uniqueHistoryName('My Resume', currentHistory)
+      const newId = saveToHistory({ name: initName, data: initData, templateId: initTemplate, color: colorOverride, accentStyleOverride: accentOverride, isEnglish: initEnglish, savedAt: Date.now() })
       if (newId) {
         loadedFromHistoryId.current = newId
         setCurrentHistoryId(newId)
         // Mark as intentional so cloud sync won't treat it as an unedited blank and delete it
         try { sessionStorage.setItem('rc_from_template', newId) } catch {}
       }
+      if (colorOverride) setColor(colorOverride)
+      if (accentOverride) setAccentStyleOverride(accentOverride)
+      setIsCurrentEnglish(initEnglish)
       setDocTitle(initName)
-      // Strip ?template param so a page refresh doesn't create another entry
+      // Strip query params so a page refresh doesn't create another entry
       window.history.replaceState({}, '', '/editor')
       return
     }
@@ -613,7 +653,7 @@ function EditorInner() {
     // hasSessionHint() reads the localStorage auth cache as a proxy for login state
     // since rc_token is httpOnly and unreadable from JS.
     if (hasSessionHint()) {
-      setDocTitle('我的简历')
+      setDocTitle('My Resume')
       return
     }
 
@@ -637,7 +677,7 @@ function EditorInner() {
     // Completely fresh guest (no history): show empty state, don't pre-fill with demo data.
     guestNoResumeRef.current = true
     setNoResumeOpen(true)
-    setDocTitle('我的简历')
+    setDocTitle('My Resume')
   }, [])
 
   // ============ Auto-save draft to localStorage ============
@@ -645,7 +685,7 @@ function EditorInner() {
     if (!initialized.current) return
     const hid = loadedFromHistoryId.current
     const now = Date.now()
-    // Persist historyId in the draft so "继续编辑" can restore the correct association
+    // Persist historyId in the draft so "Continue editing" can restore the correct association
     try {
       saveDraft({ data, templateId, color, accentStyleOverride, fontPairOverride, docTitle, savedAt: now, historyId: hid ?? undefined })
       // Keep the history entry in sync — includes name so renaming the doc updates the list
@@ -653,7 +693,7 @@ function EditorInner() {
         updateHistoryEntry(hid, { data, templateId, color, accentStyleOverride, fontPairOverride, name: docTitle, savedAt: now })
       }
     } catch {
-      showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
+      showToast('⚠️ Save failed: not enough local storage. Remove photos or clear history.')
     }
     // Debounced cloud push: 3 s after the last edit, push the current resume to cloud
     if (auth.loggedIn && hid && hid !== 'draft' && hid !== 'pending') {
@@ -690,7 +730,6 @@ function EditorInner() {
     authFreeAnalyzeUsedRef.current = auth.freeAnalyzeUsed ?? 0
     authDailyAnalyzeUsedRef.current = auth.dailyAnalyzeUsed ?? 0
     authDailyImportUsedRef.current = auth.dailyImportUsed ?? 0
-    authDailyTranslateUsedRef.current = auth.dailyTranslateUsed ?? 0
     proStatusRef.current = proStatus
   })
 
@@ -795,7 +834,7 @@ function EditorInner() {
       if (loggingOutRef.current) return
       if (loadedFromHistoryId.current) return
       const { data: d, docTitle: dt, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo } = latestForAutoSave.current
-      saveToHistory({ name: dt || '我的简历', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
+      saveToHistory({ name: dt || 'My Resume', data: d, templateId: tid, color: c, accentStyleOverride: aso, fontPairOverride: fpo, savedAt: Date.now() })
       // Re-sort history by savedAt so the most recently edited resume appears first next session
       sortAndSaveHistory()
     }
@@ -808,7 +847,6 @@ function EditorInner() {
     }
     const abortOnExit = () => {
       aiAnalyzeAbortRef.current?.abort()
-      translateAbortRef.current?.abort()
     }
     window.addEventListener('beforeunload', saveOnExit)
     window.addEventListener('beforeunload', guestExitOnUnload)
@@ -827,7 +865,6 @@ function EditorInner() {
         }, 200)
       }
       aiAnalyzeAbortRef.current?.abort()
-      translateAbortRef.current?.abort()
     }
   }, [])
 
@@ -857,7 +894,7 @@ function EditorInner() {
   const deleteEntry = useCallback((sec: SectionKey, idx: number) => {
     setData(prev => ({ ...prev, [sec]: (prev[sec] as Entry[]).filter((_, i) => i !== idx) }))
     setSelection({ kind: 'none' })
-    showToast('已删除')
+    showToast('Deleted')
   }, [setData])
 
   // Move entry up/down (RightPanel buttons)
@@ -890,21 +927,21 @@ function EditorInner() {
 
   const addEntry = useCallback((sec: SectionKey, flagPatch?: Partial<ResumeData>) => {
     const defaults: Record<SectionKey, Entry> = {
-      exp:       { id: Date.now()+'-exp', title: '新职位', sub: '公司名称', date: '开始 — 结束', bullets: ['描述工作职责和成就...'] },
-      edu:       { id: Date.now()+'-edu', title: '专业名称', sub: '学校名称', date: '入学 — 毕业', bullets: [] },
-      project:   { id: Date.now()+'-prj', title: '项目名称', sub: '项目角色', date: '开始 — 结束', bullets: ['项目详情...'] },
-      award:     { id: Date.now()+'-awd', title: '奖项名称', sub: '颁奖机构', date: '年份', bullets: [] },
-      cert:      { id: Date.now()+'-crt', title: '证书名称', sub: '颁发机构', date: '年份', bullets: [] },
-      volunteer: { id: Date.now()+'-vol', title: '志愿活动', sub: '机构名称', date: '开始 — 结束', bullets: [] },
-      interest:  { id: Date.now()+'-itr', title: '兴趣爱好', sub: '简短描述', date: '', bullets: [] },
-      language:  { id: Date.now()+'-lng', title: '英语', sub: '流利', date: '', bullets: [] },
+      exp:       { id: Date.now()+'-exp', title: 'New Position', sub: 'Company', date: 'Start — End', bullets: ['Describe your responsibilities and achievements...'] },
+      edu:       { id: Date.now()+'-edu', title: 'Major', sub: 'School', date: 'Start — End', bullets: [] },
+      project:   { id: Date.now()+'-prj', title: 'Project Name', sub: 'Your Role', date: 'Start — End', bullets: ['Project details...'] },
+      award:     { id: Date.now()+'-awd', title: 'Award Name', sub: 'Issuer', date: 'Year', bullets: [] },
+      cert:      { id: Date.now()+'-crt', title: 'Certificate Name', sub: 'Issuer', date: 'Year', bullets: [] },
+      volunteer: { id: Date.now()+'-vol', title: 'Volunteer Activity', sub: 'Organization', date: 'Start — End', bullets: [] },
+      interest:  { id: Date.now()+'-itr', title: 'Interest', sub: 'Short description', date: '', bullets: [] },
+      language:  { id: Date.now()+'-lng', title: 'English', sub: 'Fluent', date: '', bullets: [] },
     }
     setData(prev => ({
       ...prev,
       ...(flagPatch || {}),
       [sec]: [...(prev[sec] as Entry[]), defaults[sec]],
     }))
-    showToast(`✓ 已添加${({ exp:'工作经历', edu:'教育背景', language:'语言能力', award:'荣誉奖项', project:'项目经历', cert:'资质证书', volunteer:'志愿服务', interest:'兴趣爱好' } as Record<string,string>)[sec]}`)
+    showToast(`✓ Added ${({ exp:'Work Experience', edu:'Education', language:'Languages', award:'Awards', project:'Projects', cert:'Certifications', volunteer:'Volunteering', interest:'Interests' } as Record<string,string>)[sec]}`)
     if (!isMobileRef.current) {
       // Desktop: auto-open the right panel so the user can edit right away
       setTimeout(() => {
@@ -920,7 +957,7 @@ function EditorInner() {
       if (data.photo) { setPhotoCropOpen(true) } else { photoInputRef.current?.click() }
       return
     }
-    if (key === 'photo-clear') { updateData({ photo: '', photoMeta: undefined }); showToast('已移除照片'); return }
+    if (key === 'photo-clear') { updateData({ photo: '', photoMeta: undefined }); showToast('Photo removed'); return }
 
     const flagMap: Record<string, keyof ResumeData> = {
       summary: 'hasSummary', skills: 'hasSkills', project: 'hasProject', language: 'hasLanguage',
@@ -933,17 +970,17 @@ function EditorInner() {
 
     if (key === 'summary') {
       const summaryPatch: Partial<ResumeData> = { hasSummary: true }
-      if (!data.summary) summaryPatch.summary = '请在此输入你的个人简介，简要介绍你的专业背景、核心技能和职业目标，建议 2-4 句话，突出你最大的竞争优势。'
+      if (!data.summary) summaryPatch.summary = 'Write a short professional summary here — your background, core skills, and career goals in 2–4 sentences, highlighting your biggest strengths.'
       updateData(summaryPatch)
-      showToast('✓ 已添加个人简介')
+      showToast('✓ Summary added')
       if (isMobileRef.current) { setLeftOpen(false) } else { setSelection({ kind: 'field', field: 'summary' }) }
     } else if (key === 'skills') {
       const patch: Partial<ResumeData> = { hasSkills: true }
       if (data.skills.length === 0) {
-        patch.skills = ['沟通协作', '项目管理', '学习能力', '团队合作', '问题解决']
+        patch.skills = ['Communication', 'Project Management', 'Fast Learner', 'Teamwork', 'Problem Solving']
       }
       updateData(patch)
-      showToast('✓ 已显示技能区块')
+      showToast('✓ Skills section shown')
       if (isMobileRef.current) { setLeftOpen(false) } else { setSelection({ kind: 'skills' }) }
     } else if (sectionKeys[key]) {
       const sec = sectionKeys[key]
@@ -973,11 +1010,11 @@ function EditorInner() {
     const currentHistory = loadHistory()
     const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
     if (currentHistory.length >= resumeLimit) {
-      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      showToast(`Resume limit reached (${resumeLimit}). Please delete an old resume first.`)
       return
     }
-    const newName = uniqueHistoryName('我的简历', currentHistory)
-    const newId = saveToHistory({ name: newName, data: THUMB_DATA, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+    const newName = uniqueHistoryName('My Resume', currentHistory)
+    const newId = saveToHistory({ name: newName, data: THUMB_DATA, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     if (newId) {
       loadedFromHistoryId.current = newId
       setCurrentHistoryId(newId)
@@ -989,22 +1026,12 @@ function EditorInner() {
     }
     setHistory([THUMB_DATA])
     setHistoryIdx(0)
-    setTemplateId('banner-warm')
+    setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(newName)
     setIsCurrentEnglish(false)
     setLeftPanelTab('tpl')
   }, [auth.loggedIn])
-
-  // ============ Editor logout ============
-  const handleEditorLogout = useCallback(async () => {
-    loggingOutRef.current = true   // 阻止 beforeunload 重写已清除的数据
-    // Signal that we just logged out so the blank-entry creation effect skips on reload
-    try { sessionStorage.setItem('rc_just_logged_out', '1') } catch {}
-    clearLocalResumeData()
-    await auth.logout()
-    window.location.reload()
-  }, [auth])
 
   // ============ History (saved drafts) ============
   const handleSaveHistory = useCallback(() => {
@@ -1017,9 +1044,9 @@ function EditorInner() {
       saveToHistory({ name: docTitle, data, templateId, color, savedAt: Date.now() })
       setHistoryRefreshKey(k => k + 1)
       if (isMobile) setLeftOpen(true)
-      showToast('✓ 已保存')
+      showToast('✓ Saved')
     } catch {
-      showToast('⚠️ 保存失败：本地存储空间不足，请移除照片或清理历史记录')
+      showToast('⚠️ Save failed: not enough local storage. Remove photos or clear history.')
     }
   }, [docTitle, data, templateId, color, isMobile, auth.loggedIn])
 
@@ -1081,7 +1108,7 @@ function EditorInner() {
       } catch {
         setPhotoConverting(false)
         setPhotoCropOpen(false)
-        showToast('照片格式转换失败，请改用 JPG 或 PNG 格式')
+        showToast('Photo conversion failed, please use JPG or PNG')
         return
       }
     }
@@ -1106,13 +1133,13 @@ function EditorInner() {
       const html = Array.from(pageEls).map(el => (el as HTMLElement).outerHTML).join('')
       const w = window.open('', '_blank', 'width=900,height=1100')
       if (!w) return
-      const title = docTitle || '我的简历'
+      const title = docTitle || 'My Resume'
       w.document.write(`<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=794, initial-scale=1">
-<title>${title}${autoprint ? '' : ' — 预览'}</title>
+<title>${title}${autoprint ? '' : ' — Preview'}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -1177,12 +1204,12 @@ ${autoprint ? `<script>
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${docTitle || '我的简历'}.pdf`
+        a.download = `${docTitle || 'My Resume'}.pdf`
         document.body.appendChild(a)
         a.click()
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
       } catch {
-        showToast('PDF 生成失败，请重试')
+        showToast('PDF generation failed, please try again')
       } finally {
         setPdfGenerating(false)
       }
@@ -1195,11 +1222,11 @@ ${autoprint ? `<script>
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${docTitle || '我的简历'}.doc`
+    a.download = `${docTitle || 'My Resume'}.doc`
     document.body.appendChild(a)
     a.click()
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
-    showToast('✓ Word 文件已下载')
+    showToast('✓ Word file downloaded')
   }, [data, docTitle])
 
   const handleDownloadPNG = useCallback(() => {
@@ -1224,13 +1251,13 @@ ${autoprint ? `<script>
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `${docTitle || '我的简历'}.png`
+        a.download = `${docTitle || 'My Resume'}.png`
         document.body.appendChild(a)
         a.click()
         setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 100)
-        showToast('✓ 图片已下载')
+        showToast('✓ Image downloaded')
       } catch {
-        showToast('图片生成失败，请重试')
+        showToast('Image generation failed, please try again')
       } finally {
         setPngGenerating(false)
       }
@@ -1247,7 +1274,6 @@ ${autoprint ? `<script>
     const action = pendingPaywallActionRef.current
     pendingPaywallActionRef.current = null
     if (action?.type === 'download') setTimeout(() => setModal('download'), 80)
-    if (action?.type === 'ai_translate') setTimeout(() => handleTranslate(), 80)
     if (action?.type === 'compress') setTimeout(() => handleCompress(), 80)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, currentHistoryId, auth.refresh])
@@ -1260,7 +1286,6 @@ ${autoprint ? `<script>
     pendingLoginActionRef.current = null
     if (action === 'download')   setTimeout(() => handleDownloadAttempt(), 80)
     if (action === 'save')       setTimeout(() => handleSaveHistory(), 80)
-    if (action === 'translate')  setTimeout(() => handleTranslate(), 80)
     if (action === 'compress')   setTimeout(() => handleCompress(), 80)
     if (action === 'unlock_pro') setTimeout(() => handleUnlockPro(), 80)
     if (action === 'import')     setTimeout(() => importFileRef.current?.click(), 80)
@@ -1311,7 +1336,7 @@ ${autoprint ? `<script>
       setAiPanelPhase('result')
     } else {
       setAiPanelPhase('entry')
-      setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
+      setAiAnalysis(null)
       setAppliedSuggestions(new Set())
     }
   }, [data, aiAnalysis])
@@ -1328,7 +1353,7 @@ ${autoprint ? `<script>
           : authFreeAnalyzeUsedRef.current >= FREE_ANALYZE_LIMIT
       if (exhausted) {
         if (isSub) {
-          showToast('今日 20 次已用完，明日 00:00 自动重置')
+          showToast('Daily limit reached, resets at midnight')
         } else {
           setPaywallTrigger('ai_analyze')
           setPaywallOpen(true)
@@ -1342,7 +1367,7 @@ ${autoprint ? `<script>
     }
     const dataSnapshot = JSON.stringify(data)  // snapshot before async gap
     setAiPanelPhase('analyzing')
-    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
+    setAiAnalysis(null)
     setAppliedSuggestions(new Set())
     appliedAtHistoryIdxRef.current.clear()
 
@@ -1369,20 +1394,20 @@ ${autoprint ? `<script>
         setAiPanelPhase('result')
       } else if (res.status === 429) {
         const errJson = await res.json().catch(() => null)
-        showToast(errJson?.error || '使用次数已达上限，请升级 Pro')
+        showToast(errJson?.error || 'Usage limit reached, please try again later')
         setAiPanelPhase('entry')
         if (loggedInRef.current) void authRefreshRef.current()
       } else if (res.status === 413) {
-        showToast('工作详情太长了，请精简后重试（最多 6000 字）')
+        showToast('The work details are too long, please shorten and retry (max 6000 chars)')
         setAiPanelPhase('entry')
       } else {
-        showToast('AI 开小差了，请稍后重试')
+        showToast('Something went wrong, please try again later')
         setAiPanelPhase('entry')
       }
     } catch (e: unknown) {
       if (e instanceof Error && e.name === 'AbortError') return
       console.error('analyze error:', e)
-      showToast('AI 开小差了，请稍后重试')
+      showToast('Something went wrong, please try again later')
       setAiPanelPhase('entry')
     } finally {
       if (aiAnalyzeAbortRef.current === controller) aiAnalyzeAbortRef.current = null
@@ -1406,7 +1431,7 @@ ${autoprint ? `<script>
     }
     setAiPanelOpen(false)
     setAiPanelPhase('entry')
-    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
+    setAiAnalysis(null)
     setAppliedSuggestions(new Set())
     setPendingSkills([])
     setJobDescPersist('')
@@ -1461,31 +1486,13 @@ ${autoprint ? `<script>
     } else if (s.section === 'skills' && s.field === 'skills') {
       const skills = (checkedSkills ?? []).map(stripDot).filter(Boolean)
       if (skills.length) {
-        setData(prev => ({ ...prev, skills: [...new Set([...prev.skills, ...skills])], hasSkills: true }))
+        setData(prev => addSkillsToResume(prev, skills))
       }
       setPendingSkills([])
     }
     setAppliedSuggestions(prev => new Set([...prev, s.id]))
-    showToast('✓ AI 建议已应用')
+    showToast('✓ AI suggestion applied')
   }, [historyIdx, updateData, updateEntry, setData])
-
-  const handleGenerateInterview = useCallback(async () => {
-    if (interviewLoading || !aiAnalysis) return
-    setInterviewLoading(true)
-    try {
-      const res = await fetch('/api/ai/interview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, jobDesc: jobDescPersist, deviceId }),
-      })
-      if (res.ok) {
-        const json = await res.json()
-        setInterviewData({ questions: json.interviewQuestions ?? [], answers: json.interviewAnswers ?? [] })
-      }
-    } catch { /* silent */ } finally {
-      setInterviewLoading(false)
-    }
-  }, [interviewLoading, aiAnalysis, data, jobDescPersist, deviceId])
 
   const handleApplyAllSuggestions = useCallback(() => {
     if (!aiAnalysis?.suggestions?.length) return
@@ -1530,21 +1537,28 @@ ${autoprint ? `<script>
             const arr = [...(next[sec] as Entry[])]
             if (arr[s.entryIndex]) { arr[s.entryIndex] = { ...arr[s.entryIndex], bullets }; next = { ...next, [sec]: arr } }
           }
-        } else if (s.section === 'skills' && s.field === 'skills') {
-          const skills = Array.isArray(s.optimizedContent)
-            ? (s.optimizedContent as string[]).map(stripDot).filter(Boolean)
-            : []
-          if (skills.length) {
-            next = { ...next, skills: [...new Set([...next.skills, ...skills])], hasSkills: true }
-          }
         }
+        // skills are handled once, below — not per suggestion
       }
+      // Skills: gather every suggested skill (from all skills suggestions, applied or
+      // not) plus the "Skills needed" gaps, then add in one deduped pass.
+      // addSkillsToResume dedups against what's already in the resume, so Apply All
+      // never double-adds and also finishes any partial "Add selected skills".
+      const suggestedSkills = aiAnalysis.suggestions
+        .filter(s => s.section === 'skills' && s.field === 'skills' && Array.isArray(s.optimizedContent))
+        .flatMap(s => s.optimizedContent as string[])
+        .map(stripDot).filter(Boolean)
+      const missing = (aiAnalysis.missingSkills ?? [])
+        .map(sk => stripDot(sk.replace(/^\s*需要?\s*/, '')))
+        .filter(Boolean)
+      const allSkills = [...suggestedSkills, ...missing]
+      if (allSkills.length) next = addSkillsToResume(next, allSkills)
       return next
     })
     setAppliedSuggestions(prev => new Set([...prev, ...pending.map(s => s.id)]))
     setBulletDiffs({})
     setPendingSkills([])
-    showToast(`✓ 已应用 ${pending.length} 条 AI 建议`)
+    showToast(`✓ Applied ${pending.length} AI suggestions`)
   }, [historyIdx, aiAnalysis, appliedSuggestions, setData])
 
   // ============ History delete ============
@@ -1577,27 +1591,27 @@ ${autoprint ? `<script>
     // Close AI panel and discard analysis — it belongs to the previous resume
     setAiPanelOpen(false)
     setAiPanelPhase('entry')
-    setAiAnalysis(null); setInterviewData(null); setInterviewLoading(false)
+    setAiAnalysis(null)
     setAppliedSuggestions(new Set())
     appliedAtHistoryIdxRef.current.clear()
     aiAnalyzedDataSnapshot.current = null
     setIsCurrentEnglish(entry.isEnglish === true || looksEnglish(entry.data))
-    showToast(`已加载「${entry.name}」`)
+    showToast(`Loaded "${entry.name}"`)
   }, [])
 
   const handleDuplicateHistory = useCallback((entry: HistoryEntry) => {
     const currentHistory = loadHistory()
     const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
     if (currentHistory.length >= resumeLimit) {
-      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      showToast(`Resume limit reached (${resumeLimit}). Please delete an old resume first.`)
       return
     }
-    const copyName = uniqueHistoryName(entry.name + ' 副本', currentHistory)
+    const copyName = uniqueHistoryName(entry.name + ' Copy', currentHistory)
     let newId: string
     try {
       newId = saveToHistory({ name: copyName, data: entry.data, templateId: entry.templateId, color: entry.color, savedAt: Date.now(), isEnglish: entry.isEnglish })
     } catch {
-      showToast('⚠️ 复制失败：本地存储空间不足，请移除照片或清理历史记录')
+      showToast('⚠️ Duplicate failed: not enough local storage. Remove photos or clear history.')
       return
     }
     if (auth.loggedIn && newId) {
@@ -1605,23 +1619,11 @@ ${autoprint ? `<script>
       if (saved) upsertCloudResume(saved)
     }
     setHistoryRefreshKey(k => k + 1)
-    showToast(`已复制「${copyName}」`)
+    showToast(`Duplicated "${copyName}"`)
   }, [auth.loggedIn])
 
   // ============ Create new resume / Import resume ============
-  const [showNewResumeWizard, setShowNewResumeWizard] = useState(false)
-
-  const handleCreateNewResume = useCallback(() => {
-    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
-    if (loadHistory().length >= resumeLimit) {
-      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
-      return
-    }
-    setShowNewResumeWizard(true)
-  }, [])
-
-  const handleWizardConfirm = useCallback((starterData: ResumeData) => {
-    setShowNewResumeWizard(false)
+  const createResumeFromData = useCallback((starterData: ResumeData) => {
     // flushSync resets forceTab to undefined first so the useEffect in LeftPanel
     // always fires even if the previous value was already 'tpl'
     flushSync(() => setLeftPanelTab(null))
@@ -1635,12 +1637,13 @@ ${autoprint ? `<script>
           if (prev) upsertCloudResume(prev)
         }
       } else {
-        saveToHistory({ name: docTitle || '我的简历', data, templateId, color, savedAt: Date.now() })
+        saveToHistory({ name: docTitle || 'My Resume', data, templateId, color, savedAt: Date.now() })
       }
     }
     const newHistorySnap = loadHistory()
-    const newName = uniqueHistoryName('我的简历', newHistorySnap)
-    const newId = saveToHistory({ name: newName, data: starterData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+    const newName = uniqueHistoryName('My Resume', newHistorySnap)
+    const starterIsEnglish = looksEnglish(starterData)
+    const newId = saveToHistory({ name: newName, data: starterData, templateId: 'classic-pro', color: undefined, isEnglish: starterIsEnglish, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
     if (auth.loggedIn && newId) {
@@ -1649,24 +1652,35 @@ ${autoprint ? `<script>
     }
     setHistory([starterData])
     setHistoryIdx(0)
-    setTemplateId('banner-warm')
+    setTemplateId('classic-pro')
     setAccentStyleOverride(undefined)
     setFontPairOverride(undefined)
     setColor(undefined)
+    setIsCurrentEnglish(starterIsEnglish)
     setDocTitle(newName)
     setSelection({ kind: 'none' })
     setNoResumeOpen(false)
     setHistoryRefreshKey(k => k + 1)
     setLeftPanelTab('tpl')
-    showToast('✓ 新简历已创建')
+    showToast('✓ New resume created')
   }, [data, templateId, color, docTitle, noResumeOpen, auth.loggedIn])
+
+  const handleCreateNewResume = useCallback(() => {
+    const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
+    if (loadHistory().length >= resumeLimit) {
+      showToast(`Resume limit reached (${resumeLimit}). Please delete an old resume first.`)
+      return
+    }
+    // Skip the student/grad wizard — create a default resume directly.
+    createResumeFromData(structuredClone(DEMO_DATA))
+  }, [createResumeFromData])
 
   const handleImportAttempt = useCallback(() => {
     if (loggedInRef.current) {
       const isSub = proStatusRef.current.kind === 'subscription'
       const limit = isSub ? 10 : 2
       if (authDailyImportUsedRef.current >= limit) {
-        showToast(`今日导入次数已用完（${limit} 次/天），明日 00:00 自动重置`)
+        showToast(`Daily import limit reached (${limit}/day), resets at midnight`)
         if (!isSub) { setPaywallTrigger('import_limit'); setPaywallOpen(true) }
         return
       }
@@ -1678,8 +1692,10 @@ ${autoprint ? `<script>
     importFileRef.current?.click()
   }, [deviceId, proStatus])
 
-  const [translateLoading, setTranslateLoading] = useState(false)
-  const [isCurrentEnglish, setIsCurrentEnglish] = useState(false)
+  // Initialize from the initial sample data's language so the first paint matches the
+  // chosen template (the mount effect refines this per flow). Avoids a Chinese-title flash
+  // before the ?template effect runs.
+  const [isCurrentEnglish, setIsCurrentEnglish] = useState(() => looksEnglish(getInitData(initTemplate)))
   const [compressPhase, setCompressPhase] = useState<'idle' | 'loading'>('idle')
   const [compressWarningDismissed, setCompressWarningDismissed] = useState(false)
   const [postScaleCheck, setPostScaleCheck] = useState(0)
@@ -1736,7 +1752,7 @@ ${autoprint ? `<script>
         }
       }
       setCompressPhase('idle')
-      showToast('✓ 已压缩至 1 页（可撤销）')
+      showToast('✓ Compressed to 1 page (undoable)')
     }, 500)
     return () => clearTimeout(id)
   }, [postScaleCheck])
@@ -1770,85 +1786,10 @@ ${autoprint ? `<script>
       updateData({ fontScale: scale })
       setPostScaleCheck(n => n + 1)
     } else {
-      showToast('内容超出 2 页，建议删减部分经历条目或缩短描述后再压缩')
+      showToast('Content exceeds 2 pages — trim some entries or shorten descriptions before compressing')
     }
   }, [data.fontScale, updateData, compressPhase, auth.loggedIn])
 
-
-  const handleTranslate = useCallback(async () => {
-    if (!auth.loggedIn) {
-      pendingLoginActionRef.current = 'translate'
-      setShowEditorLogin(true)
-      return
-    }
-    // proStatusRef always reflects the latest proStatus (server-confirmed for subscribers,
-    // localStorage-based for local purchases) without stale-closure issues.
-    const freshStatus = proStatusRef.current
-    if (freshStatus.kind === 'subscription' && authDailyTranslateUsedRef.current >= 5) {
-      showToast(`今日生成英文简历次数已用完（5/5 次）`)
-      return
-    }
-    const check = checkUsage(deviceId, 'ai_translate', freshStatus)
-    if (!check.allowed) {
-      if (check.reason === 'daily_limit') {
-        showToast(`今日生成英文简历次数已用完（${check.used}/${check.limit} 次）`)
-      } else {
-        pendingPaywallActionRef.current = { type: 'ai_translate' }
-        setPaywallTrigger('ai_translate')
-        setPaywallOpen(true)
-      }
-      return
-    }
-    translateAbortRef.current?.abort()
-    const controller = new AbortController()
-    translateAbortRef.current = controller
-    setTranslateLoading(true)
-    try {
-      const res = await fetch('/api/ai/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeData: { ...data, photo: '', photoMeta: undefined }, deviceId, docTitle }),
-        signal: controller.signal,
-      })
-      if (res.status === 429) {
-        showToast(`今日生成英文简历次数已用完`)
-        return
-      }
-      if (!res.ok) { showToast('翻译失败，请稍后重试'); return }
-      const json = await res.json()
-      if (!json.data) { showToast('翻译失败，请稍后重试'); return }
-
-      const hid = loadedFromHistoryId.current
-      if (hid && hid !== 'draft') {
-        updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
-      }
-
-      const currentHistory = loadHistory()
-      const rawName = `${docTitle}_en`
-      const engName = uniqueHistoryName(rawName, currentHistory)
-      const newId = saveToHistory({ name: engName, data: { ...json.data, photo: data.photo, photoMeta: data.photoMeta }, templateId, color, savedAt: Date.now(), isEnglish: true })
-      loadedFromHistoryId.current = newId || null
-      setCurrentHistoryId(newId || null)
-      setHistory([{ ...json.data, photo: data.photo, photoMeta: data.photoMeta }])
-      setHistoryIdx(0)
-      setDocTitle(engName)
-      setSelection({ kind: 'none' })
-      setNoResumeOpen(false)
-      setHistoryRefreshKey(k => k + 1)
-      setIsCurrentEnglish(true)
-      recordUsage(deviceId, 'ai_translate', freshStatus)
-      void authRefreshRef.current()
-      setProStatus(getProStatus(deviceId, newId || undefined))
-      const remaining = Math.max(0, 5 - (authDailyTranslateUsedRef.current + 1))
-      showToast(`✓ 英文版已生成（今日剩余 ${remaining} 次）`)
-    } catch (e: unknown) {
-      if (e instanceof Error && e.name === 'AbortError') return
-      showToast('翻译失败，请稍后重试')
-    } finally {
-      if (translateAbortRef.current === controller) translateAbortRef.current = null
-      setTranslateLoading(false)
-    }
-  }, [data, deviceId, currentHistoryId, templateId, color, docTitle, auth.loggedIn])
 
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1881,7 +1822,7 @@ ${autoprint ? `<script>
       if (hid && hid !== 'draft') {
         updateHistoryEntry(hid, { data, templateId, color, name: docTitle, savedAt: Date.now() })
       } else {
-        saveToHistory({ name: docTitle || '我的简历', data, templateId, color, savedAt: Date.now() })
+        saveToHistory({ name: docTitle || 'My Resume', data, templateId, color, savedAt: Date.now() })
       }
     }
 
@@ -1895,7 +1836,7 @@ ${autoprint ? `<script>
         const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: formData, signal: controller.signal })
         if (res.status === 429) {
           const errJson = await res.json().catch(() => ({}))
-          showToast(errJson?.error || '今日导入次数已用完，登录后次数重置')
+          showToast(errJson?.error || 'Daily import limit reached, try again tomorrow')
           setImportModalState('none')
           return
         }
@@ -1903,14 +1844,14 @@ ${autoprint ? `<script>
           const json = await res.json()
           importedData = parsedToResumeData(json.data ?? {})
         } else {
-          showToast('导入失败，请重试')
+          showToast('Import failed, please try again')
           setImportModalState('none')
           return
         }
       } catch (e) {
         if (e instanceof Error && e.name === 'AbortError') return  // cancelled
         console.error('import parse error:', e)
-        showToast('导入失败，请重试')
+        showToast('Import failed, please try again')
         setImportModalState('none')
         return
       }
@@ -1924,17 +1865,17 @@ ${autoprint ? `<script>
     const currentHistory = loadHistory()
     const resumeLimit = proStatusRef.current.kind === 'free' ? 20 : 100
     if (currentHistory.length >= resumeLimit) {
-      showToast(`简历数量已达上限（${resumeLimit} 份），请先删除旧简历`)
+      showToast(`Resume limit reached (${resumeLimit}). Please delete an old resume first.`)
       setImportModalState('none')
       return
     }
     const uniqueName = uniqueHistoryName(name, currentHistory)
-    const newId = saveToHistory({ name: uniqueName, data: importedData, templateId: 'banner-warm', color: undefined, savedAt: Date.now() })
+    const newId = saveToHistory({ name: uniqueName, data: importedData, templateId: 'classic-pro', color: undefined, savedAt: Date.now() })
     loadedFromHistoryId.current = newId || null
     setCurrentHistoryId(newId || null)
     setHistory([importedData])
     setHistoryIdx(0)
-    setTemplateId('banner-warm')
+    setTemplateId('classic-pro')
     setColor(undefined)
     setDocTitle(uniqueName)
     setIsCurrentEnglish(looksEnglish(importedData))
@@ -1955,7 +1896,7 @@ ${autoprint ? `<script>
     setSelection({ kind: 'none' })
     setNoResumeOpen(false)
     setHistoryRefreshKey(k => k + 1)
-    showToast(`✓ 已导入「${uniqueName}」`)
+    showToast(`✓ Imported "${uniqueName}"`)
   }
 
   // ============ Keyboard shortcuts ============
@@ -1991,6 +1932,7 @@ ${autoprint ? `<script>
           docTitle={docTitle} setDocTitle={setDocTitle}
           onPreview={() => openResumeWindow(false)}
           onAIAnalyze={handleAIAnalyze}
+          onCoverLetter={() => setCoverLetterOpen(true)}
           onDownload={handleDownloadAttempt}
           onUndo={undo} onRedo={redo}
           canUndo={historyIdx > 0}
@@ -1998,53 +1940,9 @@ ${autoprint ? `<script>
           isMobile={isMobile}
           onNewResume={handleCreateNewResume}
           onImportFile={handleImportAttempt}
-          onTranslate={handleTranslate}
-          translateLoading={translateLoading}
           disabled={noResumeOpen}
-          userInfo={{
-            loading: auth.loading,
-            loggedIn: auth.loggedIn,
-            avatar: auth.avatar,
-            openid: auth.openid,
-            nickname: auth.nickname,
-            membership: auth.membership,
-            isStudent: auth.isStudent,
-            freeAnalyzeUsed: auth.freeAnalyzeUsed,
-            dailyAnalyzeUsed: auth.dailyAnalyzeUsed,
-            dailyTranslateUsed: auth.dailyTranslateUsed,
-            dailyImportUsed: auth.dailyImportUsed,
-            onShowLogin: () => setShowEditorLogin(true),
-            onLogout: handleEditorLogout,
-            onUpgrade: () => { setPaywallTrigger('upgrade'); setPaywallOpen(true) },
-            onRefreshAuth: auth.refresh,
-          }}
         />
       </div>
-
-      {/* Watermark banner — shown for free users */}
-      {showWatermark && !watermarkBannerDismissed && !noResumeOpen && !auth.loading && (
-        <div className="no-print" style={{
-          background: 'linear-gradient(90deg, #0f172a, #1e3a5f)',
-          padding: '7px 16px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', gap: '10px', flexShrink: 0,
-        }}>
-          <span style={{ fontSize: '12.5px', color: 'rgba(255,255,255,0.82)' }}>
-            当前下载将含水印 · 升级 Pro 即可无水印导出
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <button onClick={handleUnlockPro} style={{
-              padding: '5px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700,
-              background: 'linear-gradient(135deg, #ef4444, #ff6b35)', color: 'white', border: 'none',
-              cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            }}>升级 Pro</button>
-            <button onClick={() => setWatermarkBannerDismissed(true)} style={{
-              background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.45)',
-              cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '2px 4px',
-              fontFamily: 'var(--font-sans)',
-            }}>✕</button>
-          </div>
-        </div>
-      )}
 
       <div className="editor-content" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Mobile backdrop */}
@@ -2073,13 +1971,13 @@ ${autoprint ? `<script>
         }}>
           <LeftPanel
             templateId={templateId}
-            onTemplateChange={(id) => { setTemplateId(id); setAccentStyleOverride(undefined); setFontPairOverride(undefined); if (data.fontScale) updateData({ fontScale: undefined }); showToast('模板已切换'); if (isMobile) setLeftOpen(false) }}
+            onTemplateChange={(id) => { setTemplateId(id); setAccentStyleOverride(undefined); setFontPairOverride(undefined); if (data.fontScale) updateData({ fontScale: undefined }); showToast('Template switched'); if (isMobile) setLeftOpen(false) }}
             currentColor={effectiveColor}
-            onColorChange={(c) => { setColor(c); showToast('颜色已应用') }}
+            onColorChange={(c) => { setColor(c); showToast('Color applied') }}
             currentAccentStyle={effectiveTemplate.accentStyle}
-            onAccentStyleChange={(s) => { setAccentStyleOverride(s); showToast('标题样式已更新') }}
+            onAccentStyleChange={(s) => { setAccentStyleOverride(s); showToast('Heading style updated') }}
             currentFontPair={effectiveTemplate.fontPair}
-            onFontPairChange={(f) => { setFontPairOverride(f); showToast('字体已更新') }}
+            onFontPairChange={(f) => { setFontPairOverride(f); showToast('Font updated') }}
             onAddModule={handleAddModule}
             data={data}
             onUpdate={updateData}
@@ -2108,7 +2006,7 @@ ${autoprint ? `<script>
             {/* Menu / left panel toggle */}
             <button
               onClick={() => isMobile ? setLeftOpen(v => !v) : setLeftCollapsed(v => !v)}
-              title={isMobile ? '打开菜单' : (leftCollapsed ? '展开左栏' : '收起左栏')}
+              title={isMobile ? 'Open menu' : (leftCollapsed ? 'Expand panel' : 'Collapse panel')}
               style={{
                 width: '28px', height: '28px', borderRadius: '10px', border: '1px solid #e2e8f0',
                 background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2124,8 +2022,8 @@ ${autoprint ? `<script>
             {isMobile && (
               <>
                 {([
-                  { icon: <Undo2 size={14} />, onClick: undo, disabled: historyIdx <= 0, title: '撤销' },
-                  { icon: <Redo2 size={14} />, onClick: redo, disabled: historyIdx >= history.length - 1, title: '重做' },
+                  { icon: <Undo2 size={14} />, onClick: undo, disabled: historyIdx <= 0, title: 'Undo' },
+                  { icon: <Redo2 size={14} />, onClick: redo, disabled: historyIdx >= history.length - 1, title: 'Redo' },
                 ] as const).map((btn, i) => (
                   <button key={i} onClick={btn.onClick} disabled={btn.disabled} title={btn.title} style={{
                     width: '28px', height: '28px', borderRadius: '10px', border: '1px solid #e2e8f0',
@@ -2140,12 +2038,12 @@ ${autoprint ? `<script>
             )}
 
             {/* Desktop: page count */}
-            {!isMobile && <span style={{ fontSize: '12px', color: '#64748b' }}>共 {pageCount} 页</span>}
+            {!isMobile && <span style={{ fontSize: '12px', color: '#64748b' }}>{pageCount} pages</span>}
             {showWatermark && !isMobile && (
               <span style={{
                 fontSize: '11px', color: '#92400e', background: '#fef3c7',
                 padding: '2px 8px', borderRadius: '10px', fontWeight: 500,
-              }}>含水印</span>
+              }}>Watermark</span>
             )}
             {/* Compact compress button — visible when overflow banner was dismissed */}
             {compressWarningDismissed && pageCount > 1 && compressPhase === 'idle' && !noResumeOpen && (
@@ -2162,34 +2060,13 @@ ${autoprint ? `<script>
                 }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 10px rgba(249,115,22,0.55)' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 6px rgba(249,115,22,0.35)' }}
-              >压缩至1页</button>
-            )}
-            {/* Translate shortcut — shown for all users to prompt upgrade; hidden when already English */}
-            {!noResumeOpen && !isCurrentEnglish && (
-              <button
-                onClick={handleTranslate}
-                disabled={translateLoading}
-                style={{
-                  padding: '3px 10px', borderRadius: '8px',
-                  background: translateLoading ? '#94a3b8' : 'linear-gradient(135deg, #34d399, #059669)',
-                  color: 'white',
-                  fontSize: '11px', fontWeight: 700,
-                  cursor: translateLoading ? 'wait' : 'pointer',
-                  fontFamily: 'var(--font-sans)',
-                  flexShrink: 0, transition: 'all 0.2s',
-                  border: 'none',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Globe size={11} strokeWidth={2} />{translateLoading ? (isMobile ? '…' : '翻译中…') : (isMobile ? 'EN' : '生成英文版')}
-                </span>
-              </button>
+              >Fit to 1 page</button>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span ref={zoomDisplayRef} style={{ fontSize: '12px', color: '#64748b', minWidth: '40px', textAlign: 'center' }}>{Math.round(zoom)}%</span>
               {([['－', -10], ['＋', 10]] as [string, number][]).map(([l, d]) => (
                 <button key={l} onClick={() => commitZoom(zoomRef.current + d)} style={{
-                  padding: '4px 10px', borderRadius: '10px', fontSize: '13px',
+                  padding: '4px 10px', borderRadius: '10px', fontSize: '13px', lineHeight: '16px',
                   cursor: 'pointer', border: '1px solid #e2e8f0',
                   background: 'white', color: '#334155', fontFamily: 'var(--font-sans)',
                 }}>{l}</button>
@@ -2201,10 +2078,10 @@ ${autoprint ? `<script>
                   canvasRef.current.scrollLeft = 0
                 }
               }} style={{
-                padding: '4px 10px', borderRadius: '10px', fontSize: '11px',
+                padding: '4px 10px', borderRadius: '10px', fontSize: '11px', lineHeight: '16px',
                 cursor: 'pointer', border: '1px solid #e2e8f0',
                 background: 'white', color: '#64748b', fontFamily: 'var(--font-sans)',
-              }}>重置</button>
+              }}>Reset</button>
             </div>
           </div>
 
@@ -2231,10 +2108,10 @@ ${autoprint ? `<script>
                 }}>
                   <div className="compress-text-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: '12.5px', color: '#c2410c', fontWeight: 600, flexShrink: 0 }}>
-                      ⚠ 内容超出第 1 页，约 {overflowLines} 行
+                      ⚠ Content exceeds page 1 by about {overflowLines} lines
                     </span>
                     <span style={{ fontSize: '11.5px', color: '#92400e', opacity: 0.75 }}>
-                      一页简历通过率高出 40%
+                      One-page resumes are 40% more likely to pass
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
@@ -2246,7 +2123,7 @@ ${autoprint ? `<script>
                           background: 'transparent', color: '#92400e', fontSize: '11.5px',
                           cursor: 'pointer', fontFamily: 'var(--font-sans)',
                         }}
-                      >重置字号</button>
+                      >Reset font size</button>
                     )}
                     <button
                       onClick={handleCompress}
@@ -2261,11 +2138,11 @@ ${autoprint ? `<script>
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 14px rgba(249,115,22,0.6)' }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 8px rgba(249,115,22,0.4)' }}
                     >
-                    压缩至 1 页
+                    Fit to 1 page
                     </button>
                     <button
                       onClick={() => setCompressWarningDismissed(true)}
-                      title="关闭提示"
+                      title="Dismiss"
                       style={{
                         width: '22px', height: '22px', borderRadius: '50%',
                         border: '1px solid #fed7aa', background: 'transparent',
@@ -2291,8 +2168,8 @@ ${autoprint ? `<script>
               gap: '10px', flexShrink: 0,
             }}>
               <span style={{ fontSize: '12.5px', color: '#92400e', flex: 1, lineHeight: 1.5 }}>
-                <span style={{ fontWeight: 700 }}>游客模式</span>
-                {' · '}退出编辑器后简历将自动清除，永久保存请登录账号
+                <span style={{ fontWeight: 700 }}>Guest mode</span>
+                {' · '}Your resume is stored locally in this browser
               </span>
               <button
                 onClick={() => setShowEditorLogin(true)}
@@ -2302,7 +2179,7 @@ ${autoprint ? `<script>
                   fontSize: '12px', fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'var(--font-sans)', flexShrink: 0,
                 }}
-              >立即登录</button>
+              >Got it</button>
             </div>
           )}
 
@@ -2310,20 +2187,20 @@ ${autoprint ? `<script>
           {/* Empty state — shown when the active resume was deleted */}
           {noResumeOpen && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', gap: '14px', backgroundColor: '#e2e8f0', backgroundImage: 'linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
-              <img src="/logo-black.png" alt="" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.35 }} />
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>从左侧-我的-加载简历</div>
-              <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>或者在此新建、导入一份简历</div>
+              <img src="/logo.png" alt="" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.35 }} />
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#64748b' }}>Load a resume from Mine on the left</div>
+              <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>or create or import a new one here</div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button onClick={handleCreateNewResume} style={{
                   padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 600,
                   border: '1.5px solid transparent', background: '#0f172a', color: 'white',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                }}>创建新简历</button>
+                }}>Create new resume</button>
                 <button onClick={handleImportAttempt} style={{
                   padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 600,
                   border: '1.5px solid white', background: 'white', color: '#334155',
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                }}>导入简历</button>
+                }}>Import resume</button>
               </div>
             </div>
           )}
@@ -2408,15 +2285,12 @@ ${autoprint ? `<script>
                   jobDesc={jobDescPersist}
                   onJobDescChange={setJobDescPersist}
                   onAnalyzeCurrent={handleAIAnalyzeCurrent}
-                  currentSkills={data.skills}
+                  currentSkills={currentSkillsForAI}
                   currentSummary={data.summary}
                   onApplySuggestion={handleApplySuggestion}
                   onApplyAll={handleApplyAllSuggestions}
                   onClose={handleAIClose}
                   onSkillChecksChange={setPendingSkills}
-                  interviewData={interviewData}
-                  interviewLoading={interviewLoading}
-                  onGenerateInterview={handleGenerateInterview}
                   analyzeExhausted={
                     proStatus.kind === 'free'
                       ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT
@@ -2488,15 +2362,12 @@ ${autoprint ? `<script>
                 jobDesc={jobDescPersist}
                 onJobDescChange={setJobDescPersist}
                 onAnalyzeCurrent={handleAIAnalyzeCurrent}
-                currentSkills={data.skills}
+                currentSkills={currentSkillsForAI}
                 currentSummary={data.summary}
                 onApplySuggestion={handleApplySuggestion}
                 onApplyAll={handleApplyAllSuggestions}
                 onClose={handleAIClose}
                 onSkillChecksChange={setPendingSkills}
-                interviewData={interviewData}
-                interviewLoading={interviewLoading}
-                onGenerateInterview={handleGenerateInterview}
                 analyzeExhausted={
                   proStatus.kind === 'free'
                     ? auth.freeAnalyzeUsed >= FREE_ANALYZE_LIMIT
@@ -2523,6 +2394,12 @@ ${autoprint ? `<script>
           onDownloadPNG={handleDownloadPNG}
           isPaid={proStatus.kind !== 'free'}
           onUnlockPro={() => { setModal('none'); setPaywallTrigger('download_free'); setPaywallOpen(true) }}
+        />
+      )}
+      {coverLetterOpen && (
+        <CoverLetterModal
+          data={data}
+          onClose={() => setCoverLetterOpen(false)}
         />
       )}
       {importModalState !== 'none' && (
@@ -2561,12 +2438,6 @@ ${autoprint ? `<script>
         />
       )}
 
-      {showNewResumeWizard && (
-        <NewResumeWizardModal
-          onConfirm={handleWizardConfirm}
-          onClose={() => setShowNewResumeWizard(false)}
-        />
-      )}
 
       {photoCropOpen && (
         <PhotoCropModal
@@ -2577,7 +2448,7 @@ ${autoprint ? `<script>
             updateData({ photo: photoCropSrc ?? data.photo, photoMeta: meta })
             setPhotoCropOpen(false)
             setPhotoCropSrc(null)
-            showToast('✓ 照片已调整')
+            showToast('✓ Photo adjusted')
           }}
           onReplace={() => {
             setPhotoCropOpen(false)
@@ -2588,56 +2459,13 @@ ${autoprint ? `<script>
             updateData({ photo: '', photoMeta: undefined })
             setPhotoCropOpen(false)
             setPhotoCropSrc(null)
-            showToast('✓ 已移除照片')
+            showToast('✓ Photo removed')
           }}
           onClose={() => {
             setPhotoCropOpen(false)
             setPhotoCropSrc(null)
           }}
         />
-      )}
-
-      {showEditorLogin && (
-        <WechatLoginModal
-          onClose={() => setShowEditorLogin(false)}
-          onSuccess={() => {
-            setShowEditorLogin(false)
-            auth.refresh()
-          }}
-        />
-      )}
-
-      {auth.kickedOut && <KickedOutModal />}
-      <PaymentSuccessToast />
-
-      {/* Translation loading overlay */}
-      {translateLoading && (
-        <div className="no-print" style={{
-          position: 'fixed', inset: 0, zIndex: 400,
-          background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: 'white', borderRadius: '20px',
-            padding: '36px 40px', textAlign: 'center',
-            boxShadow: '0 20px 60px rgba(15,23,42,0.22)',
-            minWidth: '280px',
-          }}>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0f172a', marginBottom: '28px' }}>
-              AI 正在生成英文简历
-            </div>
-            <ImportLoadingBar stages={TRANSLATE_STAGES} />
-            <button
-              onClick={() => translateAbortRef.current?.abort()}
-              style={{
-                marginTop: '24px', padding: '7px 24px',
-                borderRadius: '12px', border: '1px solid #e2e8f0',
-                background: 'white', color: '#64748b',
-                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-              }}
-            >取消</button>
-          </div>
-        </div>
       )}
 
       {/* Toast */}
@@ -2666,8 +2494,8 @@ ${autoprint ? `<script>
             borderTopColor: 'white',
             animation: 'pngSpin 0.8s linear infinite',
           }} />
-          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成图片…</div>
-          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要几秒钟</div>
+          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>Generating image…</div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>This usually takes a few seconds</div>
         </div>
       )}
 
@@ -2685,8 +2513,8 @@ ${autoprint ? `<script>
             borderTopColor: 'white',
             animation: 'pdfSpin 0.8s linear infinite',
           }} />
-          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>正在生成 PDF…</div>
-          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>通常需要 5–10 秒</div>
+          <div style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>Generating PDF…</div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}>This usually takes 5–10 seconds</div>
         </div>
       )}
 
@@ -2711,7 +2539,7 @@ export default function EditorPage() {
   return (
     <Suspense fallback={
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', fontFamily:'var(--font-sans)', color:'#64748b' }}>
-        加载中...
+        Loading...
       </div>
     }>
       <EditorInner />

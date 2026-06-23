@@ -21,7 +21,10 @@ export const ps: React.CSSProperties = {
   marginBottom: "12px",
   fontSize: "14px",
 };
-export const uls: React.CSSProperties = { paddingLeft: "18px", margin: "0 0 12px" };
+export const uls: React.CSSProperties = {
+  paddingLeft: "18px",
+  margin: "0 0 12px",
+};
 export const lis: React.CSSProperties = {
   color: "#334155",
   lineHeight: 1.8,
@@ -34,52 +37,55 @@ export function PrivacyContent() {
   return (
     <div>
       <p style={ps}>
-        简力全开高度重视用户的隐私权。本政策说明我们如何收集、使用和保护您的信息。
+        ResumeRight takes your privacy seriously. This policy explains what we
+        collect, how we use it, and how we protect it.
       </p>
-      <h2 style={h2s}>1. 我们收集哪些信息</h2>
-      <h3 style={h3s}>设备标识（Device ID）</h3>
+      <h2 style={h2s}>1. What we collect</h2>
+      <h3 style={h3s}>Device ID</h3>
       <p style={ps}>
-        通过浏览器 Cookie 和 localStorage 存储的设备唯一 UUID，有效期 1
-        年，仅用于区分设备、记录使用量配额，不含任何可识别个人身份的信息。
+        A random per-device UUID stored in your browser via cookies and
+        localStorage. It only distinguishes devices and tracks usage for abuse
+        prevention, and contains no personally identifiable information.
       </p>
-      <h3 style={h3s}>账号信息（可选）</h3>
+      <h3 style={h3s}>Resume content</h3>
       <p style={ps}>
-        使用微信扫码登录后，我们会获取并存储您的微信 OpenID、昵称和头像，用于识别账号身份及跨设备同步数据。未登录用户不涉及此项。
-      </p>
-      <h3 style={h3s}>简历内容</h3>
-      <p style={ps}>
-        未登录时仅存储在您的本地浏览器。登录后，简历内容会加密同步至我们的服务器，以实现跨设备访问。以下功能使用时会将简历内容临时发送至 AI 服务处理，处理完成后立即释放，不留存：
+        Your resume data is stored locally in your browser. There are no
+        accounts. The features below temporarily send your content to a
+        third-party AI provider for processing; it is released immediately after
+        and not retained by us:
       </p>
       <ul style={uls}>
         <li style={lis}>
-          AI 简历分析、英文简历生成（发送至 DeepSeek API）
+          AI resume analysis (sent to our AI provider&apos;s API)
         </li>
-        <li style={lis}>简历智能导入（PDF/Word 文字提取后转发 AI 模型）</li>
-        <li style={lis}>PDF 下载（HTML 内容发送至服务器生成 PDF）</li>
+        <li style={lis}>
+          Smart resume import (text extracted from PDF/Word, then forwarded to
+          the AI model)
+        </li>
+        <li style={lis}>
+          PDF download (HTML content sent to the server to render the PDF)
+        </li>
       </ul>
-      <h3 style={h3s}>支付信息</h3>
+      <h2 style={h2s}>2. Cookies &amp; local storage</h2>
       <p style={ps}>
-        仅记录订单 ID、账号/设备标识、套餐类型、购买时间等，不收集银行卡号等金融敏感信息。支付由虎皮椒（微信支付）处理，我们不接触您的支付凭证。
+        We use a cookie to store the device ID and use localStorage to keep your
+        resume drafts and local preferences. We use no third-party tracking
+        cookies and integrate no advertising SDKs.
       </p>
-      <h2 style={h2s}>2. Cookie 与本地存储</h2>
-      <p style={ps}>
-        我们使用 Cookie 存储登录状态和设备标识，使用 localStorage 存储简历草稿和本地偏好。不使用第三方追踪 Cookie，不集成任何广告 SDK。
-      </p>
-      <h2 style={h2s}>3. 第三方服务</h2>
+      <h2 style={h2s}>3. Third-party services</h2>
       <ul style={uls}>
         <li style={lis}>
-          <strong>DeepSeek</strong>：AI 功能底层模型，受 DeepSeek 隐私政策约束
+          <strong>AI provider</strong>: powers the AI features and is governed
+          by its own privacy policy
         </li>
         <li style={lis}>
-          <strong>微信开放平台</strong>：提供扫码登录能力，受腾讯隐私政策约束
-        </li>
-        <li style={lis}>
-          <strong>Vercel</strong>：网站托管，可能记录基本访问日志
+          <strong>Vercel</strong>: website hosting, which may record basic
+          access logs
         </li>
       </ul>
-      <h2 style={h2s}>4. 联系我们</h2>
+      <h2 style={h2s}>4. Contact</h2>
       <p style={{ ...ps, marginBottom: 0 }}>
-        如有疑问：
+        Questions?{" "}
         <a
           href="mailto:839081822@qq.com"
           style={{ color: "#0789ec", textDecoration: "none" }}
@@ -95,48 +101,57 @@ export function TermsContent() {
   return (
     <div>
       <p style={{ ...ps, color: "#64748b", fontSize: "13px" }}>
-        最后更新：2026年6月1日
+        Last updated: June 1, 2026
       </p>
-      <p style={ps}>使用简力全开即表示您同意接受以下条款的约束。</p>
-      <h2 style={h2s}>1. 服务说明</h2>
       <p style={ps}>
-        简力全开提供在线简历制作、AI
-        简历分析、英文简历生成等工具服务，分免费版和付费版两种方案。
+        By using ResumeRight you agree to be bound by the following terms.
       </p>
-      <h2 style={h2s}>2. 账号与身份</h2>
+      <h2 style={h2s}>1. The service</h2>
       <p style={ps}>
-        本产品不要求注册账号，打开即用。您也可以选择微信扫码登录，登录后简历、会员权益、AI 次数将绑定至微信账号，换设备登录同一微信账号即可恢复全部数据。未登录用户的购买记录绑定于设备，更换设备或清除浏览器数据可能导致记录丢失，请妥善保管订单号。
+        ResumeRight provides online resume building, AI resume analysis, and
+        related tools. All features are free to use.
       </p>
-      <h2 style={h2s}>3. 付费与退款</h2>
+      <h2 style={h2s}>2. Accounts</h2>
       <p style={ps}>
-        提供月卡、季卡、年卡订阅及单次模板购买，付款后立即生效。数字内容商品一经交付原则上不支持退款。已正常使用
-        AI 功能或已下载无水印 PDF 者，或购买超过 24
-        小时者，不予退款。因产品技术故障导致服务完全无法使用，可联系客服核实后处理。
+        No account or registration is required — just open the app and start.
+        Your resume data is stored locally in your browser, so clearing your
+        browser data or switching devices may remove it. Export your resumes to
+        keep your own copies.
       </p>
-      <p style={ps}>学生认证通过后享全场 5 折，认证有效期 1 年。</p>
-      <h2 style={h2s}>4. 内容规范</h2>
+      <h2 style={h2s}>3. Acceptable use</h2>
       <ul style={uls}>
-        <li style={lis}>不得上传处理违法、侵权、涉密内容</li>
-        <li style={lis}>不得通过技术手段绕过使用限制或付费验证</li>
-        <li style={lis}>不得将 AI 输出用于学术欺诈、虚假陈述等不诚信行为</li>
+        <li style={lis}>
+          Do not upload or process illegal, infringing, or confidential content
+        </li>
+        <li style={lis}>
+          Do not use technical means to bypass usage limits or abuse the service
+        </li>
+        <li style={lis}>
+          Do not use AI output for academic fraud, misrepresentation, or other
+          dishonest purposes
+        </li>
       </ul>
-      <h2 style={h2s}>5. 知识产权</h2>
+      <h2 style={h2s}>4. Intellectual property</h2>
       <p style={ps}>
-        模板设计、代码、Logo
-        均为简力全开所有。您使用本产品生成的简历内容归您本人所有。
+        Template designs, code, and the logo belong to ResumeRight. The resume
+        content you create with the product belongs to you.
       </p>
-      <h2 style={h2s}>6. 演示内容声明</h2>
+      <h2 style={h2s}>5. Demo content notice</h2>
       <p style={ps}>
-        本产品页面（首页、模板预览等）所展示的示例简历中，"陈梦瑶"等人名均为虚构演示人物，不代表任何真实存在的自然人，亦不构成对任何个人姓名权或肖像权的侵犯。示例照片为
-        AI
-        生成的虚拟形象，不对应任何真实人物。如有相关方认为存在侵权，请联系我们，我们将在核实后第一时间处理。
+        The sample resumes shown across the product (home page, template
+        previews, etc.) use fictional names such as &quot;Emma Carter&quot; that
+        do not represent any real person, and sample photos are AI-generated and
+        do not correspond to any real individual. If you believe any content
+        infringes your rights, please contact us and we will address it
+        promptly.
       </p>
-      <h2 style={h2s}>7. 免责声明</h2>
+      <h2 style={h2s}>6. Disclaimer</h2>
       <p style={ps}>
-        AI 分析建议仅供参考，不代表专业 HR
-        意见。我们不对因使用本产品生成的简历导致的求职结果承担责任。
+        AI suggestions are for reference only and do not constitute professional
+        HR advice. We are not responsible for job-search outcomes resulting from
+        resumes created with this product.
       </p>
-      <h2 style={h2s}>8. 联系</h2>
+      <h2 style={h2s}>7. Contact</h2>
       <p style={{ ...ps, marginBottom: 0 }}>
         <a
           href="mailto:839081822@qq.com"

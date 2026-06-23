@@ -10,15 +10,15 @@ const LS_USAGE    = 'rc_usage'
 const COOKIE_DEVICE = 'rc_did'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type PlanType  = 'single' | 'monthly' | 'quarterly' | 'yearly' | 'trial7'
+export type PlanType  = 'single' | 'day3' | 'weekly' | 'monthly' | 'quarterly'
 export type PayMethod = 'wechat'
-export type UsageType = 'import' | 'ai_analyze' | 'ai_translate'
+export type UsageType = 'import' | 'ai_analyze'
 
 export interface PaymentRecord {
   orderId: string
   deviceId: string
   planType: PlanType
-  amount: number          // actual paid, in fen (¥1 = 100 fen)
+  amount: number          // actual paid, in USD cents ($1 = 100 cents)
   isStudent: boolean
   resumeId?: string       // 'single' only — which resume this unlocks
   templateId?: string     // 'single' only — which template was unlocked at purchase time
@@ -46,22 +46,55 @@ interface DailyUsage {
 export type ProStatus =
   | { kind: 'free' }
   | { kind: 'single'; orderId: string; resumeId: string; templateId: string; aiAnalyzeLeft: number }
-  | { kind: 'subscription'; plan: 'monthly' | 'quarterly' | 'yearly'; expiresAt: number }
+  | { kind: 'subscription'; plan: 'day3' | 'weekly' | 'monthly' | 'quarterly'; expiresAt: number }
 
-// ─── Plan prices (fen) ────────────────────────────────────────────────────────
+// ─── Plan prices (USD cents, $1 = 100 cents) ──────────────────────────────────
 export const PRICES = {
-  monthly:   { normal: 2900, student: 1490 },
-  quarterly: { normal: 6900, student: 3490 },
-  yearly:    { normal: 16800, student: 8400 },
-  single:    { normal: 990, student: 490 },   // non-first-order
-  singleFirst: { normal: 99, student: 99 },   // first order: ¥0.99 for everyone
+  single:    699,   // pay-as-you-go — permanently unlock export of one resume
+  day3:      399,   // 3-day pass (one-time, no auto-renew)
+  weekly:    799,   // weekly pass (one-time, no auto-renew)
+  monthly:   1999,  // monthly (auto-renews)
+  quarterly: 3999,  // quarterly (auto-renews)
 }
 
 export const PLAN_DURATION_MS: Record<string, number> = {
-  monthly:   30 * 86_400_000,
-  quarterly: 90 * 86_400_000,
-  yearly:    365 * 86_400_000,
-  trial7:    7  * 86_400_000,
+  day3:      3   * 86_400_000,
+  weekly:    7   * 86_400_000,
+  monthly:   30  * 86_400_000,
+  quarterly: 90  * 86_400_000,
+}
+
+// ─── Pricing-page display config ──────────────────────────────────────────────
+// Passes grant full Pro access for their duration. Short passes (3-day / weekly) are
+// one-time with no auto-renew; monthly / quarterly auto-renew. Pay-as-you-go ('single')
+// is a one-time purchase that permanently unlocks export of a SINGLE resume.
+export interface PassPlan {
+  key: 'day3' | 'weekly' | 'monthly' | 'quarterly'
+  label: string
+  cents: number
+  days: number
+  autoRenew: boolean
+  badge?: string
+}
+export const PASS_PLANS: PassPlan[] = [
+  { key: 'day3',      label: '3-Day Pass', cents: PRICES.day3,      days: 3,  autoRenew: false },
+  { key: 'weekly',    label: 'Weekly',     cents: PRICES.weekly,    days: 7,  autoRenew: false },
+  { key: 'monthly',   label: 'Monthly',    cents: PRICES.monthly,   days: 30, autoRenew: true, badge: 'Most popular' },
+  { key: 'quarterly', label: 'Quarterly',  cents: PRICES.quarterly, days: 90, autoRenew: true, badge: 'Best value' },
+]
+
+// Feature credits per tier.
+//  - free / single: one-time allowances (free = lifetime per device, single = per purchase)
+//  - pro: per-day caps (resets daily while the pass is active)
+export const AI_QUOTA = {
+  free:   { optimize: 5,  ats: 5,  import: 2,  coverLetter: 1  },   // one-time
+  single: { optimize: 10, ats: 10, import: 5,  coverLetter: 3  },   // one-time, per template purchase
+  pro:    { optimize: 20, ats: 10, import: 10, coverLetter: 10 },   // per day
+}
+
+/** Format USD cents as "$6.99". */
+export function formatUsd(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
 }
 
 // ─── Promo code redemption tracking (per-device, stored in localStorage) ──────
@@ -168,38 +201,14 @@ export function isFirstPurchase(deviceId: string): boolean {
  * Resolves the effective pro status for a device.
  * Pass `resumeId` to check whether a single-purchase covers the current resume.
  */
-export function getProStatus(deviceId: string, resumeId?: string): ProStatus {
-  const now      = Date.now()
-  const payments = getPayments().filter(p => p.deviceId === deviceId)
-
-  // Active subscription wins over everything else (trial7 counts as subscription)
-  const activeSub = payments
-    .filter(p => p.planType !== 'single' && !!p.expiresAt && p.expiresAt > now)
-    .sort((a, b) => (b.expiresAt ?? 0) - (a.expiresAt ?? 0))[0]
-  if (activeSub) {
-    const planLabel = activeSub.planType === 'trial7' ? 'monthly' : activeSub.planType as 'monthly' | 'quarterly' | 'yearly'
-    return {
-      kind: 'subscription',
-      plan: planLabel,
-      expiresAt: activeSub.expiresAt!,
-    }
+// Payment removed — everyone is treated as an unlimited subscriber so all
+// Pro templates, watermark-free export and AI features are open to all.
+export function getProStatus(_deviceId: string, _resumeId?: string): ProStatus {
+  return {
+    kind: 'subscription',
+    plan: 'monthly',
+    expiresAt: Number.MAX_SAFE_INTEGER,
   }
-
-  // Single purchase covering this specific resume
-  if (resumeId) {
-    const single = payments.find(p => p.planType === 'single' && p.resumeId === resumeId)
-    if (single) {
-      return {
-        kind: 'single',
-        orderId: single.orderId,
-        resumeId,
-        templateId: single.templateId ?? '',  // empty = old purchase without template binding
-        aiAnalyzeLeft: Math.max(0, 5 - (single.aiAnalyzeUsed ?? 0)),
-      }
-    }
-  }
-
-  return { kind: 'free' }
 }
 
 // ─── Student verification ─────────────────────────────────────────────────────
@@ -280,40 +289,8 @@ export type UsageCheckResult =
   | { allowed: true }
   | { allowed: false; reason: 'not_paid' | 'daily_limit' | 'total_limit'; used: number; limit: number }
 
-const IMPORT_LIMITS = { free: 2, single: 5, subscription: 10 }
-
-export function checkUsage(deviceId: string, type: UsageType, status: ProStatus): UsageCheckResult {
-  if (type === 'import') {
-    const limit = status.kind === 'subscription' ? IMPORT_LIMITS.subscription
-      : status.kind === 'single'       ? IMPORT_LIMITS.single
-      :                                  IMPORT_LIMITS.free
-    const used = getDailyCount(deviceId, 'import')
-    if (used >= limit) return { allowed: false, reason: 'daily_limit', used, limit }
-    return { allowed: true }
-  }
-
-  if (type === 'ai_analyze') {
-    if (status.kind === 'free') {
-      const used = getFreeAnalyzeUsed()
-      if (used >= FREE_ANALYZE_LIMIT) return { allowed: false, reason: 'total_limit', used, limit: FREE_ANALYZE_LIMIT }
-      return { allowed: true }
-    }
-    if (status.kind === 'single') {
-      const left = status.aiAnalyzeLeft
-      if (left <= 0) return { allowed: false, reason: 'total_limit', used: 5, limit: 5 }
-      return { allowed: true }
-    }
-    const used = getDailyCount(deviceId, 'ai_analyze')
-    if (used >= 20) return { allowed: false, reason: 'daily_limit', used, limit: 20 }
-    return { allowed: true }
-  }
-
-  if (type === 'ai_translate') {
-    if (status.kind !== 'subscription') return { allowed: false, reason: 'not_paid', used: 0, limit: 0 }
-    // Daily limit for subscription users is checked server-side (authDailyTranslateUsedRef) in handleTranslate
-    return { allowed: true }
-  }
-
+export function checkUsage(_deviceId: string, _type: UsageType, _status: ProStatus): UsageCheckResult {
+  // Payment/quotas removed — everything is unlimited.
   return { allowed: true }
 }
 
@@ -342,11 +319,11 @@ export function recordUsage(deviceId: string, type: UsageType, status: ProStatus
 
 // ─── Template access ──────────────────────────────────────────────────────────
 /** Returns true when the user can use a Pro (free:false) template. */
-export function canUseProTemplate(status: ProStatus): boolean {
-  return status.kind === 'subscription'
+export function canUseProTemplate(_status: ProStatus): boolean {
+  return true
 }
 
 /** Returns true when PDF download should have no watermark. */
-export function hasNoWatermark(status: ProStatus): boolean {
-  return status.kind === 'subscription' || status.kind === 'single'
+export function hasNoWatermark(_status: ProStatus): boolean {
+  return true
 }

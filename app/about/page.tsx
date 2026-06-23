@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 
-export const metadata = { title: "关于我们 — 简力全开" };
+export const metadata = { title: "About — ResumeRight" };
 
 export default function AboutPage() {
   return (
@@ -26,71 +26,82 @@ export default function AboutPage() {
               letterSpacing: "-1px",
             }}
           >
-            关于我们
+            About
           </h1>
           <p
             style={{ color: "#64748b", marginBottom: "48px", fontSize: "15px" }}
           >
-            简力全开 · jianliquankai.com
+            ResumeRight
           </p>
 
           <section style={{ marginBottom: "40px" }}>
-            <h2 style={h2}>我们是谁</h2>
+            <h2 style={h2}>Who we are</h2>
             <p style={p}>
-              简力全开是一款 AI
-              驱动的在线简历制作工具，专为中国求职者打造。我们相信，每一个人都应该有机会用最专业的方式展示自己，而不被繁琐的排版软件所困扰。
+              ResumeRight is an AI-powered online resume builder. We believe
+              everyone should be able to present themselves professionally,
+              without wrestling with clunky layout software.
             </p>
             <p style={p}>
-              我们的团队由热爱 AI
-              与设计的工程师和产品人组成，致力于把简历写作这件"难而重要"的事情，变成一件轻松、高效、有成就感的事。
+              Our team of engineers and product people who love AI and design is
+              on a mission to turn resume writing — something hard but important
+              — into an easy, efficient, and rewarding experience.
             </p>
           </section>
 
           <section style={{ marginBottom: "40px" }}>
-            <h2 style={h2}>我们的产品</h2>
-            <p style={p}>简力全开提供：</p>
+            <h2 style={h2}>What we offer</h2>
+            <p style={p}>ResumeRight provides:</p>
             <ul style={ul}>
               <li style={li}>
-                专业简历模板，覆盖互联网、金融、设计、学术等主流行业
+                Professional resume templates covering tech, finance, design,
+                academia, and more
               </li>
               <li style={li}>
-                AI 内容优化：一键重写工作/项目描述，让描述更量化、更有说服力
+                AI content optimization: rewrite work/project descriptions in
+                one click to be more quantified and persuasive
               </li>
               <li style={li}>
-                岗位匹配分析：上传目标职位详情，AI
-                分析匹配度并给出针对性修改建议
+                Job match analysis: paste a target job and AI scores your fit
+                and gives targeted suggestions
               </li>
               <li style={li}>
-                简历智能解析：上传已有 PDF/Word 简历，自动提取内容进入编辑器
+                Smart resume parsing: upload an existing PDF/Word resume and
+                auto-extract its content into the editor
               </li>
               <li style={li}>
-                无账号体验：基于设备识别，无需注册即可使用，数据本地存储保护隐私
+                No-account experience: device-based, no sign-up required, with
+                data stored locally to protect your privacy
               </li>
             </ul>
           </section>
 
           <section style={{ marginBottom: "40px" }}>
-            <h2 style={h2}>我们的理念</h2>
+            <h2 style={h2}>Our philosophy</h2>
             <p style={p}>
-              我们不收集用户的个人账号信息，不依赖社交登录，不向第三方出售数据。简历是求职者最私密的文档之一——我们把数据所有权还给用户本人。
+              We don&apos;t collect personal account information, don&apos;t
+              rely on social login, and don&apos;t sell data to third parties. A
+              resume is one of the most private documents a job seeker has — we
+              keep ownership with you.
             </p>
             <p style={p}>
-              同时，我们相信好的工具应该价格公道、功能透明。我们的定价从永久免费到低价订阅，让不同需求的用户都能找到适合自己的方案。
+              We also believe good tools should be transparent and accessible.
+              ResumeRight is free to use.
             </p>
           </section>
 
           <section>
-            <h2 style={h2}>联系我们</h2>
+            <h2 style={h2}>Contact</h2>
             <p style={p}>
-              如有任何问题、建议或合作意向，欢迎通过以下方式联系：
+              For any questions, suggestions, or partnership inquiries, reach us
+              at:
             </p>
             <p style={{ ...p, marginBottom: 0 }}>
-              邮箱：
+              Email:{" "}
               <a
                 href="mailto:839081822@qq.com"
                 style={{ color: "#0789ec", textDecoration: "none" }}
               >
-                hello@jianliquankai.com
+                839081822@qq.com
               </a>
             </p>
           </section>
@@ -110,7 +121,7 @@ export default function AboutPage() {
                 fontSize: "14px",
               }}
             >
-              返回首页
+              Back to home
             </Link>
           </div>
         </div>

@@ -13,14 +13,14 @@ import {
 
 
 const SEC_NAMES: Record<SectionKey, string> = {
-  exp: "工作经历",
-  edu: "教育背景",
-  project: "项目经历",
-  award: "荣誉奖项",
-  cert: "资质证书",
-  volunteer: "志愿服务",
-  interest: "兴趣爱好",
-  language: "语言能力",
+  exp: "Work Experience",
+  edu: "Education",
+  project: "Projects",
+  award: "Awards",
+  cert: "Certifications",
+  volunteer: "Volunteering",
+  interest: "Interests",
+  language: "Languages",
 };
 
 interface Props {
@@ -47,14 +47,14 @@ export default function RightPanel({
 
   const headerTitle =
     selection.kind === "field" && selection.field === "summary"
-      ? "个人简介"
+      ? "Summary"
       : selection.kind === "contact"
-        ? "基本信息 & 联系方式"
+        ? "Basic info & contact"
           : selection.kind === "skills"
-            ? "专业技能"
+            ? "Skills"
             : selection.kind === "entry"
               ? SEC_NAMES[selection.sec]
-              : "编辑";
+              : "Edit";
 
   return (
     <div
@@ -109,46 +109,41 @@ export default function RightPanel({
 
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px" }}>
 
-        {/* 基本信息 & 联系方式 panel */}
+        {/* Basic info & contact panel */}
         {selection.kind === "contact" && (
           <>
-            {/* ── 基本信息 ── */}
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>基本信息</div>
-            <Field label="姓名" value={data.name} onChange={(v) => onUpdate({ name: v })} />
-            <Field label="职位 / 标题" value={data.jobtitle} onChange={(v) => onUpdate({ jobtitle: v })} />
-            <ToggleField label="性别" value={data.gender || ''} onChange={(v) => onUpdate({ gender: v })} hidden={!!data.hideGender} onToggleHide={() => onUpdate({ hideGender: !data.hideGender })} />
-            <ToggleField label="年龄" value={data.age || ''} onChange={(v) => onUpdate({ age: v })} hidden={!!data.hideAge} onToggleHide={() => onUpdate({ hideAge: !data.hideAge })} />
+            {/* ── Basic info ── */}
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>Basic info</div>
+            <Field label="Name" value={data.name} onChange={(v) => onUpdate({ name: v })} />
+            <Field label="Title / Role" value={data.jobtitle} onChange={(v) => onUpdate({ jobtitle: v })} />
             {(data.customContacts || []).map((cc, i) => !cc.isInfo ? null : (
               <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="标题（如：政治面貌）" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
-                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'显示':'隐藏'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
+                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="Label (e.g. Nationality)" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'Show':'Hide'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
                   <button onClick={() => onUpdate({customContacts:(data.customContacts||[]).filter((_,j)=>j!==i)})} style={{padding:'6px',borderRadius:'10px',border:'1px solid #e2e8f0',background:'white',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}}><X size={12} color="#94a3b8"/></button>
                 </div>
-                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="内容" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="Value" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
               </div>
             ))}
-            <button onClick={() => onUpdate({ customContacts: [...(data.customContacts||[]), { label:'', value:'', hidden:false, isInfo:true }] })} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-blue)', display:'flex', alignItems:'center', gap:'3px', fontSize:'11px', fontWeight:600, fontFamily:'var(--font-sans)', marginBottom:'4px' }}>
-              <Plus size={12} /> 添加自定义
-            </button>
 
-            {/* ── 联系方式 ── */}
+            {/* ── Contact ── */}
             <div style={{ height: '1px', background: '#e2e8f0', margin: '14px 0 12px' }} />
-            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>联系方式</div>
-            <ToggleField label="邮箱" value={data.email} onChange={(v) => onUpdate({ email: v })} hidden={!!data.hideEmail} onToggleHide={() => onUpdate({ hideEmail: !data.hideEmail })} />
-            <ToggleField label="手机" value={data.phone} onChange={(v) => onUpdate({ phone: v })} hidden={!!data.hidePhone} onToggleHide={() => onUpdate({ hidePhone: !data.hidePhone })} />
-            <ToggleField label="城市" value={data.city} onChange={(v) => onUpdate({ city: v })} hidden={!!data.hideCity} onToggleHide={() => onUpdate({ hideCity: !data.hideCity })} />
+            <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: '10px' }}>Contact</div>
+            <ToggleField label="Email" value={data.email} onChange={(v) => onUpdate({ email: v })} hidden={!!data.hideEmail} onToggleHide={() => onUpdate({ hideEmail: !data.hideEmail })} />
+            <ToggleField label="Phone" value={data.phone} onChange={(v) => onUpdate({ phone: v })} hidden={!!data.hidePhone} onToggleHide={() => onUpdate({ hidePhone: !data.hidePhone })} />
+            <ToggleField label="City" value={data.city} onChange={(v) => onUpdate({ city: v })} hidden={!!data.hideCity} onToggleHide={() => onUpdate({ hideCity: !data.hideCity })} />
             <div style={{ marginBottom: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <label style={labelStyle}>网站</label>
-                <button onClick={() => onUpdate({ hideWebsite: !data.hideWebsite })} title={data.hideWebsite ? "点击在简历中显示" : "点击在简历中隐藏"} style={{ background: "none", border: "none", cursor: "pointer", color: data.hideWebsite ? "#94a3b8" : "var(--theme-blue)", display: "flex", alignItems: "center", padding: 0 }}>
+                <label style={labelStyle}>Website</label>
+                <button onClick={() => onUpdate({ hideWebsite: !data.hideWebsite })} title={data.hideWebsite ? "Click to show on resume" : "Click to hide on resume"} style={{ background: "none", border: "none", cursor: "pointer", color: data.hideWebsite ? "#94a3b8" : "var(--theme-blue)", display: "flex", alignItems: "center", padding: 0 }}>
                   {data.hideWebsite ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
               <input value={data.website} onChange={(e) => onUpdate({ website: e.target.value })} style={{ ...inputStyle, opacity: data.hideWebsite ? 0.5 : 1 } as React.CSSProperties} onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }} onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }} />
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
                 <button onClick={() => onUpdate({ extraWebsites: [...(data.extraWebsites || []), ""] })} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--theme-blue)", display: "flex", alignItems: "center", gap: "3px", fontSize: "11px", fontWeight: 600, fontFamily: "var(--font-sans)" }}>
-                  <Plus size={12} /> 添加链接
+                  <Plus size={12} /> Add link
                 </button>
               </div>
             </div>
@@ -163,16 +158,13 @@ export default function RightPanel({
             {(data.customContacts || []).map((cc, i) => cc.isInfo ? null : (
               <div key={i} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="标题（如：GitHub）" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
-                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'显示':'隐藏'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
+                  <input value={cc.label} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],label:e.target.value}; onUpdate({customContacts:u}) }} placeholder="Label (e.g. GitHub)" style={{ ...inputStyle, flex: 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                  <button onClick={() => { const u=[...(data.customContacts||[])]; u[i]={...u[i],hidden:!cc.hidden}; onUpdate({customContacts:u}) }} title={cc.hidden?'Show':'Hide'} style={{background:'none',border:'none',cursor:'pointer',color:cc.hidden?'#94a3b8':'var(--theme-blue)',display:'flex',alignItems:'center',padding:0,flexShrink:0}}>{cc.hidden?<EyeOff size={14}/>:<Eye size={14}/>}</button>
                   <button onClick={() => onUpdate({customContacts:(data.customContacts||[]).filter((_,j)=>j!==i)})} style={{padding:'6px',borderRadius:'10px',border:'1px solid #e2e8f0',background:'white',cursor:'pointer',display:'flex',alignItems:'center',flexShrink:0}}><X size={12} color="#94a3b8"/></button>
                 </div>
-                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="内容或链接" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
+                <input value={cc.value} onChange={(e) => { const u=[...(data.customContacts||[])]; u[i]={...u[i],value:e.target.value}; onUpdate({customContacts:u}) }} placeholder="Value or link" style={{ ...inputStyle, opacity: cc.hidden ? 0.5 : 1 } as React.CSSProperties} onFocus={e=>{e.target.style.borderColor='var(--theme-blue)';e.target.style.background='white'}} onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.background='#f8fafc'}} />
               </div>
             ))}
-            <button onClick={() => onUpdate({ customContacts: [...(data.customContacts||[]), { label:'', value:'', hidden:false, isInfo:false }] })} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-blue)', display:'flex', alignItems:'center', gap:'3px', fontSize:'11px', fontWeight:600, fontFamily:'var(--font-sans)', marginTop:'4px' }}>
-              <Plus size={12} /> 添加自定义
-            </button>
           </>
         )}
 
@@ -180,18 +172,18 @@ export default function RightPanel({
         {selection.kind === "field" && selection.field === "summary" && (
           <>
             <AreaField
-              label="个人简介"
+              label="Summary"
               value={data.summary}
               onChange={(v) => onUpdate({ summary: v })}
               rows={6}
-              hint="一段简短的自我介绍"
+              hint="A short self-introduction"
             />
             <div style={{ height: "1px", background: "#e2e8f0", margin: "14px 0" }} />
             <button
               onClick={() => { onUpdate({ hasSummary: false }); onClose() }}
               style={{ ...btnDanger, display: "flex", alignItems: "center", justifyContent: 'center', gap: "6px" }}
             >
-              <Trash2 size={13} /> 删除"个人简介"模块
+              <Trash2 size={13} /> Delete "Summary" module
             </button>
           </>
         )}
@@ -209,33 +201,33 @@ export default function RightPanel({
             if (!entry) return null;
 
             const SECTION_META: Record<string, { title: string; sub: string; date: string }> = {
-              exp:       { title: "职位 / 标题", sub: "公司 / 机构",  date: "时间段" },
-              edu:       { title: "专业 / 学位", sub: "学校名称",     date: "时间段" },
-              project:   { title: "项目名称",   sub: "项目角色",     date: "时间段" },
-              language:  { title: "语言",       sub: "语言能力",     date: "时间段" },
-              award:     { title: "奖项名称",   sub: "颁奖机构",     date: "时间 / 年份" },
-              cert:      { title: "证书名称",   sub: "颁发机构",     date: "时间 / 年份" },
-              volunteer: { title: "活动名称",   sub: "机构名称",     date: "时间段" },
-              interest:  { title: "兴趣名称",   sub: "简短描述",     date: "时间段" },
+              exp:       { title: "Title / Role", sub: "Company / Org",  date: "Dates" },
+              edu:       { title: "Major / Degree", sub: "School",     date: "Dates" },
+              project:   { title: "Project name",   sub: "Your role",     date: "Dates" },
+              language:  { title: "Language",       sub: "Proficiency",     date: "Dates" },
+              award:     { title: "Award name",   sub: "Issuer",     date: "Date / Year" },
+              cert:      { title: "Certificate name",   sub: "Issuer",     date: "Date / Year" },
+              volunteer: { title: "Activity name",   sub: "Organization",     date: "Dates" },
+              interest:  { title: "Interest",   sub: "Short description",     date: "Dates" },
             }
-            const meta = SECTION_META[sec] ?? { title: "标题", sub: "副标题", date: "时间段" }
+            const meta = SECTION_META[sec] ?? { title: "Title", sub: "Subtitle", date: "Dates" }
 
             return (
               <>
                 {/* Language style picker */}
                 {sec === "language" && (
                   <div style={{ marginBottom: "14px" }}>
-                    <label style={labelStyle}>展示样式</label>
+                    <label style={labelStyle}>Display style</label>
                     <div style={{ display: "flex", gap: "6px" }}>
                       {(["pills", "plain", "list"] as const).map((s) => {
-                        const labels = { pills: "胶囊", plain: "纯文字", list: "列表" }
+                        const labels = { pills: "Pills", plain: "Plain", list: "List" }
                         const active = (data.languageStyle ?? "pills") === s
                         const borderColor = active ? "var(--theme-blue)" : "#94a3b8"
                         const textClr = active ? "var(--theme-blue)" : "#64748b"
                         const preview =
                           s === "pills" ? (
                             <span style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
-                              {["英语", "日语"].map(t => (
+                              {["English", "Spanish"].map(t => (
                                 <span key={t} style={{
                                   padding: "1px 6px", borderRadius: "14px", fontSize: "8px",
                                   border: `1px solid ${borderColor}`, color: textClr,
@@ -244,11 +236,11 @@ export default function RightPanel({
                               ))}
                             </span>
                           ) : s === "plain" ? (
-                            <span style={{ fontSize: "9px", color: textClr }}>英语 · 日语 · 法语</span>
+                            <span style={{ fontSize: "9px", color: textClr }}>English · Spanish · French</span>
                           ) : (
                             <span style={{ display: "flex", flexDirection: "column", gap: "1px", alignItems: "flex-start" }}>
-                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>英语</span>
-                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>日语</span>
+                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>English</span>
+                              <span style={{ fontSize: "8px", color: textClr, fontWeight: 600 }}>Spanish</span>
                             </span>
                           )
                         return (
@@ -282,7 +274,7 @@ export default function RightPanel({
                       type="text"
                       value={entry.sub}
                       onChange={(e) => onUpdateEntry(sec, idx, { sub: e.target.value })}
-                      placeholder="如：流利、精通、母语"
+                      placeholder="e.g. Fluent, Proficient, Native"
                       style={inputStyle as React.CSSProperties}
                       onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
                       onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
@@ -305,17 +297,17 @@ export default function RightPanel({
 
                 {sec !== "language" && (
                   <AreaField
-                    label="描述（每行一条）"
+                    label="Description (one per line)"
                     value={bulletsToText(entry.bullets)}
                     onChange={(v) => onUpdateEntry(sec, idx, { bullets: textToBullets(v) })}
                     rows={5}
-                    hint="每按一次回车，就会显示成新的一条"
+                    hint="Each new line becomes a separate bullet"
                   />
                 )}
 
                 <div style={{ height: "1px", background: "#e2e8f0", margin: "16px 0" }} />
                 <button onClick={() => onAddEntry(sec)} style={btnSmallFull}>
-                  + 添加 {SEC_NAMES[sec]}
+                  + Add {SEC_NAMES[sec]}
                 </button>
 
                 {(() => {
@@ -329,14 +321,14 @@ export default function RightPanel({
                         disabled={isFirst}
                         style={{ ...btnSmall, display: "flex", alignItems: "center", gap: "4px", flex: 1, justifyContent: 'center', opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
                       >
-                        <ArrowUp size={12} /> 上移
+                        <ArrowUp size={12} /> Move up
                       </button>
                       <button
                         onClick={() => !isLast && onMoveEntry?.(sec, idx, "down")}
                         disabled={isLast}
                         style={{ ...btnSmall, display: "flex", alignItems: "center", gap: "4px", flex: 1, justifyContent: 'center', opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
                       >
-                        <ArrowDown size={12} /> 下移
+                        <ArrowDown size={12} /> Move down
                       </button>
                     </div>
                   )
@@ -346,7 +338,7 @@ export default function RightPanel({
                   onClick={() => onDeleteEntry(sec, idx)}
                   style={{ ...btnDanger, display: "flex", alignItems: "center", gap: "6px", justifyContent: 'center' }}
                 >
-                  <Trash2 size={13} /> 删除此条
+                  <Trash2 size={13} /> Delete entry
                 </button>
               </>
             );
@@ -396,7 +388,7 @@ function ToggleField({ label, value, onChange, hidden, onToggleHide }: {
         <label style={labelStyle}>{label}</label>
         <button
           onClick={onToggleHide}
-          title={hidden ? "点击在简历中显示" : "点击在简历中隐藏"}
+          title={hidden ? "Click to show on resume" : "Click to hide on resume"}
           style={{ background: "none", border: "none", cursor: "pointer", color: hidden ? "#94a3b8" : "var(--theme-blue)", display: "flex", alignItems: "center", padding: 0 }}
         >
           {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -428,7 +420,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
       onUpdate({ skillCategories: data.skillCategoriesStash, skillCategoriesStash: undefined })
     } else {
       const initItems = data.skills.length > 0 ? [...data.skills] : []
-      onUpdate({ skillCategories: [{ id: Date.now().toString(), name: '技能', items: initItems }] })
+      onUpdate({ skillCategories: [{ id: Date.now().toString(), name: 'Skills', items: initItems }] })
     }
   }
 
@@ -451,7 +443,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
   }
 
   const addCat = () => {
-    onUpdate({ skillCategories: [...cats, { id: Date.now().toString(), name: '新分类', items: [] }] })
+    onUpdate({ skillCategories: [...cats, { id: Date.now().toString(), name: 'New category', items: [] }] })
   }
 
   const addItemsToCat = (catId: string, newItems: string[]) => {
@@ -466,12 +458,12 @@ function SkillsPanel({ data, onUpdate, onClose }: {
 
   return (
     <>
-      {/* 展示样式 */}
+      {/* Display style */}
       <div style={{ marginBottom: "14px" }}>
-        <label style={labelStyle}>展示样式</label>
+        <label style={labelStyle}>Display style</label>
         <div style={{ display: "flex", gap: "6px" }}>
           {(["tags", "plain", "dots"] as const).map((s) => {
-            const labels = { tags: "标签框", plain: "纯文字", dots: "圆点" }
+            const labels = { tags: "Tags", plain: "Plain", dots: "Dots" }
             const active = (data.skillsStyle ?? "tags") === s
             const borderColor = active ? "var(--theme-blue)" : "#94a3b8"
             const textClr = active ? "var(--theme-blue)" : "#64748b"
@@ -517,9 +509,9 @@ function SkillsPanel({ data, onUpdate, onClose }: {
         </div>
       </div>
 
-      {/* 分类模式切换 */}
+      {/* Category mode toggle */}
       <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <label style={{ ...labelStyle, marginBottom: 0 }}>按分类整理</label>
+        <label style={{ ...labelStyle, marginBottom: 0 }}>Organize by category</label>
         <div
           onClick={isCategoryMode ? disableCategories : enableCategories}
           style={{
@@ -541,19 +533,19 @@ function SkillsPanel({ data, onUpdate, onClose }: {
       </div>
 
       {isCategoryMode ? (
-        /* ── 分类模式 ── */
+        /* ── Category mode ── */
         <>
           {cats.map((cat) => (
             <div key={cat.id} style={{
               marginBottom: "12px", border: "1px solid #e2e8f0",
               borderRadius: "12px", padding: "10px 12px", background: "#f8fafc",
             }}>
-              {/* 分类名 + 删除 */}
+              {/* Category name + delete */}
               <div style={{ display: "flex", gap: "6px", marginBottom: "8px", alignItems: "center" }}>
                 <input
                   value={cat.name}
                   onChange={(e) => updateCat(cat.id, { name: e.target.value })}
-                  placeholder="分类名称"
+                  placeholder="Category name"
                   style={{ ...inputStyle, flex: 1, fontWeight: 600, fontSize: "12px" } as React.CSSProperties}
                   onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
                   onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
@@ -567,7 +559,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
                 </button>
               </div>
 
-              {/* 技能 chip 列表 */}
+              {/* Skill chip list */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "8px" }}>
                 {cat.items.map((item, idx) => (
                   <span key={idx} style={{
@@ -585,25 +577,25 @@ function SkillsPanel({ data, onUpdate, onClose }: {
                 ))}
               </div>
 
-              {/* 添加技能 */}
+              {/* Add skill */}
               <CatItemInput onAdd={(items) => addItemsToCat(cat.id, items)} />
             </div>
           ))}
 
           <button onClick={addCat}
             style={{ ...btnSmall, width: "100%", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}>
-            <Plus size={12} /> 新增分类
+            <Plus size={12} /> Add category
           </button>
         </>
       ) : (
-        /* ── 平铺模式 ── */
+        /* ── Flat mode ── */
         <>
           <div style={{ marginBottom: "14px" }}>
-            <label style={labelStyle}>技能标签（逗号分隔）</label>
+            <label style={labelStyle}>Skill tags (comma-separated)</label>
             <SkillsTextarea skills={data.skills} onCommit={(v) => onUpdate({ skills: v })} />
           </div>
           <div style={{ marginBottom: "14px" }}>
-            <label style={labelStyle}>快速添加</label>
+            <label style={labelStyle}>Quick add</label>
             <FlatSkillInput onAdd={(v) => onUpdate({ skills: [...data.skills, v] })} />
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "12px" }}>
@@ -629,7 +621,7 @@ function SkillsPanel({ data, onUpdate, onClose }: {
         onClick={() => { onUpdate({ hasSkills: false, skills: [], skillCategories: undefined }); onClose() }}
         style={{ ...btnDanger, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
       >
-        <Trash2 size={13} /> 删除"专业技能"模块
+        <Trash2 size={13} /> Delete "Skills" module
       </button>
     </>
   )
@@ -649,12 +641,12 @@ function CatItemInput({ onAdd }: { onAdd: (items: string[]) => void }) {
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
-        placeholder="添加技能，逗号分隔可批量添加"
+        placeholder="Add skills, comma-separated for bulk"
         style={{ ...inputStyle, flex: 1, fontSize: "12px" } as React.CSSProperties}
         onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
       />
-      <button onClick={submit} style={btnSmall}>添加</button>
+      <button onClick={submit} style={btnSmall}>Add</button>
     </div>
   )
 }
@@ -673,12 +665,12 @@ function FlatSkillInput({ onAdd }: { onAdd: (v: string) => void }) {
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
-        placeholder="输入技能"
+        placeholder="Enter a skill"
         style={{ ...inputStyle, flex: 1 } as React.CSSProperties}
         onFocus={(e) => { e.target.style.borderColor = "var(--theme-blue)"; e.target.style.background = "white" }}
         onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.background = "#f8fafc" }}
       />
-      <button onClick={submit} style={btnSmall}>添加</button>
+      <button onClick={submit} style={btnSmall}>Add</button>
     </div>
   )
 }

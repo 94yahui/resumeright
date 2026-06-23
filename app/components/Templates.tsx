@@ -1,7 +1,16 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TEMPLATES, CATEGORIES, CATEGORY_MAP, TemplateConfig } from '../lib/templates-config'
+import { TEMPLATES, TemplateConfig, AccentStyle, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES } from '../lib/templates-config'
 import TemplateThumbnail from '../lib/TemplateThumbnail'
+import AccentStylePreview from '../lib/AccentStylePreview'
+import Dropdown from './Dropdown'
+import { Scale, Plus } from 'lucide-react'
+
+// Heading (section-title) styles users can preview across every template — full editor list.
+const HEADING_STYLES = ACCENT_STYLES
+
+// Accent colors — shared palette with the editor.
+const COLOR_SWATCHES = ACCENT_COLOR_PRESETS
 
 const TOTAL_COUNT = TEMPLATES.length
 const PAGE_WIDTH = 794
@@ -11,18 +20,38 @@ const SINGLE_LAYOUTS = new Set([
   'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
   'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
 ])
-const FEATURED_PHOTO_LAYOUTS = new Set(['linkedin-banner', 'diagonal-photo', 'namecard-header'])
-function tplSortKey(t: TemplateConfig): number {
-  const isSingle = SINGLE_LAYOUTS.has(t.layout)
-  if (FEATURED_PHOTO_LAYOUTS.has(t.layout) && t.showPhoto) return 0
-  if (isSingle && t.showPhoto)  return 1
-  if (!isSingle && t.showPhoto) return 2
-  if (isSingle && !t.showPhoto) return 3
-  return 4
+// Landing-page filters by layout shape / photo, not industry.
+const FILTERS = ['All', 'With photo', 'No photo', 'One column', 'Two column']
+function matchesFilter(t: TemplateConfig, filter: string): boolean {
+  switch (filter) {
+    case 'With photo': return t.showPhoto
+    case 'No photo':   return !t.showPhoto
+    case 'One column': return SINGLE_LAYOUTS.has(t.layout)
+    case 'Two column': return !SINGLE_LAYOUTS.has(t.layout)
+    default:           return true
+  }
+}
+
+// Build the editor URL, carrying the chosen heading style / color as query params.
+function buildEditorUrl(tplId: string, headingStyle: AccentStyle | null, accentColor: string | null): string {
+  const params = new URLSearchParams({ template: tplId })
+  if (headingStyle) params.set('accent', headingStyle)
+  if (accentColor) params.set('color', accentColor)
+  return `/editor?${params.toString()}`
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>
+      {children}
+    </div>
+  )
 }
 
 export default function Templates() {
-  const [activeFilter, setActiveFilter] = useState('全部')
+  const [activeFilter, setActiveFilter] = useState('All')
+  const [headingStyle, setHeadingStyle] = useState<AccentStyle | null>(null)
+  const [accentColor, setAccentColor] = useState<string | null>(null)
   const [extraLoads, setExtraLoads] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
   const [previewTpl, setPreviewTpl] = useState<TemplateConfig | null>(null)
@@ -36,16 +65,24 @@ export default function Templates() {
 
   useEffect(() => { setExtraLoads(0) }, [isMobile])
 
-  const step = isMobile ? 6 : 10
-  const defaultCount = isMobile ? 6 : 10
+  const step = isMobile ? 6 : 8
+  const defaultCount = isMobile ? 6 : 8
   const showCount = defaultCount + extraLoads * step
 
-  const catKey = CATEGORY_MAP[activeFilter]
-  const filtered = TEMPLATES
-    .filter(t => catKey === 'all' || t.categories.includes(catKey))
-    .sort((a, b) => tplSortKey(a) - tplSortKey(b))
+  const filtered = ORDERED_TEMPLATES.filter(t => matchesFilter(t, activeFilter))
   const visible = filtered.slice(0, showCount)
   const hasMore = filtered.length > showCount
+  // A color is "custom" when it's set but not one of the preset swatches.
+  const customColorActive = accentColor !== null && !COLOR_SWATCHES.includes(accentColor)
+  // Smaller swatches on mobile so the whole palette fits on one row.
+  const dot = isMobile ? 22 : 26
+  // On mobile every swatch flexes to fill the full-width palette and stays circular;
+  // on desktop they keep a fixed pixel size.
+  // Cap so a swatch never grows taller than the 40px-high palette bar; any extra
+  // width is absorbed by the row's space-between distribution.
+  const dotSizing: React.CSSProperties = isMobile
+    ? { flex: '1 1 0', minWidth: 0, maxWidth: 26, aspectRatio: '1 / 1', height: 'auto' }
+    : { width: dot, height: dot, flexShrink: 0 }
 
   function handleFilterChange(f: string) {
     setActiveFilter(f)
@@ -69,61 +106,123 @@ export default function Templates() {
           <div style={{
             fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase',
             color: '#64748b', fontWeight: 600, marginBottom: '12px',
-          }}>模板库</div>
+          }}>Template Library</div>
           <h2 style={{
             fontSize: '38px', letterSpacing: '-1px', lineHeight: 1.15,
             fontWeight: 700, color: '#0f172a',
           }}>
-            找到<span style={{ color: 'var(--theme-blue)' }}>属于你</span>的风格
+            Find <span style={{ color: 'var(--theme-blue)' }}>your</span> style
           </h2>
           <p style={{ fontSize: '15px', color: '#64748b', marginTop: '10px', fontWeight: 400 }}>
-            {TOTAL_COUNT} 套专业设计，全部免费使用
+            {TOTAL_COUNT} professional designs, all free
           </p>
         </div>
 
-        {/* Category filter */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {CATEGORIES.map(f => {
-            const active = activeFilter === f
-            return (
+      </div>
+
+      {/* Filter + heading-style + color customizers — apply to every preview */}
+      <div style={{
+        maxWidth: '1280px', margin: '0 auto 36px',
+        display: 'flex', flexWrap: 'wrap', gap: isMobile ? '12px' : '24px',
+        alignItems: 'flex-start',
+        position: 'relative', zIndex: 40,
+      }} className="fade-in">
+        {/* Layout / photo filter */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', ...(isMobile ? { flex: '1 1 0', minWidth: 0 } : {}) }}>
+          <FieldLabel>Show</FieldLabel>
+          <Dropdown
+            value={activeFilter}
+            options={FILTERS.map(f => ({ value: f, label: f }))}
+            onChange={handleFilterChange}
+            minWidth={isMobile ? 0 : 150}
+            height={40}
+          />
+        </div>
+
+        {/* Heading style — dropdown with visual previews, no labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', ...(isMobile ? { flex: '1 1 0', minWidth: 0 } : {}) }}>
+          <FieldLabel>Heading style</FieldLabel>
+          <Dropdown
+            value={headingStyle ?? ''}
+            options={[{ value: '', label: 'Default' }, ...HEADING_STYLES]}
+            onChange={v => setHeadingStyle(v === '' ? null : v as AccentStyle)}
+            minWidth={isMobile ? 0 : 170}
+            height={40}
+            renderValue={o => o && o.value !== ''
+              ? <AccentStylePreview style={o.value as AccentStyle} color={accentColor ?? '#0f172a'} height={30} width={130} />
+              : <span style={{ color: '#0f172a' }}>Default</span>}
+            renderOption={(o, active) => o.value === ''
+              ? <span style={{ fontWeight: active ? 700 : 500, color: active ? 'var(--theme-blue)' : '#475569' }}>Default</span>
+              : <AccentStylePreview style={o.value as AccentStyle} color={accentColor ?? '#0f172a'} height={30} width={130} />}
+          />
+        </div>
+
+        {/* Color */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: isMobile ? '100%' : 'auto' }}>
+          <FieldLabel>Color</FieldLabel>
+          <div style={{
+            display: 'flex', gap: isMobile ? '6px' : '8px', flexWrap: 'nowrap', alignItems: 'center',
+            justifyContent: isMobile ? 'space-between' : undefined,
+            height: '40px', boxSizing: 'border-box', padding: '0 7px', borderRadius: '999px',
+            background: 'rgba(255,255,255,0.45)',
+            backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            boxShadow: '0 2px 12px rgba(15,23,42,0.06)',
+            width: isMobile ? '100%' : undefined,
+            maxWidth: '100%', overflowX: isMobile ? 'hidden' : 'auto',
+          }}>
+            <button
+              onClick={() => setAccentColor(null)}
+              title="Default"
+              style={{
+                ...dotSizing, borderRadius: '50%', cursor: 'pointer',
+                background: 'conic-gradient(from 90deg, #ff3b30, #ff9500, #ffcc00, #34c759, #00c7be, #007aff, #5856d6, #af52de, #ff2d55, #ff3b30)',
+                border: accentColor === null ? '2px solid #0f172a' : '2px solid transparent',
+                boxShadow: accentColor === null ? '0 0 0 2px white inset' : 'none',
+                padding: 0,
+              }}
+            />
+            {COLOR_SWATCHES.map(c => (
               <button
-                key={f}
-                onClick={() => handleFilterChange(f)}
+                key={c}
+                onClick={() => setAccentColor(c)}
+                title={c}
                 style={{
-                  padding: '8px 20px',
-                  transform: 'skewX(-12deg)',
-                  background: active
-                    ? 'var(--highlight)'
-                    : 'white',
-                  border: active ? 'none' : '1.5px solid #e2e8f0',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-sans)',
-                  transition: 'background 0.18s, color 0.15s',
-                  boxShadow: 'none',
-                  WebkitTapHighlightColor: 'transparent',
+                  ...dotSizing, borderRadius: '50%', cursor: 'pointer',
+                  background: c,
+                  border: accentColor === c ? '2px solid #0f172a' : '2px solid transparent',
+                  boxShadow: accentColor === c ? '0 0 0 2px white inset' : 'none',
+                  padding: 0,
                 }}
-              >
-                <span style={{
-                  display: 'inline-block',
-                  transform: 'skewX(12deg)',
-                  fontSize: '13px',
-                  fontWeight: active ? 700 : 500,
-                  color: active ? 'white' : '#475569',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {f}
-                </span>
-              </button>
-            )
-          })}
+              />
+            ))}
+            {/* Custom color */}
+            <label
+              title="Custom color"
+              style={{
+                ...dotSizing, position: 'relative', borderRadius: '50%', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: customColorActive ? accentColor! : 'white',
+                border: customColorActive ? '2px solid #0f172a' : '2px dashed #cbd5e1',
+                boxShadow: customColorActive ? '0 0 0 2px white inset' : 'none',
+              }}
+            >
+              <input
+                type="color"
+                value={customColorActive ? accentColor! : '#0f172a'}
+                onChange={e => setAccentColor(e.target.value)}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 'none', padding: 0 }}
+              />
+              {!customColorActive && <Plus size={14} color="#94a3b8" strokeWidth={2.25} style={{ display: 'block' }} />}
+            </label>
+          </div>
         </div>
       </div>
 
       <div className="templates-grid" style={{
         maxWidth: '1280px', margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(220px, 1fr))',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(270px, 1fr))',
         gap: isMobile ? '14px' : '28px',
       }}>
         {visible.map((tpl, i) => (
@@ -132,7 +231,8 @@ export default function Templates() {
             tpl={tpl}
             delay={Math.min(i, 9) * 0.04}
             onPreview={() => setPreviewTpl(tpl)}
-            categoryHint={catKey}
+            headingStyle={headingStyle}
+            accentColor={accentColor}
           />
         ))}
       </div>
@@ -153,25 +253,28 @@ export default function Templates() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink3)'; e.currentTarget.style.background = '#f8fafc' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'white' }}
           >
-            查看更多
+            Load more
           </button>
         </div>
       )}
 
       {filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8', fontSize: '14px' }}>
-          该分类暂无模板
+          No templates in this category
         </div>
       )}
 
       {previewTpl && (
-        <TemplatePreviewModal tpl={previewTpl} onClose={() => setPreviewTpl(null)} />
+        <TemplatePreviewModal tpl={previewTpl} headingStyle={headingStyle} accentColor={accentColor} onClose={() => setPreviewTpl(null)} />
       )}
     </section>
   )
 }
 
-function TemplateCard({ tpl, delay, onPreview, categoryHint }: { tpl: TemplateConfig; delay: number; onPreview: () => void; categoryHint?: string }) {
+function TemplateCard({ tpl, delay, onPreview, headingStyle, accentColor }: {
+  tpl: TemplateConfig; delay: number; onPreview: () => void
+  headingStyle: AccentStyle | null; accentColor: string | null
+}) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -194,7 +297,7 @@ function TemplateCard({ tpl, delay, onPreview, categoryHint }: { tpl: TemplateCo
           : '0 2px 12px rgba(15, 23, 42, 0.10)',
         transition: 'box-shadow 0.22s',
       }}>
-        <TemplateThumbnail template={tpl} fillWidth categoryHint={categoryHint} />
+        <TemplateThumbnail template={tpl} fillWidth accentStyle={headingStyle ?? undefined} color={accentColor ?? undefined} />
         {/* Hover preview button — no overlay tint */}
         <div style={{
           position: 'absolute', inset: 0,
@@ -208,29 +311,19 @@ function TemplateCard({ tpl, delay, onPreview, categoryHint }: { tpl: TemplateCo
             color: 'white',
             padding: '7px 20px', borderRadius: '8px',
             fontSize: '13px', fontWeight: 600,
-          }}>预览</div>
+          }}>Preview</div>
         </div>
 
 
-      </div>
-
-      <div style={{
-        padding: '10px 4px 0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{tpl.name}</div>
-          <div style={{ background: 'var(--ink)', borderRadius:'3px', paddingInline: '5px', fontSize: '11px', color: '#fff', marginTop: '2px' }}>{tpl.tag}</div>
-        </div>
       </div>
     </div>
     </div>
   )
 }
 
-function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: () => void }) {
+function TemplatePreviewModal({ tpl, headingStyle, accentColor, onClose }: {
+  tpl: TemplateConfig; headingStyle: AccentStyle | null; accentColor: string | null; onClose: () => void
+}) {
   const [size, setSize] = useState({ w: 340, h: 481 })
 
   useEffect(() => {
@@ -279,17 +372,17 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
           boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
           borderRadius: '2px',
         }}>
-          <TemplateThumbnail template={tpl} width={size.w} />
+          <TemplateThumbnail template={tpl} width={size.w} accentStyle={headingStyle ?? undefined} color={accentColor ?? undefined} />
         </div>
 
-        {/* Centered 使用模版 button */}
+        {/* Centered "use template" button */}
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           pointerEvents: 'none',
         }}>
           <button
-            onClick={() => { window.location.href = `/editor?template=${tpl.id}` }}
+            onClick={() => { window.location.href = buildEditorUrl(tpl.id, headingStyle, accentColor) }}
             style={{
               pointerEvents: 'all',
               background: 'var(--theme-blue)',
@@ -302,7 +395,7 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
               whiteSpace: 'nowrap',
             }}
           >
-            使用模版
+            Use template
           </button>
         </div>
 
@@ -319,7 +412,7 @@ function TemplatePreviewModal({ tpl, onClose }: { tpl: TemplateConfig; onClose: 
             fontSize: '18px', color: '#0f172a', lineHeight: 1,
             fontFamily: 'var(--font-sans)',
           }}
-          aria-label="关闭"
+          aria-label="Close"
         >
           ×
         </button>

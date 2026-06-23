@@ -6,9 +6,9 @@ import { getDeviceId, getProStatus, checkUsage, recordUsage, type ProStatus } fr
 import { setPendingImport } from '../lib/pendingImport'
 import { useAuth } from '../hooks/useAuth'
 
-const SUB_PLANS = new Set(['monthly', 'quarterly', 'yearly', 'trial7'])
+const SUB_PLANS = new Set(['day3', 'weekly', 'monthly', 'quarterly'])
 
-export default function UploadModal({ onClose, onLoginRequest }: { onClose: () => void; onLoginRequest?: () => void }) {
+export default function UploadModal({ onClose }: { onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [limitHit, setLimitHit] = useState(false)
@@ -45,7 +45,7 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
     if (auth.loggedIn) {
       // Logged-in: use DB-sourced daily import count from useAuth
       if (auth.dailyImportUsed >= importLimit) {
-        setError(`今日导入次数已用完（${importLimit} 次/天），明日 00:00 自动重置`)
+        setError(`Daily import limit reached (${importLimit}/day), resets at midnight`)
         return
       }
     } else {
@@ -69,7 +69,7 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
         if (res.status === 422) throw new Error('empty')
         if (res.status === 429) {
           const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || '今日导入次数已用完')
+          throw new Error(data.error || 'Daily import limit reached')
         }
         if (!res.ok) throw new Error('parse failed')
         const json = await res.json()
@@ -107,10 +107,10 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
       }}>
         <div style={{ padding: '40px' }}>
           <h2 style={{ fontFamily: "'Inter','Noto Sans SC',sans-serif", fontSize: '26px', marginBottom: '8px' }}>
-            上传已有简历
+            Upload resume
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--ink3)', marginBottom: '28px', fontWeight: 300 }}>
-            AI 将自动识别你的简历内容，并按照默认模板重新排版
+            AI will automatically read your resume and reformat it into the default template
           </p>
 
           <div
@@ -135,14 +135,14 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
                 <>
                   <strong>{file.name}</strong>
                   <br />
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>点击重新选择文件</span>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Click to choose another file</span>
                 </>
               ) : (
                 <>
-                  <strong style={{ color: 'var(--theme-blue)' }}>点击选择文件</strong> 或拖拽到此处
+                  <strong style={{ color: 'var(--theme-blue)' }}>Click to choose a file</strong> or drag it here
                   <br />
                   <span style={{ fontSize: '12px', color: 'var(--ink3)', display: 'block', marginTop: '6px' }}>
-                    支持 PDF、Word (.docx)，最大 10MB
+                    PDF or Word (.docx), max 10MB
                   </span>
                 </>
               )}
@@ -154,11 +154,7 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
           )}
           {limitHit && (
             <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '10px 12px', background: '#fef9c3', border: '1px solid #fde047', borderRadius: '8px' }}>
-              <span style={{ fontSize: '12.5px', color: '#854d0e' }}>今日导入次数已用完，登录后次数重置</span>
-              <button
-                onClick={() => { onClose(); onLoginRequest?.() }}
-                style={{ padding: '5px 14px', borderRadius: '6px', border: 'none', background: 'var(--highlight)', color: 'white', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter','Noto Sans SC',sans-serif", flexShrink: 0 }}
-              >登录</button>
+              <span style={{ fontSize: '12.5px', color: '#854d0e' }}>Daily import limit reached, try again tomorrow</span>
             </div>
           )}
 
@@ -171,7 +167,7 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
                 fontFamily: "'Inter','Noto Sans SC',sans-serif", fontSize: '14px',
                 cursor: 'pointer', color: 'var(--ink2)',
               }}
-            >取消</button>
+            >Cancel</button>
             <button
               onClick={handleStart} disabled={!file}
               style={{
@@ -181,7 +177,8 @@ export default function UploadModal({ onClose, onLoginRequest }: { onClose: () =
                 fontSize: '14px', fontWeight: 500,
                 cursor: file ? 'pointer' : 'not-allowed',
               }}
-            >开始导入</button>
+            >Start import
+            </button>
           </div>
         </div>
       </div>

@@ -66,7 +66,7 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   const lines      = text.split('\n')
   const nonEmpty   = lines.filter(l => l.trim().length > 2)
 
-  // ── Dim 1: 文字可提取性 ───────────────────────────────────────────────────
+  // ── Dim 1: Text extractability ───────────────────────────────────────────────────
   const replacements   = (text.match(/�/g) || []).length
   const replaceRatio   = charCount > 0 ? replacements / charCount : 1
   const isLikelyImage  = charCount < 80 && fileSizeKB > 40
@@ -74,25 +74,25 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   let d1Score = 20, d1Fb = ''
   if (isLikelyImage) {
     d1Score = 0
-    d1Fb = `疑似扫描件/图片型PDF（仅提取${charCount}字，文件${fileSizeKB.toFixed(0)}KB），ATS完全无法读取文字，必须使用可编辑版本`
+    d1Fb = `Likely a scanned/image PDF (only ${charCount} chars extracted, ${fileSizeKB.toFixed(0)}KB). ATS cannot read any text — use an editable version`
   } else if (charCount < 200) {
     d1Score = 4
-    d1Fb = `提取到文字过少（${charCount}字），内容严重不足，ATS无法完整解析`
+    d1Fb = `Too little text extracted (${charCount} chars); content is insufficient for ATS to parse fully`
   } else if (replaceRatio > 0.08) {
     d1Score = 5
-    d1Fb = `乱码字符占比 ${(replaceRatio * 100).toFixed(1)}%（${replacements}处U+FFFD），字体未嵌入导致ATS读到乱码`
+    d1Fb = `Garbled characters at ${(replaceRatio * 100).toFixed(1)}% (${replacements} U+FFFD); unembedded fonts make the ATS read garbage`
   } else if (replaceRatio > 0.015) {
     d1Score = 12
-    d1Fb = `少量乱码字符（${replacements}处），可能是部分字体未嵌入，建议重新导出PDF并嵌入字体`
+    d1Fb = `A few garbled characters (${replacements}); some fonts may not be embedded — re-export the PDF with fonts embedded`
   } else if (charCount < 400) {
     d1Score = 14
-    d1Fb = `内容偏少（${charCount}字），建议检查是否有内容未能提取`
+    d1Fb = `Light on content (${charCount} chars); check whether some text failed to extract`
   } else {
     d1Score = 20
-    d1Fb = `文字提取正常（${charCount}字），ATS可完整读取`
+    d1Fb = `Text extraction is normal (${charCount} chars); the ATS can read it fully`
   }
 
-  // ── Dim 2: 编码与乱码 ─────────────────────────────────────────────────────
+  // ── Dim 2: Encoding ─────────────────────────────────────────────────────
   const specialBullets = (text.match(/[◆◇□■●▶▸►◀‣⁃◦▪▫✦✧★☆]/g) || []).length
   const controlChars   = (text.match(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g) || []).length
   const compatCJK      = (text.match(/[豈-﫿︰-﹏]/g) || []).length
@@ -101,25 +101,25 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   let d2Score = 20, d2Fb = ''
   if (replaceRatio > 0.05 || controlChars > 20) {
     d2Score = 3
-    d2Fb = `严重编码异常：${replacements}处替换字符 + ${controlChars}个控制字符，字体嵌入失败，ATS解析错误`
+    d2Fb = `Severe encoding issues: ${replacements} replacement chars + ${controlChars} control chars; font embedding failed and the ATS will misparse`
   } else if (controlChars > 5) {
     d2Score = 9
-    d2Fb = `${controlChars}个控制字符（非打印字符），会干扰ATS对段落和字段的识别，建议用纯文本格式重新制作`
+    d2Fb = `${controlChars} control (non-printing) characters that interfere with ATS paragraph/field detection — rebuild in plain text`
   } else if (specialRatio > 0.025) {
     d2Score = 10
-    d2Fb = `大量特殊装饰符号（${specialBullets}处，如◆●■等），部分ATS无法识别，建议改为"-"或"·"`
+    d2Fb = `Many decorative symbols (${specialBullets}, e.g. ◆●■) that some ATS can't read — use "-" or "·" instead`
   } else if (compatCJK > 15) {
     d2Score = 13
-    d2Fb = `${compatCJK}个CJK兼容区汉字（可能来自繁体或旧字符集），建议统一使用标准GB/Unicode汉字`
+    d2Fb = `${compatCJK} CJK-compatibility characters (possibly from legacy character sets) — use standard Unicode characters`
   } else if (specialBullets > 15) {
     d2Score = 16
-    d2Fb = `${specialBullets}处特殊符号，主流ATS基本可识别，少量存在被忽略的风险`
+    d2Fb = `${specialBullets} special symbols; most ATS handle these, with a small risk of some being ignored`
   } else {
     d2Score = 20
-    d2Fb = `字符编码规范，无异常符号，ATS可正常读取全部字符`
+    d2Fb = `Character encoding is clean with no problematic symbols; the ATS can read every character`
   }
 
-  // ── Dim 3: 版面结构兼容 ───────────────────────────────────────────────────
+  // ── Dim 3: Layout structure ───────────────────────────────────────────────────
   const lineLengths  = nonEmpty.map(l => l.trim().length)
   const tabCount     = (text.match(/\t/g) || []).length
   const tabRatio     = charCount > 0 ? tabCount / charCount : 0
@@ -130,25 +130,25 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   let d3Score = 20, d3Fb = ''
   if (tabRatio > 0.025) {
     d3Score = 4
-    d3Fb = `大量制表符（Tab）：${tabCount}处，判定为表格布局。ATS提取内容顺序将严重错乱，必须改为纯文字排版`
+    d3Fb = `Many tab characters (${tabCount}) indicate a table layout. The ATS will badly scramble reading order — switch to plain-text layout`
   } else if (shortRatio > 0.62 && med < 38) {
     d3Score = 6
-    d3Fb = `${(shortRatio*100).toFixed(0)}%行长<28字符（中位数${med.toFixed(0)}字），判定为双栏布局。ATS提取时两列内容混在一起，无法正确解析`
+    d3Fb = `${(shortRatio*100).toFixed(0)}% of lines are under 28 chars (median ${med.toFixed(0)}), indicating a two-column layout. The ATS mixes the columns and can't parse them`
   } else if (shortRatio > 0.5 && med < 48) {
     d3Score = 12
-    d3Fb = `行长分布不均（${(shortRatio*100).toFixed(0)}%短行），疑似双栏或含文本框，ATS解析顺序可能错乱`
+    d3Fb = `Uneven line lengths (${(shortRatio*100).toFixed(0)}% short lines) suggest two columns or text boxes; the ATS reading order may be scrambled`
   } else if (tabRatio > 0.008) {
     d3Score = 14
-    d3Fb = `检测到制表符（${tabCount}处），可能含有局部表格，建议全部替换为空格或纯文字排版`
+    d3Fb = `Tab characters detected (${tabCount}); there may be a local table — replace tabs with spaces or plain text`
   } else if (med < 30 && nonEmpty.length > 10) {
     d3Score = 15
-    d3Fb = `平均行长较短（中位数${med.toFixed(0)}字），排版较紧凑，建议确认是否为单栏连续文字`
+    d3Fb = `Average line length is short (median ${med.toFixed(0)}); the layout is tight — confirm it's a single column of continuous text`
   } else {
     d3Score = 20
-    d3Fb = `单栏布局，行长分布均匀（中位数${med.toFixed(0)}字/行），ATS解析顺序正确`
+    d3Fb = `Single-column layout with even line lengths (median ${med.toFixed(0)}/line); the ATS reads it in the correct order`
   }
 
-  // ── Dim 4: 关键字段可识别率 ───────────────────────────────────────────────
+  // ── Dim 4: Key field detection ───────────────────────────────────────────────
   const hasEmail    = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(text)
   const normalizedPhone = text.replace(/[\s\-–—·.()​‌‍⁠­﻿]/g, '')
   const digitChunks = (text.match(/\d+/g) || []).join('')
@@ -161,19 +161,19 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   const misses: string[] = []
 
   let d4Score = 0
-  if (hasEmail) d4Score += 5; else misses.push('邮箱')
-  if (hasPhone) d4Score += 5; else misses.push('手机')
-  if (hasWork)  d4Score += 4; else misses.push('工作经历标题')
-  if (hasEdu)   d4Score += 3; else misses.push('教育背景标题')
+  if (hasEmail) d4Score += 5; else misses.push('email')
+  if (hasPhone) d4Score += 5; else misses.push('phone')
+  if (hasWork)  d4Score += 4; else misses.push('Experience heading')
+  if (hasEdu)   d4Score += 3; else misses.push('Education heading')
   if (hasSkill) d4Score += 1
-  if (hasDate)  d4Score += 2; else misses.push('标准日期格式')
+  if (hasDate)  d4Score += 2; else misses.push('standard date format')
   d4Score = Math.min(20, d4Score)
 
   const d4Fb = misses.length === 0
-    ? `邮箱、手机、章节标题、日期均可被ATS正确识别与提取`
-    : `无法识别：${misses.join('、')}——ATS将无法正确提取这些字段，影响候选人信息入库`
+    ? `Email, phone, section headings, and dates are all detected and extractable by the ATS`
+    : `Not detected: ${misses.join(', ')} — the ATS can't extract these fields, hurting how your info is stored`
 
-  // ── Dim 5: 文件格式规范 ────────────────────────────────────────────────────
+  // ── Dim 5: File format ────────────────────────────────────────────────────
   const isDocx = mime.includes('openxmlformats') || mime.includes('docx')
   const isPdf  = mime.includes('pdf')
   const isDoc  = (mime.includes('msword') || mime.includes('.doc')) && !isDocx
@@ -184,32 +184,32 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   if (isDocx) {
     d5Score = Math.max(0, 20 - sizeDeduct)
     d5Fb = sizeDeduct > 0
-      ? `Word(.docx)兼容性最佳，但文件偏大（${sizeMB.toFixed(1)}MB），部分ATS有超时风险，建议压缩图片至2MB以内`
-      : `Word(.docx)格式，国内主流ATS（Moka/北森/Beisen）兼容性最佳，字段解析最准确`
+      ? `Word (.docx) has the best compatibility, but the file is large (${sizeMB.toFixed(1)}MB); some ATS may time out — compress images to under 2MB`
+      : `Word (.docx) format has excellent ATS compatibility and the most accurate field parsing`
   } else if (isPdf) {
     if (isLikelyImage) {
       d5Score = 2
-      d5Fb = `图片型PDF，ATS无法提取任何文字，请提交可编辑的Word文档或文字型PDF`
+      d5Fb = `Image-based PDF — the ATS can't extract any text. Submit an editable Word doc or a text-based PDF`
     } else {
       d5Score = Math.max(0, 16 - sizeDeduct)
       d5Fb = sizeDeduct > 0
-        ? `PDF格式偏大（${sizeMB.toFixed(1)}MB），建议压缩至1MB以内；文字型PDF解析可行但不如Word稳定`
-        : `文字型PDF，主流ATS可解析，但部分系统对PDF字段提取不如Word准确`
+        ? `The PDF is large (${sizeMB.toFixed(1)}MB); compress to under 1MB. Text PDFs parse okay but less reliably than Word`
+        : `Text-based PDF; most ATS can parse it, though some extract fields less accurately than from Word`
     }
   } else if (isDoc) {
     d5Score = Math.max(0, 11 - sizeDeduct)
-    d5Fb = `旧版.doc格式（Word 97-2003），现代ATS解析不稳定，强烈建议另存为.docx后重新上传`
+    d5Fb = `Legacy .doc format (Word 97-2003) parses unreliably in modern ATS — save as .docx and re-upload`
   } else {
     d5Score = 4
-    d5Fb = `未知文件格式，ATS可能拒绝或无法识别，请提交.docx或文字型.pdf`
+    d5Fb = `Unknown file format; the ATS may reject it — submit a .docx or a text-based .pdf`
   }
 
   const dims: Dim[] = [
-    { key: 'extractability', name: '文字提取',   score: d1Score, feedback: d1Fb },
-    { key: 'encoding',       name: '编码规范',   score: d2Score, feedback: d2Fb },
-    { key: 'layout',         name: '版面结构',   score: d3Score, feedback: d3Fb },
-    { key: 'field_detect',   name: '字段识别',   score: d4Score, feedback: d4Fb },
-    { key: 'file_format',    name: '文件格式',   score: d5Score, feedback: d5Fb },
+    { key: 'extractability', name: 'Text Extraction',   score: d1Score, feedback: d1Fb },
+    { key: 'encoding',       name: 'Encoding',   score: d2Score, feedback: d2Fb },
+    { key: 'layout',         name: 'Layout Structure',   score: d3Score, feedback: d3Fb },
+    { key: 'field_detect',   name: 'Field Detection',   score: d4Score, feedback: d4Fb },
+    { key: 'file_format',    name: 'File Format',   score: d5Score, feedback: d5Fb },
   ]
   const totalScore = dims.reduce((s, d) => s + d.score, 0)
 
@@ -218,13 +218,13 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
   const best  = [...dims].sort((a, b) => b.score - a.score)[0]
   let overview: string
   if (totalScore >= 95) {
-    overview = `ATS通过率完美（${totalScore}/100）。所有维度均表现优秀，简历完全符合 ATS 规范。`
+    overview = `Perfect ATS score (${totalScore}/100). Every dimension is excellent and your resume fully meets ATS standards.`
   } else if (totalScore >= 85) {
-    overview = `ATS通过率高（${totalScore}/100）。整体符合 ATS 规范，仅需小幅优化。最需改进的是${worst.name}（${worst.score}/20）：${worst.feedback}`
+    overview = `High ATS score (${totalScore}/100). Overall it meets ATS standards with only minor tweaks needed. Most to improve: ${worst.name} (${worst.score}/20): ${worst.feedback}`
   } else if (totalScore >= 60) {
-    overview = `ATS通过率中等（${totalScore}/100），存在可修复的技术问题。最需改进的是${worst.name}（${worst.score}/20）：${worst.feedback}——修复后通过率可显著提升。`
+    overview = `Moderate ATS score (${totalScore}/100) with fixable technical issues. Most to improve: ${worst.name} (${worst.score}/20): ${worst.feedback} — fixing it will raise your score significantly.`
   } else {
-    overview = `ATS通过率偏低（${totalScore}/100），存在严重技术问题，可能在自动筛选阶段被直接过滤。最关键问题：${worst.name}（${worst.score}/20）——${worst.feedback}`
+    overview = `Low ATS score (${totalScore}/100) with serious technical issues that may get you filtered out automatically. Top issue: ${worst.name} (${worst.score}/20) — ${worst.feedback}`
   }
 
   // Extract name/jobtitle heuristically from first few lines
@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file     = formData.get('file') as File | null
     const deviceId = String(formData.get('deviceId') ?? '')
-    if (!file) return NextResponse.json({ error: '请上传简历文件' }, { status: 400 })
+    if (!file) return NextResponse.json({ error: 'Please upload a resume file' }, { status: 400 })
 
     const guard = guardAI(req, deviceId)
     if (guard) return guard
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
     if (quotaGuard) return quotaGuard
 
     if (file.size > 5 * 1024 * 1024)
-      return NextResponse.json({ error: '文件过大，请上传 5 MB 以内的文件' }, { status: 413 })
+      return NextResponse.json({ error: 'File too large, please upload a file under 5 MB' }, { status: 413 })
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const mime   = file.type || ''
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       resumeText = buffer.toString('utf8', 0, Math.min(buffer.length, 50000))
         .replace(/[^\x20-\x7e一-鿿　-〿＀-￯\n\r\t]/g, ' ').replace(/ {3,}/g, ' ').trim()
     } else {
-      return NextResponse.json({ error: '请上传 PDF 或 Word（.docx/.doc）格式的简历' }, { status: 415 })
+      return NextResponse.json({ error: 'Please upload a PDF or Word (.docx/.doc) resume' }, { status: 415 })
     }
 
     // ── Rule-based ATS analysis (instant, no AI needed) ──
@@ -318,6 +318,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (e) {
     console.error('ats-score error:', e)
-    return NextResponse.json({ error: '服务器错误，请稍后重试' }, { status: 500 })
+    return NextResponse.json({ error: 'Server error, please try again later' }, { status: 500 })
   }
 }

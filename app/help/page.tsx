@@ -6,95 +6,78 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 const FAQ = [
   {
-    cat: "基础使用",
+    cat: "Basics",
     items: [
       {
-        q: "简力全开是免费使用的吗？",
-        a: "是的，基础功能完全免费：使用 5 套基础模板、在线编辑简历、PDF 下载（含水印）、模块拖拽排序，以及 2 次终身免费 AI 简历分析。如需去除水印、使用全部模板、或每日20次使用 AI 优化等高级功能，需升级到 Pro 会员或单次购买。",
+        q: "Is ResumeRight free?",
+        a: "Yes. All templates, the online editor, PDF download, module drag-and-drop, and the AI features are completely free.",
       },
       {
-        q: "我需要注册账号吗？",
-        a: "不需要。简力全开采用设备识别技术，您打开网页即可直接使用，所有数据存储在您的本地浏览器中。购买记录也绑定在您的设备上，无需账号即可恢复。",
+        q: "Do I need to create an account?",
+        a: "No. ResumeRight is device-based — just open the app and start. All your data is stored in your local browser, no account required.",
       },
       {
-        q: "我的简历数据会被上传到服务器吗？",
-        a: "简历内容默认存储在您的本地浏览器（localStorage）中，不会主动上传。仅在您主动使用 AI 分析、PDF 下载等功能时，相关内容会被临时发送至服务器处理，处理完成后立即释放，不留存。",
+        q: "Is my resume data uploaded to a server?",
+        a: "Your resume content is stored in your local browser (localStorage) and is not uploaded by default. Only when you use features like AI analysis or PDF download is the relevant content temporarily sent to the server for processing, then released immediately and not retained.",
       },
       {
-        q: "如何保存简历？",
-        a: '编辑器会自动保存您的最新草稿到浏览器本地。您也可以点击顶栏的"保存"按钮手动保存，保存后可在左侧"我的简历"历史列表中查看和切换。简历数据存储在浏览器本地，清除浏览器数据会导致记录丢失。',
+        q: "How do I save my resume?",
+        a: 'The editor auto-saves your latest draft locally. You can also save manually; saved resumes appear in the "My Resumes" history list on the left. Data is stored locally, so clearing your browser data will remove it.',
       },
     ],
   },
   {
-    cat: "模板与设计",
+    cat: "Templates & Design",
     items: [
       {
-        q: "如何切换模板？",
-        a: '在编辑器左侧面板的"模板"选项卡中，可以浏览并点击切换模板。切换模板不会丢失您的简历内容，只改变外观样式。带有锁图标的模板为 Pro 专属，升级后可解锁全部使用。',
+        q: "How do I switch templates?",
+        a: 'Open the "Templates" tab in the left panel of the editor to browse and click to switch. Switching templates keeps your content and only changes the look. All templates are free to use.',
       },
       {
-        q: "如何修改模板颜色？",
-        a: '在编辑器左侧面板的"颜色"选项卡中，可以从多个预设主题色中选择，或自定义颜色。颜色仅影响当前简历的主题色调。',
+        q: "How do I change the template color?",
+        a: 'Open the "Colors" tab in the left panel to pick from preset theme colors or set a custom one. Color only affects the current resume.',
       },
       {
-        q: "如何添加照片？",
-        a: '在左侧"模块"选项卡中找到"照片"，点击后上传图片，支持裁剪和调整位置。部分模板默认无照片区域，可选择含照片布局的模板。',
+        q: "How do I add a photo?",
+        a: 'Find "Photo" in the "Modules" tab on the left, then upload an image — you can crop and reposition it. Some templates have no photo area by default; choose a layout that includes a photo.',
       },
       {
-        q: "简历有几页？页数超出怎么办？",
-        a: '编辑器会自动将内容分页，底部工具栏会显示当前页数。建议将简历控制在 1-2 页内。如内容偏多，可适当精简各条描述，或在"模块"中隐藏不必要的模块。',
+        q: "How many pages does a resume have, and what if it overflows?",
+        a: 'The editor paginates content automatically and the bottom toolbar shows the page count. Aim for 1–2 pages. If there is too much content, trim descriptions or hide unneeded modules in the "Modules" tab.',
       },
     ],
   },
   {
-    cat: "AI 功能",
+    cat: "AI Features",
     items: [
       {
-        q: "AI 简历分析有哪些功能？",
-        a: "AI 分析包含两个模式：①「简历润色」— 不填岗位信息时，AI 会逐条审视简历描述，找出表达薄弱或信息不足的地方，给出加强建议；②「岗位定向优化」— 填入目标 JD 后，AI 会分析简历与岗位的匹配度（面试机会预测）、给出针对性改写建议，并生成 10 道面试题预测。所有改动均以高亮差异形式展示，您可以逐条选择应用或忽略。",
+        q: "What can AI resume analysis do?",
+        a: "AI analysis has two modes: (1) Polishing — without a job description, AI reviews each line and suggests stronger wording; (2) Job-targeted optimization — with a target job, AI scores your fit (interview chance prediction), suggests rewrites, and generates 10 interview questions. All changes are shown as highlighted diffs you can apply or ignore one by one.",
       },
       {
-        q: "AI 分析在哪里使用？",
-        a: "有两个入口：①首页「分析我的简历」板块，上传或粘贴简历内容即可直接分析，无需打开编辑器，免费用户终身可用 2 次；②编辑器顶栏的「AI 优化」按钮，分析结果可直接一键应用到当前简历，为 Pro 专属功能。",
+        q: "Where can I use AI analysis?",
+        a: 'Two places: (1) the "Analyze my resume" section on the home page, where you can upload or paste a resume without opening the editor; (2) the "AI Improve" button in the editor top bar, whose results can be applied to your current resume in one click.',
       },
       {
-        q: "可以用 AI 解析我的旧简历吗？",
-        a: "可以。在编辑器顶栏点击「上传简历」，选择您的 PDF 或 Word 简历文件，AI 会自动提取内容并填充到编辑器中。解析后的简历与您手动填写的完全一样，可以继续编辑和美化。",
+        q: "Can AI parse my old resume?",
+        a: 'Yes. Click "Upload resume" in the editor top bar, choose your PDF or Word file, and AI will extract the content and fill the editor. The parsed resume behaves just like one you typed and can be edited further.',
       },
       {
-        q: "AI 分析每天有次数限制吗？",
-        a: "Pro 订阅用户每天可使用 AI 分析 20 次；单次购买用户享有 2 次（终身）；免费用户终身可在首页免费使用 2 次。",
+        q: "Are there daily limits on AI features?",
+        a: "No — AI analysis and the other AI tools are all free and unlimited.",
       },
     ],
   },
   {
-    cat: "下载与导出",
+    cat: "Download & Export",
     items: [
       {
-        q: "如何下载 PDF？",
-        a: '点击顶栏的"下载"按钮，即可下载简历 PDF。免费用户下载的 PDF 底部会有水印，升级 Pro 或单次购买后可去除水印。',
+        q: "How do I download a PDF?",
+        a: 'Click the "Download" button in the top bar to download your resume as a PDF.',
       },
       {
-        q: "PDF 下载失败怎么办？",
-        a: "PDF 由服务器端生成，通常需要 5-15 秒。如遇下载失败，可稍等片刻后重试。如持续失败，请检查网络连接或联系客服。",
-      },
-    ],
-  },
-  {
-    cat: "付费与账单",
-    items: [
-      {
-        q: "购买记录会丢失吗？",
-        a: "购买记录存储在您的设备浏览器本地（localStorage + Cookie）。在同一设备同一浏览器中，记录会一直保留。清除浏览器数据、换设备或换浏览器可能导致记录丢失。建议购买后截图保存订单号，如需找回记录可联系客服。",
-      },
-      {
-        q: "学生优惠如何申请？",
-        a: '点击定价页或编辑器内的"学生认证"按钮，使用您的校园邮箱（.edu.cn 或 .edu 结尾）完成验证，即可享受全场 5 折优惠。认证有效期 1 年。',
-      },
-      {
-        q: "支持退款吗？",
-        a: "数字内容商品一经交付不支持退款。如因产品故障导致服务完全无法使用，可联系客服核实后处理。详见使用条款。",
+        q: "What if PDF download fails?",
+        a: "PDFs are generated server-side and usually take 5–15 seconds. If it fails, wait a moment and retry, or check your network connection.",
       },
     ],
   },
@@ -175,12 +158,12 @@ export default function HelpPage() {
               letterSpacing: "-1px",
             }}
           >
-            帮助中心
+            Help Center
           </h1>
           <p
             style={{ color: "#64748b", marginBottom: "48px", fontSize: "15px" }}
           >
-            常见问题解答，帮助你快速上手简力全开
+            Frequently asked questions to help you get started with ResumeRight
           </p>
 
           {FAQ.map((section) => (
@@ -220,7 +203,7 @@ export default function HelpPage() {
                 marginBottom: "6px",
               }}
             >
-              还有其他问题？
+              Still have questions?
             </div>
             <p
               style={{
@@ -230,8 +213,8 @@ export default function HelpPage() {
                 lineHeight: 1.6,
               }}
             >
-              如果在上面没有找到答案，欢迎通过邮件联系我们，我们通常在 1-2
-              个工作日内回复。
+              If you didn't find an answer above, email us — we usually reply
+              within 1–2 business days.
             </p>
             <a
               href="mailto:839081822@qq.com"
@@ -246,7 +229,7 @@ export default function HelpPage() {
                 fontWeight: 600,
               }}
             >
-              发送邮件
+              Send email
             </a>
           </div>
 
@@ -265,7 +248,7 @@ export default function HelpPage() {
                 fontSize: "14px",
               }}
             >
-              返回首页
+              Back to home
             </Link>
           </div>
         </div>

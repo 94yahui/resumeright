@@ -11,8 +11,10 @@ import {
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Camera,
   Trash2, Lightbulb, X, Check, Copy, Pencil, GripVertical,
 } from 'lucide-react'
-import { TEMPLATES, CATEGORY_MAP, TemplateConfig, AccentStyle, FontPair } from '../../lib/templates-config'
+import { TEMPLATES, TemplateConfig, AccentStyle, FontPair, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES } from '../../lib/templates-config'
+import Dropdown from '../../components/Dropdown'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
+import AccentStylePreview from '../../lib/AccentStylePreview'
 import { ResumeData, Entry, SectionKey } from '../../lib/types'
 import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
 
@@ -20,16 +22,6 @@ const SINGLE_LAYOUTS = new Set([
   'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
   'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
 ])
-
-const FEATURED_PHOTO_LAYOUTS = new Set(['linkedin-banner', 'diagonal-photo', 'namecard-header'])
-function tplSortKey(t: TemplateConfig): number {
-  const isSingle = SINGLE_LAYOUTS.has(t.layout)
-  if (FEATURED_PHOTO_LAYOUTS.has(t.layout) && t.showPhoto) return 0
-  if (isSingle && t.showPhoto)  return 1
-  if (!isSingle && t.showPhoto) return 2
-  if (isSingle && !t.showPhoto) return 3
-  return 4
-}
 
 const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   exp: 'hasExp',
@@ -45,16 +37,16 @@ const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
 }
 
 const MODULES_META: Record<string, { label: string; icon: React.ReactNode; bg: string; isEntry: boolean }> = {
-  exp:       { label: '工作经历', icon: <Briefcase size={14} color="#334155" />,     bg: '#dbeafe', isEntry: true },
-  edu:       { label: '教育背景', icon: <GraduationCap size={14} color="#334155" />,  bg: '#fef3c7', isEntry: true },
-  summary:   { label: '个人简介', icon: <FileText size={14} color="#334155" />,       bg: '#f1f5f9', isEntry: false },
-  skills:    { label: '专业技能', icon: <Zap size={14} color="#334155" />,            bg: '#fee2e2', isEntry: false },
-  project:   { label: '项目经历', icon: <Globe size={14} color="#334155" />,          bg: '#dbeafe', isEntry: true },
-  language:  { label: '语言能力', icon: <MessageSquare size={14} color="#334155" />,  bg: '#ede9fe', isEntry: true },
-  award:     { label: '荣誉奖项', icon: <Trophy size={14} color="#334155" />,         bg: '#fef3c7', isEntry: true },
-  cert:      { label: '资质证书', icon: <FileCheck size={14} color="#334155" />,      bg: '#dbeafe', isEntry: true },
-  volunteer: { label: '志愿服务', icon: <HandHelping size={14} color="#334155" />,    bg: '#f1f5f9', isEntry: true },
-  interest:  { label: '兴趣爱好', icon: <Sparkles size={14} color="#334155" />,       bg: '#fee2e2', isEntry: true },
+  exp:       { label: 'Work Experience', icon: <Briefcase size={14} color="#334155" />,     bg: '#dbeafe', isEntry: true },
+  edu:       { label: 'Education', icon: <GraduationCap size={14} color="#334155" />,  bg: '#fef3c7', isEntry: true },
+  summary:   { label: 'Summary', icon: <FileText size={14} color="#334155" />,       bg: '#f1f5f9', isEntry: false },
+  skills:    { label: 'Skills', icon: <Zap size={14} color="#334155" />,            bg: '#fee2e2', isEntry: false },
+  project:   { label: 'Projects', icon: <Globe size={14} color="#334155" />,          bg: '#dbeafe', isEntry: true },
+  language:  { label: 'Languages', icon: <MessageSquare size={14} color="#334155" />,  bg: '#ede9fe', isEntry: true },
+  award:     { label: 'Awards', icon: <Trophy size={14} color="#334155" />,         bg: '#fef3c7', isEntry: true },
+  cert:      { label: 'Certifications', icon: <FileCheck size={14} color="#334155" />,      bg: '#dbeafe', isEntry: true },
+  volunteer: { label: 'Volunteering', icon: <HandHelping size={14} color="#334155" />,    bg: '#f1f5f9', isEntry: true },
+  interest:  { label: 'Interests', icon: <Sparkles size={14} color="#334155" />,       bg: '#fee2e2', isEntry: true },
 }
 
 const DEFAULT_SECTION_ORDER: SectionKey[] = ['exp', 'project', 'edu', 'language', 'award', 'cert', 'volunteer', 'interest']
@@ -65,11 +57,7 @@ function getOrderableKeys(layout: string): SectionKey[] {
   return DEFAULT_SECTION_ORDER
 }
 
-const COLORS = [
-  '#0f172a', '#1e3a8a', '#0789ec', '#475569',
-  '#991b1b', '#4f46e5', '#be185d', '#0e7490',
-  '#c2410c', '#15803d',
-]
+const COLORS = ACCENT_COLOR_PRESETS
 
 interface SortableRowProps {
   id: string
@@ -174,7 +162,7 @@ function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabe
       {editingLabelKey !== id && (
         <button
           onClick={() => onStartEdit(id, displayLabel)}
-          title="重命名"
+          title="Rename"
           style={{
             padding: '3px', border: 'none', background: 'transparent',
             color: '#94a3b8', cursor: 'pointer', flexShrink: 0,
@@ -196,7 +184,7 @@ function SortableModuleRow({ id, isOrderable, data, editingLabelKey, editingLabe
             fontFamily: 'var(--font-sans)', flexShrink: 0,
           }}
         >
-          {m.isEntry ? '+' : '编辑'}
+          {m.isEntry ? '+' : 'Edit'}
         </button>
       )}
 
@@ -279,29 +267,15 @@ export default function LeftPanel({
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([])
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  const [catFilter, setCatFilter] = useState<string>('all')
   const [layoutFilter, setLayoutFilter] = useState<string>('all')
 
-  const sortedTpls = TEMPLATES
-    .filter(t => {
-      if (catFilter !== 'all' && !t.categories.includes(catFilter)) return false
-      if (layoutFilter === 'photo')   return t.showPhoto
-      if (layoutFilter === 'nophoto') return !t.showPhoto
-      if (layoutFilter === 'single')  return SINGLE_LAYOUTS.has(t.layout)
-      if (layoutFilter === 'double')  return !SINGLE_LAYOUTS.has(t.layout)
-      return true
-    })
-    .sort((a, b) => tplSortKey(a) - tplSortKey(b))
-
-  // Unique-layout representatives first (one per layout+photo combo), variants after
-  const seenLayouts = new Set<string>()
-  const tplHeads: TemplateConfig[] = []
-  const tplTails: TemplateConfig[] = []
-  for (const t of sortedTpls) {
-    const key = `${t.layout}|${String(t.showPhoto)}`
-    if (seenLayouts.has(key)) { tplTails.push(t) } else { seenLayouts.add(key); tplHeads.push(t) }
-  }
-  const filteredTpls = [...tplHeads, ...tplTails]
+  const filteredTpls = ORDERED_TEMPLATES.filter(t => {
+    if (layoutFilter === 'photo')   return t.showPhoto
+    if (layoutFilter === 'nophoto') return !t.showPhoto
+    if (layoutFilter === 'single')  return SINGLE_LAYOUTS.has(t.layout)
+    if (layoutFilter === 'double')  return !SINGLE_LAYOUTS.has(t.layout)
+    return true
+  })
 
   const currentLayout = TEMPLATES.find(t => t.id === templateId)?.layout ?? 'single-classic'
   const orderableKeys = getOrderableKeys(currentLayout)
@@ -383,7 +357,7 @@ export default function LeftPanel({
   // not on every render. Used by Effect B as a dependency to re-run after filter reset.
   const filteredIdSet = useMemo(
     () => new Set(filteredTpls.map(t => t.id)),
-    [catFilter, layoutFilter] // eslint-disable-line react-hooks/exhaustive-deps
+    [layoutFilter] // eslint-disable-line react-hooks/exhaustive-deps
   )
   // Ref lets Effect A read the current set without adding it to its own deps.
   const filteredIdSetRef = useRef(filteredIdSet)
@@ -403,7 +377,6 @@ export default function LeftPanel({
       // Active template is hidden by current filters — reset so it becomes visible,
       // then let Effect B scroll after the re-render.
       pendingScrollRef.current = true
-      setCatFilter('all')
       setLayoutFilter('all')
     } else if (prevTab !== 'tpl') {
       // Normal tab switch with template already in view — scroll immediately via Effect B.
@@ -444,11 +417,11 @@ export default function LeftPanel({
     const day = d.getDate()
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
-    return `${month}月${day}日 ${hh}:${mm}`
+    return `${month}/${day} ${hh}:${mm}`
   }
 
   const TABS = ['tpl', 'mod', 'color', 'hist'] as const
-  const TAB_LABELS = ['模板', '模块', '样式', '我的']
+  const TAB_LABELS = ['Templates', 'Modules', 'Style', 'Mine']
 
   return (
     <div style={{
@@ -456,7 +429,9 @@ export default function LeftPanel({
       borderRight: '1px solid #e2e8f0',
       display: 'flex', flexDirection: 'column',
       flexShrink: 0, overflow: 'hidden',
-      ...(isMobile ? { height: '100%' } : { flex: 1, minHeight: 0 }),
+      // Use flex longhand (not the `flex` shorthand) so toggling isMobile never
+      // mixes shorthand + longhand on the same element — React warns on that.
+      ...(isMobile ? { height: '100%' } : { flexGrow: 1, flexBasis: 0, minHeight: 0 }),
     }}>
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
         {TABS.map((t, i) => (
@@ -496,43 +471,35 @@ export default function LeftPanel({
               boxShadow: filterShadow ? '0 3px 8px rgba(0,0,0,0.08)' : 'none',
               transition: 'box-shadow 0.2s',
             }}>
-            {/* Row 1: industry */}
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '10px 12px 4px' }}>
-              {[['all','全部'],['general','通用'],['student','应届生'],['tech','科技'],['design','设计'],['finance','金融'],['management','管理']].map(([val, label]) => (
-                <button key={val} onClick={() => { setCatFilter(val); scrollContainerRef.current?.scrollTo({ top: 0 }) }} style={{
-                  padding: '3px 9px', borderRadius: '20px', border: 'none',
-                  fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-                  background: catFilter === val ? 'var(--theme-blue)' : '#f1f5f9',
-                  color: catFilter === val ? '#fff' : '#64748b',
-                }}>{label}</button>
-              ))}
-            </div>
-            {/* Row 2: layout */}
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 12px 10px' }}>
-              {[['all','全部'],['photo','带照片'],['nophoto','无照片'],['single','单栏'],['double','双栏']].map(([val, label]) => (
-                <button key={val} onClick={() => { setLayoutFilter(val); scrollContainerRef.current?.scrollTo({ top: 0 }) }} style={{
-                  padding: '3px 9px', borderRadius: '20px', border: 'none',
-                  fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-                  background: layoutFilter === val ? '#334155' : '#f1f5f9',
-                  color: layoutFilter === val ? '#fff' : '#64748b',
-                }}>{label}</button>
-              ))}
+            {/* Layout / photo filter */}
+            <div style={{ padding: '10px 12px 10px' }}>
+              <Dropdown
+                size="sm"
+                minWidth={0}
+                value={layoutFilter}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'photo', label: 'With photo' },
+                  { value: 'nophoto', label: 'No photo' },
+                  { value: 'single', label: 'One column' },
+                  { value: 'double', label: 'Two column' },
+                ]}
+                onChange={v => { setLayoutFilter(v); scrollContainerRef.current?.scrollTo({ top: 0 }) }}
+              />
             </div>
             </div>
             {/* Count */}
             <div style={{ padding: '0 14px 6px', fontSize: '10px', fontWeight: 600, color: '#94a3b8', letterSpacing: '0.5px' }}>
-              {filteredTpls.length} 套模板
+              {filteredTpls.length} templates
             </div>
             {/* Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
               {filteredTpls.map(tpl => (
-                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} categoryHint={catFilter} />
+                <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} />
               ))}
               {filteredTpls.length === 0 && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '32px 0', color: '#94a3b8', fontSize: '13px' }}>
-                  暂无匹配模板
+                  No matching templates
                 </div>
               )}
             </div>
@@ -544,19 +511,19 @@ export default function LeftPanel({
           <div style={disabled ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
             {/* Personal info */}
             <div style={{ padding: '12px 14px 8px', fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b' }}>
-              个人信息
+              Personal info
             </div>
             <div style={{ padding: '0 10px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <button onClick={() => onAddModule('contact')} style={infoBtn}>
-                <UserRound size={13} /> 基本信息 & 联系方式
+                <UserRound size={13} /> Basic info & contact
               </button>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button onClick={() => onAddModule('photo')} style={{ ...infoBtn, flex: 1 }}>
-                  <Camera size={13} /> 上传照片
+                  <Camera size={13} /> Upload photo
                 </button>
                 {data.photo && (
                   <button onClick={() => onAddModule('photo-clear')} style={{ ...infoBtn, flex: 1, color: '#dc2626', borderColor: 'rgba(220,38,38,0.25)' }}>
-                    <Trash2 size={13} /> 移除照片
+                    <Trash2 size={13} /> Remove photo
                   </button>
                 )}
               </div>
@@ -566,7 +533,7 @@ export default function LeftPanel({
 
             {/* Section list */}
             <div style={{ padding: '10px 14px 6px', fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b' }}>
-              内容模块
+              Content modules
             </div>
 
             <DndContext
@@ -604,7 +571,7 @@ export default function LeftPanel({
 
             {/* Color */}
             <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
-              主题色
+              Theme color
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
               {COLORS.map(c => (
@@ -632,12 +599,12 @@ export default function LeftPanel({
                 padding: '7px 14px', borderRadius: '12px', border: '1px solid #e2e8f0',
                 background: 'white', fontSize: '12px', cursor: 'pointer',
                 fontFamily: 'var(--font-sans)', color: '#334155', fontWeight: 500,
-              }}>应用</button>
+              }}>Apply</button>
             </div>
 
             {/* Font pair */}
             <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
-              字体风格
+              Font style
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
               {FONT_PAIRS.map(fp => (
@@ -667,7 +634,7 @@ export default function LeftPanel({
 
             {/* Accent style */}
             <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>
-              标题样式
+              Heading style
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', marginBottom: '20px' }}>
               {ACCENT_STYLES.map(as => (
@@ -677,6 +644,7 @@ export default function LeftPanel({
                   background: currentAccentStyle === as.value ? '#f8fafc' : 'white',
                   fontFamily: 'var(--font-sans)', textAlign: 'left',
                   transition: 'all 0.15s', position: 'relative',
+                  minWidth: 0, overflow: 'hidden',
                 }}>
                   <AccentStylePreview style={as.value} color={currentColor} />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px', fontWeight: 500 }}>{as.label}</div>
@@ -696,7 +664,7 @@ export default function LeftPanel({
               display: 'flex', alignItems: 'flex-start', gap: '6px',
             }}>
               <Lightbulb size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
-              样式调整独立于模板，切换模板后重置
+              Style tweaks are independent of the template and reset when you switch templates
             </div>
           </div>
         )}
@@ -710,7 +678,7 @@ export default function LeftPanel({
                 textAlign: 'center', color: '#94a3b8',
                 fontSize: '13px', padding: '32px 0',
               }}>
-                暂无保存记录
+                No saved resumes yet
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -735,7 +703,7 @@ export default function LeftPanel({
                     {confirmDeleteId === entry.id ? (
                       <div>
                         <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600, marginBottom: '8px', wordBreak: 'break-word' }}>
-                          确定删除「{entry.name}」？
+                          Delete "{entry.name}"?
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
@@ -752,7 +720,7 @@ export default function LeftPanel({
                               color: 'white', fontWeight: 600, cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
                             }}
-                          >删除</button>
+                          >Delete</button>
                           <button
                             onClick={e => { e.stopPropagation(); setConfirmDeleteId(null) }}
                             style={{
@@ -761,7 +729,7 @@ export default function LeftPanel({
                               color: '#64748b', cursor: 'pointer',
                               fontFamily: 'var(--font-sans)',
                             }}
-                          >取消</button>
+                          >Cancel</button>
                         </div>
                       </div>
                     ) : (
@@ -783,7 +751,7 @@ export default function LeftPanel({
                               onDuplicateHistory?.(fresh)
                               setHistoryEntries(loadHistory())
                             }}
-                            title="复制简历"
+                            title="Duplicate resume"
                             style={{
                               padding: '4px 7px', borderRadius: '8px', fontSize: '12px',
                               border: '1px solid #e2e8f0', background: 'white',
@@ -819,166 +787,14 @@ export default function LeftPanel({
 }
 
 const FONT_PAIRS: { value: FontPair; label: string; desc: string; cssFont: string }[] = [
-  { value: 'modern-sans', label: '无衬线体', desc: '简洁现代，通用性强', cssFont: "Inter, sans-serif" },
-  { value: 'serif-heading', label: '衬线体', desc: '典雅正式，学术感强', cssFont: "Georgia, 'Noto Serif SC', serif" },
-  { value: 'mono-accent', label: '等宽体', desc: '技术感，代码/设计行业', cssFont: "'JetBrains Mono', 'Courier New', monospace" },
+  { value: 'modern-sans', label: 'Sans-serif', desc: 'Clean, modern, versatile', cssFont: "Inter, sans-serif" },
+  { value: 'serif-heading', label: 'Serif', desc: 'Elegant, formal, academic', cssFont: "Georgia, 'Noto Serif SC', serif" },
+  { value: 'mono-accent', label: 'Monospace', desc: 'Technical, for code/design fields', cssFont: "'JetBrains Mono', 'Courier New', monospace" },
 ]
 
-const ACCENT_STYLES: { value: AccentStyle; label: string }[] = [
-  { value: 'underline-bar', label: '下划线条' },
-  { value: 'left-bar',      label: '左侧竖线' },
-  { value: 'side-icon',     label: '圆点连线' },
-  { value: 'background-pill', label: '背景色块' },
-  { value: 'thin-line',     label: '细线底框' },
-  { value: 'double-line',   label: '双线夹标题' },
-  { value: 'triple-bar',    label: '渐变竖条' },
-  { value: 'arrow-trio',   label: '渐隐箭头' },
-  { value: 'gradient-band', label: '渐变色带' },
-  { value: 'flanked-line',  label: '双侧横线' },
-  { value: 'slash-prefix',  label: '斜杠前缀' },
-  { value: 'highlight-mark', label: '荧光划线' },
-  { value: 'plain-bold',    label: '粗体简洁' },
-]
 
-function SquirclePill({ children, bg }: { children: React.ReactNode; bg: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const apply = () => {
-      const w = el.offsetWidth, h = el.offsetHeight
-      if (!w || !h) return
-      const r = 2, l = r * 1.528, k = r * 0.569
-      el.style.clipPath = `path('M ${l} 0 H ${w-l} C ${w-k} 0 ${w} ${k} ${w} ${l} V ${h-l} C ${w} ${h-k} ${w-k} ${h} ${w-l} ${h} H ${l} C ${k} ${h} 0 ${h-k} 0 ${h-l} V ${l} C 0 ${k} ${k} 0 ${l} 0 Z')`
-    }
-    apply()
-    const ro = new ResizeObserver(apply)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return <span ref={ref} style={{ display: 'inline-block', background: bg, padding: '3px 7px' }}>{children}</span>
-}
-
-function AccentStylePreview({ style, color }: { style: AccentStyle; color: string }) {
-  const c = color || '#0f172a'
-  const text = '工作经历'
-
-  const baseText: React.CSSProperties = {
-    fontSize: '9px', fontWeight: 700, color: c,
-    letterSpacing: '0.8px', textTransform: 'uppercase',
-    lineHeight: 1, whiteSpace: 'nowrap',
-  }
-
-  switch (style) {
-    case 'underline-bar':
-      return (
-        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px' }}>
-          <div style={baseText}>{text}</div>
-          <div style={{ height: '2px', width: '24px', background: c }} />
-        </div>
-      )
-    case 'left-bar':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <div style={{ width: '3px', height: '13px', background: c, flexShrink: 0 }} />
-          <div style={baseText}>{text}</div>
-        </div>
-      )
-    case 'side-icon':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: c, flexShrink: 0 }} />
-          <div style={baseText}>{text}</div>
-          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.3 }} />
-        </div>
-      )
-    case 'background-pill':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <SquirclePill bg={c}>
-            <span style={{ ...baseText, color: '#fff' }}>{text}</span>
-          </SquirclePill>
-        </div>
-      )
-    case 'thin-line':
-      return (
-        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '3px' }}>
-          <div style={baseText}>{text}</div>
-          <div style={{ height: '1px', background: c }} />
-        </div>
-      )
-    case 'double-line':
-      return (
-        <div style={{ height: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}>
-          <div style={{ height: '1px', background: c }} />
-          <div style={{ ...baseText, textAlign: 'center' }}>{text}</div>
-          <div style={{ height: '1px', background: c }} />
-        </div>
-      )
-    case 'triple-bar':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <div style={baseText}>{text}</div>
-          <div style={{ display: 'flex', gap: '2px', alignItems: 'center', marginLeft: '2px' }}>
-            <div style={{ width: '4px', height: '10px', background: c }} />
-            <div style={{ width: '3px', height: '10px', background: c, opacity: 0.6 }} />
-            <div style={{ width: '2px', height: '10px', background: c, opacity: 0.3 }} />
-          </div>
-        </div>
-      )
-    case 'arrow-trio':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <div style={baseText}>{text}</div>
-          <div style={{ display: 'flex', gap: '1px', alignItems: 'center', flexShrink: 0, lineHeight: 1 }}>
-            <span style={{ fontSize: '11px', color: c, opacity: 1 }}>›</span>
-            <span style={{ fontSize: '11px', color: c, opacity: 0.55 }}>›</span>
-            <span style={{ fontSize: '11px', color: c, opacity: 0.22 }}>›</span>
-          </div>
-        </div>
-      )
-    case 'gradient-band':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', marginLeft: '-4px', paddingLeft: '6px', borderLeft: `2px solid ${c}`, background: `linear-gradient(to right, ${c}22, transparent)` }}>
-          <div style={baseText}>{text}</div>
-        </div>
-      )
-    case 'flanked-line':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.6 }} />
-          <div style={{ ...baseText, whiteSpace: 'nowrap' }}>{text}</div>
-          <div style={{ flex: 1, height: '1px', background: c, opacity: 0.6 }} />
-        </div>
-      )
-    case 'slash-prefix':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '9px', color: c, opacity: 0.45, letterSpacing: '-1px', lineHeight: 1, flexShrink: 0 }}>//</span>
-          <div style={baseText}>{text}</div>
-        </div>
-      )
-    case 'highlight-mark':
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <div style={{ ...baseText, position: 'relative', zIndex: 1 }}>{text}</div>
-            <div style={{ position: 'absolute', bottom: '-1px', left: '-2px', right: '-2px', height: '42%', background: `${c}38`, borderRadius: '1px', zIndex: 0 }} />
-          </div>
-        </div>
-      )
-    case 'plain-bold':
-    default:
-      return (
-        <div style={{ height: '30px', display: 'flex', alignItems: 'center' }}>
-          <div style={{ ...baseText, fontSize: '10px' }}>{text}</div>
-        </div>
-      )
-  }
-}
-
-function TplCard({ tpl, active, onClick, thumbW, categoryHint }: {
-  tpl: TemplateConfig; active: boolean; onClick: () => void; thumbW?: number; categoryHint?: string
+function TplCard({ tpl, active, onClick, thumbW }: {
+  tpl: TemplateConfig; active: boolean; onClick: () => void; thumbW?: number
 }) {
   return (
     <div data-tpl-id={tpl.id} onClick={onClick} style={{
@@ -993,13 +809,7 @@ function TplCard({ tpl, active, onClick, thumbW, categoryHint }: {
     onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = '#e2e8f0' }}
     >
       <div style={{ background: '#f1f5f9' }}>
-        {thumbW ? <TemplateThumbnail template={tpl} width={thumbW} categoryHint={categoryHint} /> : null}
-      </div>
-      <div style={{ padding: '6px 8px', borderTop: '1px solid #e2e8f0' }}>
-        <div style={{
-          fontSize: '11px', fontWeight: 600, color: '#0f172a',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{tpl.name}</div>
+        {thumbW ? <TemplateThumbnail template={tpl} width={thumbW} /> : null}
       </div>
     </div>
   )

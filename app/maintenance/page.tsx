@@ -22,13 +22,13 @@ export default function MaintenancePage() {
         </svg>
       </div>
       <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: '0 0 12px' }}>
-        网站维护中
+        Under maintenance
       </h1>
       <p style={{ fontSize: '15px', color: '#64748b', maxWidth: '380px', lineHeight: 1.7, margin: '0 0 8px' }}>
-        我们正在对系统进行升级维护，预计很快恢复。
+        We're upgrading the system and expect to be back shortly.
       </p>
       <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>
-        感谢您的耐心等待，请稍后再访问。
+        Thanks for your patience — please check back later.
       </p>
     </div>
   )

@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: '文件过大，请上传 5 MB 以内的文件。' }, { status: 413 })
+      return NextResponse.json({ error: 'File too large, please upload a file under 5 MB.' }, { status: 413 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
