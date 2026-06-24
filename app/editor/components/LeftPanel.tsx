@@ -346,7 +346,7 @@ export default function LeftPanel({
   useLayoutEffect(() => {
     const el = scrollContainerRef.current
     if (!el) return
-    const measure = () => setThumbW(Math.floor((el.clientWidth - 28 - 10) / 2)) // 28=lr padding, 10=gap
+    const measure = () => setThumbW(Math.floor(el.clientWidth - 28)) // 28=lr padding; single column
     measure()
     const obs = new ResizeObserver(measure)
     obs.observe(el)
@@ -493,7 +493,7 @@ export default function LeftPanel({
               {filteredTpls.length} templates
             </div>
             {/* Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', padding: '0 14px 14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', padding: '0 14px 14px' }}>
               {filteredTpls.map(tpl => (
                 <TplCard key={tpl.id} tpl={tpl} active={templateId === tpl.id} onClick={() => onTemplateChange(tpl.id)} thumbW={thumbW} />
               ))}
