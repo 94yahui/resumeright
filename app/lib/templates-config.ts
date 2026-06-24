@@ -17,6 +17,7 @@ export type LayoutType =
   | 'section-cards'
   | 'hanging-headings'
   | 'top-band'
+  | 'right-masthead'
 
 
 export type AccentStyle =
@@ -105,7 +106,9 @@ export const TEMPLATES: TemplateConfig[] = [
 
   // ── single-centered ──
   { id: 'minimal-line', free: true, layout: 'single-centered', accentStyle: 'thin-line', accentColor: '#0f172a', fontPair: 'serif-heading', showPhoto: false },
-  { id: 'pro-centered-photo', free: true, layout: 'single-centered', accentStyle: 'underline-bar', accentColor: '#0f172a', fontPair: 'modern-sans', showPhoto: true, photoPlacement: 'left-beside' },
+
+  // ── right-masthead (right-aligned name + accent bar on the right edge) ──
+  { id: 'masthead-right', free: true, layout: 'right-masthead', accentStyle: 'plain-bold', accentColor: '#0e7490', fontPair: 'modern-sans', showPhoto: false },
 
   // ── sidebar-left-narrow ──
   { id: 'pro-narrow-serif', free: true, layout: 'sidebar-left-narrow', accentStyle: 'left-bar', accentColor: '#9f1239', fontPair: 'serif-heading', showPhoto: false },
@@ -124,15 +127,15 @@ export const TEMPLATES: TemplateConfig[] = [
   { id: 'pro-two-col-serif', free: true, layout: 'two-column-balance', accentStyle: 'left-bar', accentColor: '#155e75', fontPair: 'serif-heading', showPhoto: true },
 
   // ── header-card ──
-  { id: 'pro-card-minimal', free: true, layout: 'header-card', accentStyle: 'thin-line', accentColor: '#0f172a', fontPair: 'modern-sans', showPhoto: false },
+  { id: 'pro-card-minimal', free: true, layout: 'header-card', accentStyle: 'side-icon', accentColor: '#0f172a', fontPair: 'modern-sans', showPhoto: false },
   { id: 'pro-card-pill', free: true, layout: 'header-card', accentStyle: 'background-pill', accentColor: '#4f46e5', fontPair: 'modern-sans', showPhoto: true },
 
   // ── accent-stripe ──
-  { id: 'pro-stripe-teal', free: true, layout: 'accent-stripe', accentStyle: 'underline-bar', accentColor: '#0f766e', fontPair: 'modern-sans', showPhoto: false },
+  { id: 'pro-stripe-teal', free: true, layout: 'accent-stripe', accentStyle: 'gradient-band', accentColor: '#0f766e', fontPair: 'modern-sans', showPhoto: false },
   { id: 'pro-stripe-photo', free: true, layout: 'accent-stripe', accentStyle: 'left-bar', accentColor: '#6d28d9', fontPair: 'modern-sans', showPhoto: true },
 
   // ── bottom-strip ──
-  { id: 'pro-bottom-navy', free: true, layout: 'bottom-strip', accentStyle: 'underline-bar', accentColor: '#1e3a8a', fontPair: 'modern-sans', showPhoto: false },
+  { id: 'pro-bottom-navy', free: true, layout: 'bottom-strip', accentStyle: 'arrow-trio', accentColor: '#1e3a8a', fontPair: 'modern-sans', showPhoto: false },
   { id: 'pro-bottom-photo', free: true, layout: 'bottom-strip', accentStyle: 'underline-bar', accentColor: '#1e293b', fontPair: 'modern-sans', showPhoto: true },
 
   // ── photo-forward single layouts ──
@@ -157,8 +160,8 @@ export const TEMPLATES: TemplateConfig[] = [
   { id: 'pro-hanging-photo', free: true, layout: 'hanging-headings', accentStyle: 'underline-bar', accentColor: '#1e3a8a', fontPair: 'modern-sans', showPhoto: true },
 
   // ── top-band (two-tier color masthead) ──
-  { id: 'pro-band', free: true, layout: 'top-band', accentStyle: 'underline-bar', accentColor: '#1e293b', fontPair: 'modern-sans', showPhoto: false },
-  { id: 'pro-band-photo', free: true, layout: 'top-band', accentStyle: 'underline-bar', accentColor: '#0a66c2', fontPair: 'modern-sans', showPhoto: true },
+  { id: 'pro-band', free: true, layout: 'top-band', accentStyle: 'left-bar', accentColor: '#1e293b', fontPair: 'modern-sans', showPhoto: false },
+  { id: 'pro-band-photo', free: true, layout: 'top-band', accentStyle: 'left-bar', accentColor: '#0a66c2', fontPair: 'modern-sans', showPhoto: true },
 ]
 
 export function getTemplate(id: string): TemplateConfig {
@@ -168,15 +171,15 @@ export function getTemplate(id: string): TemplateConfig {
 const SINGLE_COLUMN_LAYOUTS = new Set<LayoutType>([
   'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
   'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
-  'timeline-rail', 'editorial', 'section-cards', 'hanging-headings', 'top-band',
+  'timeline-rail', 'editorial', 'section-cards', 'hanging-headings', 'top-band', 'right-masthead',
 ])
 
 export function isSingleColumn(layout: LayoutType): boolean {
   return SINGLE_COLUMN_LAYOUTS.has(layout)
 }
 
-// Newer single-column layouts to surface near the front of the no-photo group.
-const FEATURED_NEW_LAYOUTS = new Set<LayoutType>(['timeline-rail', 'editorial', 'section-cards', 'hanging-headings', 'top-band'])
+// Single-column no-photo layouts surfaced near the front of the gallery (after classic).
+const FEATURED_NEW_LAYOUTS = new Set<LayoutType>(['single-centered', 'timeline-rail', 'editorial', 'section-cards', 'hanging-headings', 'top-band'])
 
 // Default display order (landing library + editor tab): single-column no-photo first
 // (North-American resumes are usually photo-free), then single-column with-photo,

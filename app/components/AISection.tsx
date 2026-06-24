@@ -79,25 +79,15 @@ const features = [
 export default function AISection() {
   return (
     <section style={{
-      background: 'linear-gradient(160deg, #06080f 0%, #001d3d 50%, #06080f 100%)',
+      background: '#f6f9fc',
+      borderTop: '1px solid #eef2f7', borderBottom: '1px solid #eef2f7',
       position: 'relative', overflow: 'hidden',
     }}>
-      {/* Subtle grid overlay */}
+      {/* Subtle grid overlay for light-paper texture */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.03) 1px, transparent 1px)',
         backgroundSize: '32px 32px',
-      }} />
-      {/* Ambient orbs */}
-      <div style={{
-        position: 'absolute', width: '700px', height: '700px', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 65%)',
-        top: '-300px', left: '-200px', pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute', width: '600px', height: '600px', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(109,40,217,0.1) 0%, transparent 65%)',
-        bottom: '-200px', right: '-100px', pointerEvents: 'none',
       }} />
 
       <div id="ai" style={{ padding: '96px 32px', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
@@ -105,14 +95,14 @@ export default function AISection() {
         <div style={{ textAlign: 'center' }} className="fade-in">
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
-            background: 'rgba(56,189,248,0.12)',
-            border: '1px solid rgba(56,189,248,0.35)',
+            background: 'rgba(7,137,236,0.1)',
+            border: '1px solid rgba(7,137,236,0.28)',
             padding: '5px 14px', borderRadius: '20px',
             marginBottom: '22px',
           }}>
             <span style={{
               fontSize: '11px', letterSpacing: '2.5px', textTransform: 'uppercase',
-              color: '#38bdf8', fontWeight: 700,
+              color: '#0789ec', fontWeight: 700,
             }}>
               Main Features
             </span>
@@ -121,12 +111,12 @@ export default function AISection() {
           <h2 style={{
             fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
             fontSize: 'clamp(28px, 4vw, 42px)',
-            letterSpacing: '-1px', color: '#ffffff',
+            letterSpacing: '-1px', color: '#0f172a',
             lineHeight: 1.2, marginBottom: '18px', fontWeight: 700,
           }}>
             Everything you need to build a{' '}
             <span style={{
-              background: 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)',
+              background: 'linear-gradient(90deg, #0789ec 0%, #38bdf8 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
@@ -135,17 +125,17 @@ export default function AISection() {
           </h2>
 
           <p style={{
-            fontSize: '16px', color: 'rgba(255,255,255,0.72)',
+            fontSize: '16px', color: '#64748b',
             maxWidth: '540px', margin: '0 auto', lineHeight: 1.8, fontWeight: 400,
           }}>
             Optimize, import, check, and export — everything to take you from draft to a polished, ready-to-send resume, all in one place
           </p>
         </div>
 
-        {/* Cards grid */}
+        {/* Cards grid — 3 per row on desktop (6 features → 2 tidy rows) */}
         <div className="ai-grid" style={{
-          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '18px', marginTop: '60px', maxWidth: '860px', marginLeft: 'auto', marginRight: 'auto',
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '18px', marginTop: '60px', maxWidth: '1140px', marginLeft: 'auto', marginRight: 'auto',
         }}>
           {features.map((f, i) => (
             <AICard key={f.title} feature={f} delay={i * 0.08} />
@@ -153,12 +143,17 @@ export default function AISection() {
         </div>
 
         <style>{`
+          @media (max-width: 960px) { .ai-grid { grid-template-columns: repeat(2, 1fr) !important; max-width: 720px !important; } }
           @media (max-width: 520px) { .ai-grid { grid-template-columns: 1fr !important; } }
         `}</style>
       </div>
     </section>
   )
 }
+
+// Single brand accent for the clean light cards.
+const BRAND = '#0789ec'
+const BRAND_RGB = '7,137,236'
 
 function AICard({ feature, delay }: { feature: typeof features[0], delay: number }) {
   const Icon = feature.icon
@@ -167,28 +162,29 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
     <div className="fade-in" style={{ transitionDelay: `${delay}s` }}>
       <div
         style={{
-          background: feature.cardBg,
-          border: `1px solid ${feature.borderColor}`,
+          background: '#ffffff',
+          border: '1px solid #e8edf3',
           borderRadius: '20px', padding: '32px',
           position: 'relative', overflow: 'hidden',
           transition: 'border-color 0.25s, box-shadow 0.25s, transform 0.25s',
+          boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
           cursor: 'default', height: '100%', boxSizing: 'border-box',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.borderColor = feature.solidColor
-          e.currentTarget.style.boxShadow = `0 0 40px rgba(${feature.rgb},0.18), 0 8px 32px rgba(0,0,0,0.4)`
+          e.currentTarget.style.borderColor = `rgba(${BRAND_RGB},0.5)`
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(15,23,42,0.10)'
           e.currentTarget.style.transform = 'translateY(-4px)'
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.borderColor = feature.borderColor
-          e.currentTarget.style.boxShadow = 'none'
+          e.currentTarget.style.borderColor = '#e8edf3'
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(15,23,42,0.04)'
           e.currentTarget.style.transform = 'translateY(0)'
         }}
       >
-        {/* Number watermark */}
+        {/* Number watermark — very faint */}
         <div style={{
           position: 'absolute', top: '20px', right: '-5px',
-          fontSize: '240px', fontWeight: 800, fontStyle: "italic", color: `rgba(${feature.rgb},0.03)`,
+          fontSize: '240px', fontWeight: 800, fontStyle: "italic", color: `rgba(${BRAND_RGB},0.05)`,
           letterSpacing: '-2px', lineHeight: 1, pointerEvents: 'none',
           fontFamily: "'Inter', sans-serif",
         }}>
@@ -198,22 +194,22 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
         {/* Icon box */}
         <div style={{
           width: '52px', height: '52px',
-          background: feature.iconBg,
+          background: `rgba(${BRAND_RGB},0.1)`,
           borderRadius: '14px', marginBottom: '20px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: `1.5px solid rgba(${feature.rgb},0.25)`,
+          border: `1.5px solid rgba(${BRAND_RGB},0.2)`,
         }}>
-          <Icon size={24} color={feature.solidColor} strokeWidth={1.8} />
+          <Icon size={24} color={BRAND} strokeWidth={1.8} />
         </div>
 
         {/* Tag */}
         <div style={{
           display: 'inline-block', marginBottom: '12px',
           padding: '3px 10px',
-          background: `rgba(${feature.rgb},0.15)`,
-          color: feature.solidColor, borderRadius: '20px',
+          background: `rgba(${BRAND_RGB},0.1)`,
+          color: BRAND, borderRadius: '20px',
           fontSize: '11px', fontWeight: 700,
-          border: `1px solid rgba(${feature.rgb},0.3)`,
+          border: `1px solid rgba(${BRAND_RGB},0.22)`,
           letterSpacing: '0.5px',
         }}>
           {feature.tag}
@@ -222,14 +218,14 @@ function AICard({ feature, delay }: { feature: typeof features[0], delay: number
         <h3 style={{
           fontFamily: "'Inter', 'Noto Sans SC', sans-serif",
           fontSize: '19px', fontWeight: 700,
-          color: '#ffffff', marginBottom: '12px', letterSpacing: '-0.3px',
+          color: '#0f172a', marginBottom: '12px', letterSpacing: '-0.3px',
           display: 'block',
         }}>
           {feature.title}
         </h3>
 
         <p style={{
-          fontSize: '14px', color: 'var(--paper3)',
+          fontSize: '14px', color: '#475569',
           lineHeight: 1.8, fontWeight: 400, margin: 0,
         }}>
           {feature.desc}

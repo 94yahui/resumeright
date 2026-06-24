@@ -29,6 +29,26 @@ export default function RootLayout({
           name="format-detection"
           content="telephone=no, date=no, email=no, address=no"
         />
+        {/* Google Translate rewrites text nodes in place, which makes React's later
+            removeChild/insertBefore throw "NotFoundError: ... not a child of this node".
+            Patch those two methods to skip safely when the node isn't where React expects.
+            Runs before hydration so it's in place before any reconciliation. */}
+        <Script id="translate-dom-guard" strategy="beforeInteractive">
+          {`(function(){
+            if (window.__rcTranslateGuard) return;
+            window.__rcTranslateGuard = true;
+            var rm = Node.prototype.removeChild;
+            Node.prototype.removeChild = function(child){
+              if (child && child.parentNode !== this) return child;
+              return rm.apply(this, arguments);
+            };
+            var ins = Node.prototype.insertBefore;
+            Node.prototype.insertBefore = function(newNode, refNode){
+              if (refNode && refNode.parentNode !== this) return newNode;
+              return ins.apply(this, arguments);
+            };
+          })();`}
+        </Script>
       </head>
       <body>
         {children}

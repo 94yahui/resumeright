@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { getDeviceId } from '../lib/payment'
 import { useAuth } from '../hooks/useAuth'
-import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveATSResultToCache, getCachedATSResult, RESUME_CACHED_EVENT } from '../lib/resumeCache'
+import { saveResumeToCache, getCachedResumeName, getCachedResumeFile, saveATSResultToCache, getCachedATSResult, saveParsedDataToCache, getCachedParsedData, RESUME_CACHED_EVENT } from '../lib/resumeCache'
 
 interface ATSDimension { key: string; name: string; score: number; feedback: string }
 interface ATSResult {
@@ -96,6 +96,17 @@ function LoadingState({ apiDone, onComplete, filename }: {
 }
 
 // ── Radar chart ───────────────────────────────────────────────────────────────
+// Tiered score gradients + gradient-text fill — shared by the overall ATS score and each
+// dimension score, matching the Resume Report (analysis) score UI. `ratio` is 0–1.
+function tierGradient(ratio: number): string {
+  return ratio >= 0.8 ? 'linear-gradient(135deg, #06d6a0, #34e0b8)'
+    : ratio >= 0.6 ? 'linear-gradient(135deg, #f59e0b, #fde047)'
+    : 'linear-gradient(135deg, #f43f5e, #fb7185)'
+}
+function gradientText(g: string): React.CSSProperties {
+  return { background: g, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }
+}
+
 function RadarChart({ dimensions }: { dimensions: ATSDimension[] }) {
   const cx = 240, cy = 240, R = 170, N = dimensions.length
   const toXY = (i: number, r: number) => ({
@@ -133,8 +144,8 @@ function RadarChart({ dimensions }: { dimensions: ATSDimension[] }) {
 // ── Dimension card ────────────────────────────────────────────────────────────
 function DimCard({ dim }: { dim: ATSDimension }) {
   const pct = dim.score / 20
-  const color = pct >= 0.8 ? '#0789ec' : pct >= 0.6 ? '#d97706' : '#dc2626'
-  const bg    = pct >= 0.8 ? '#eff6ff' : pct >= 0.6 ? '#fffbeb' : '#fef2f2'
+  const grad = tierGradient(pct)
+  const bg   = pct >= 0.8 ? '#ecfdf5' : pct >= 0.6 ? '#fffbeb' : '#fef2f2'
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: '14px',
@@ -143,7 +154,7 @@ function DimCard({ dim }: { dim: ATSDimension }) {
       boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
     }}>
       <div style={{ flexShrink: 0, background: bg, borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '62px' }}>
-        <div style={{ fontSize: '26px', fontWeight: 900, color, lineHeight: 1.1 }}>{dim.score}</div>
+        <div style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1.15, padding: '0 2px', fontFamily: "'Inter',sans-serif", ...gradientText(grad) }}>{dim.score}</div>
         <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500, marginTop: '1px' }}>/ 20</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -199,7 +210,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
       <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 14px', lineHeight: 1.35 }}>
-        Will your resume pass the ATS screening?
+        Run a free ATS scan
       </h3>
       <p style={{ fontSize: '14.5px', color: '#64748b', lineHeight: 1.8, margin: '0 0 24px' }}>
         Check compatibility across five ATS dimensions: <span style={{ color: '#0789ec', fontWeight: 600 }}>text extraction, encoding, layout structure, field detection, and file format</span>
@@ -230,7 +241,7 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
         >Sign in</button>
       ) : (
         /* ── Normal / logged-in exhausted / cached: primary action button ── */
-        <button onClick={handleButtonClick} style={{
+        <button className="ats-btn" onClick={handleButtonClick} style={{
           width: '100%', padding: '16px 24px', borderRadius: '9999px', fontSize: '16px', fontWeight: 700,
           background: exhausted && !needLogin ? '#cbd5e1' : 'linear-gradient(135deg, #0789ec, #0f5fc2)',
           color: 'white', border: 'none',
@@ -238,16 +249,17 @@ function UploadCard({ onFile, hintText, exhausted, exhaustedMsg, needLogin, onLo
           fontFamily: 'var(--font-sans)',
           boxShadow: exhausted && !needLogin ? 'none' : '0 4px 14px rgba(7,137,236,0.35)',
           transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}
           onMouseEnter={e => { if (!(exhausted && !needLogin)) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(7,137,236,0.45)' } }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; if (!(exhausted && !needLogin)) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(7,137,236,0.35)' }}
         >
           {hasCached ? 'Start ATS check' : 'Upload your resume'}
           {hasCached && !exhausted && (
-            <span style={{ marginLeft: '6px', letterSpacing: '-1px' }}>
-              <span style={{ opacity: 1 }}>›</span>
-              <span style={{ opacity: 0.5 }}>›</span>
-              <span style={{ opacity: 0.22 }}>›</span>
+            <span style={{ marginLeft: '10px', fontSize: '24px', lineHeight: 1, letterSpacing: '-3px' }}>
+              <span className="ats-arrow">›</span>
+              <span className="ats-arrow">›</span>
+              <span className="ats-arrow">›</span>
             </span>
           )}
         </button>
@@ -276,7 +288,8 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
   result: ATSResult; onReset: () => void
   onGoEditor: () => void; goingToEditor: boolean
 }) {
-  const scoreColor = result.totalScore >= 80 ? '#0789ec' : result.totalScore >= 60 ? '#d97706' : '#dc2626'
+  // Same tiered gradient + gradient-text fill as the Resume Report (analysis) score.
+  const scoreGradient = tierGradient(result.totalScore / 100)
   const scoreLabel = result.totalScore >= 80 ? 'Excellent' : result.totalScore >= 60 ? 'Good' : 'Needs work'
   return (
     <>
@@ -298,10 +311,10 @@ function Results({ result, onReset, onGoEditor, goingToEditor }: {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
           }}>
-            <div style={{ fontSize: '88px', fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-3px' }}>{result.totalScore}</div>
+            <div style={{ fontSize: '80px', fontWeight: 900, lineHeight: 1.12, letterSpacing: '-1px', padding: '0 8px', maxWidth: '100%', fontFamily: "'Inter',sans-serif", ...gradientText(scoreGradient) }}>{result.totalScore}</div>
             <div style={{ fontSize: '16px', color: '#94a3b8', marginTop: '4px' }}>/ 100</div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: scoreColor, marginTop: '8px' }}>{scoreLabel}</div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '12px' }}>Overall ATS score</div>
+            <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '8px', ...gradientText(scoreGradient) }}>{scoreLabel}</div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '12px' }}>ATS compatibility score</div>
           </div>
           <div style={{
             flex: '1 1 0', minWidth: '180px',
@@ -425,18 +438,8 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
   }, [])
 
   function handleUseCached() {
-    const cached = getCachedATSResult() as (ATSResult & { parsedData?: unknown }) | null
+    const cached = getCachedATSResult() as ATSResult | null
     if (cached) {
-      // Re-populate sessionStorage so the editor can pre-fill without a second parse
-      const resumeForEditor = cached.parsedData ?? (cached.name ? { name: cached.name, jobtitle: cached.jobtitle || '' } : null)
-      if (resumeForEditor) {
-        try {
-          sessionStorage.setItem('rc_ats_import', JSON.stringify({
-            filename: (cachedFilename ?? '').replace(/\.[^.]+$/, ''),
-            resume: resumeForEditor,
-          }))
-        } catch {}
-      }
       setResult(cached)
       setFilename(cachedFilename ?? '')
       setPhase('result')
@@ -473,22 +476,8 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
       } else {
         pendingResult.current = data
         saveATSResultToCache(data)
-        // Store parsed resume so editor can pre-fill without a second API call.
-        // Always write the entry (even when AI parse failed) so the editor's from_ats
-        // handler always runs. Include original filename for use as document title.
-        const resumeForEditor = data.parsedData ?? (data.name ? { name: data.name, jobtitle: data.jobtitle || '' } : null)
-        console.log('[ATS] parsedData:', data.parsedData, '| resumeForEditor:', resumeForEditor)
-        if (resumeForEditor) {
-          try {
-            sessionStorage.setItem('rc_ats_import', JSON.stringify({
-              filename: file.name.replace(/\.[^.]+$/, ''),
-              resume: resumeForEditor,
-            }))
-            console.log('[ATS] sessionStorage written, filename:', file.name)
-          } catch {}
-        } else {
-          console.warn('[ATS] Nothing to store — parsedData null and no name from heuristic')
-        }
+        // Resume parsing for the editor is deferred to handleGoEditor (on-demand), so the
+        // AI parse only runs if the user actually clicks through to the editor.
       }
     } catch {
       pendingError.current = { msg: 'Network error, please try again later', needLogin: false }
@@ -507,9 +496,37 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
     }
   }
 
-  function handleGoEditor() {
+  async function handleGoEditor() {
     setGoingToEditor(true)
-    // parsedData was already stored in sessionStorage during the ATS scan
+    // Parse the resume now (on demand) — reuse a cached parse if we already did it for this
+    // file, otherwise call the AI parse once. Falls back to the heuristic name on any failure.
+    let resumeForEditor: unknown = getCachedParsedData()
+    if (!resumeForEditor) {
+      try {
+        const file = getCachedResumeFile()
+        if (file) {
+          const fd = new FormData()
+          fd.append('file', file)
+          fd.append('deviceId', getDeviceId())
+          const res = await fetch('/api/ai/parse-resume', { method: 'POST', body: fd })
+          if (res.ok) {
+            const json = await res.json()
+            if (json?.data) { resumeForEditor = json.data; saveParsedDataToCache(json.data) }
+          }
+        }
+      } catch { /* fall back to heuristic below */ }
+    }
+    if (!resumeForEditor && result?.name) {
+      resumeForEditor = { name: result.name, jobtitle: result.jobtitle || '' }
+    }
+    try {
+      if (resumeForEditor) {
+        sessionStorage.setItem('rc_ats_import', JSON.stringify({
+          filename: (filename ?? '').replace(/\.[^.]+$/, ''),
+          resume: resumeForEditor,
+        }))
+      }
+    } catch {}
     window.location.href = '/editor?from_ats=1'
   }
 
@@ -524,10 +541,10 @@ export default function ATSSection({ onLoginRequest }: { onLoginRequest?: () => 
           <div style={{ maxWidth: '1060px', margin: '0 auto', padding: '0 24px', display: 'flex', gap: '56px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 280px', minWidth: '240px', position: 'relative' }}>
               <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 800, color: '#0f172a', margin: '0 0 20px', lineHeight: 1.15 }}>
-                Will your resume<br />pass the screening?
+                Can an ATS actually<br />read your resume?
               </h2>
               <p style={{ fontSize: 'clamp(14px,2vw,17px)', color: '#64748b', lineHeight: 1.8, margin: 0 }}>
-                Over 90% of large companies use an ATS to auto-filter resumes, and most applicants get screened out here without ever knowing. Upload your resume and get instant AI scoring and improvement tips.
+                Over 90% of large companies run resumes through an ATS first, and many get garbled or dropped before a human ever sees them — purely because of formatting. Upload yours for an instant compatibility score and the exact fixes.
               </p>
             </div>
             <div style={{ flex: '0 1 420px', minWidth: '0', maxWidth: '460px', width: '100%', position: 'relative' }}>
