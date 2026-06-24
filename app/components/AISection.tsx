@@ -10,7 +10,7 @@ const features = [
     cardBg: 'rgba(14,165,233,0.06)',
     borderColor: 'rgba(14,165,233,0.3)',
     title: 'ATS-ready Check',
-    desc: 'Scan your resume across five technical dimensions — text extraction, encoding, layout, field detection, and file format — to find exactly why it gets filtered out.',
+    desc: 'Scan your resume across five technical dimensions: text extraction, encoding, layout, field detection, and file format. See exactly why it gets filtered out.',
     tag: 'ATS',
     num: '1',
   },
@@ -22,7 +22,7 @@ const features = [
     cardBg: 'rgba(167,139,250,0.05)',
     borderColor: 'rgba(167,139,250,0.3)',
     title: 'Inline Rewrite',
-    desc: 'Every work bullet is rewritten inline — stronger verbs, clearer logic — with highlights and strikethroughs you accept in one click. Strictly based on what you wrote, with no made-up numbers.',
+    desc: 'Every work bullet is rewritten inline with stronger verbs and clearer logic. Highlights and strikethroughs let you accept each change in one click, strictly based on what you wrote, with no made-up numbers.',
     tag: 'Optimize',
     num: '2',
   },
@@ -34,7 +34,7 @@ const features = [
     cardBg: 'rgba(251,191,36,0.05)',
     borderColor: 'rgba(251,191,36,0.3)',
     title: 'Import in Seconds',
-    desc: 'Upload an old PDF or Word resume and it is parsed automatically, reflowing into a fresh template — zero retyping.',
+    desc: 'Upload an old PDF or Word resume and it is parsed automatically, reflowing into a fresh template with zero retyping.',
     tag: 'Import',
     num: '3',
   },
@@ -46,7 +46,7 @@ const features = [
     cardBg: 'rgba(248,113,113,0.05)',
     borderColor: 'rgba(248,113,113,0.3)',
     title: 'Job-fit Analysis',
-    desc: 'Paste a job post to get a fit score, gap analysis, and the exact missing skills to add — so you tailor to that role, not in general.',
+    desc: 'Paste a job post to get a fit score, gap analysis, and the exact missing skills to add, so you tailor to that role instead of applying in general.',
     tag: 'Match',
     num: '4',
   },
@@ -58,7 +58,7 @@ const features = [
     cardBg: 'rgba(16,185,129,0.05)',
     borderColor: 'rgba(16,185,129,0.3)',
     title: 'One-page Fit, One Click',
-    desc: 'Condense a resume that spills onto a second page down to a clean single page in one click — spacing and layout stay intact.',
+    desc: 'Condense a resume that spills onto a second page down to a clean single page in one click, while spacing and layout stay intact.',
     tag: 'Layout',
     num: '5',
   },
@@ -70,7 +70,7 @@ const features = [
     cardBg: 'rgba(99,102,241,0.05)',
     borderColor: 'rgba(99,102,241,0.3)',
     title: 'Edit Anywhere, WYSIWYG',
-    desc: 'Edit online from any device on a true what-you-see-is-what-you-get canvas — the resume you build is exactly the resume you export.',
+    desc: 'Edit online from any device on a true WYSIWYG canvas, so the resume you build is exactly the resume you export.',
     tag: 'Editor',
     num: '6',
   },
@@ -128,7 +128,7 @@ export default function AISection() {
             fontSize: '16px', color: '#64748b',
             maxWidth: '540px', margin: '0 auto', lineHeight: 1.8, fontWeight: 400,
           }}>
-            Optimize, import, check, and export — everything to take you from draft to a polished, ready-to-send resume, all in one place
+            Optimize, import, check, and export. Everything to take you from draft to a polished, ready-to-send resume, all in one place
           </p>
         </div>
 
