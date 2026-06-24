@@ -11,17 +11,12 @@ import {
   Trophy, FileCheck, HandHelping, Sparkles, UserRound, Camera,
   Trash2, Lightbulb, X, Check, Copy, Pencil, GripVertical,
 } from 'lucide-react'
-import { TEMPLATES, TemplateConfig, AccentStyle, FontPair, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES } from '../../lib/templates-config'
+import { TEMPLATES, TemplateConfig, AccentStyle, FontPair, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES, isSingleColumn } from '../../lib/templates-config'
 import Dropdown from '../../components/Dropdown'
 import TemplateThumbnail from '../../lib/TemplateThumbnail'
 import AccentStylePreview from '../../lib/AccentStylePreview'
 import { ResumeData, Entry, SectionKey } from '../../lib/types'
 import { loadHistory, deleteHistory, HistoryEntry } from '../../lib/storage'
-
-const SINGLE_LAYOUTS = new Set([
-  'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
-  'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
-])
 
 const FLAG_MAP: Partial<Record<string, keyof ResumeData>> = {
   exp: 'hasExp',
@@ -272,8 +267,8 @@ export default function LeftPanel({
   const filteredTpls = ORDERED_TEMPLATES.filter(t => {
     if (layoutFilter === 'photo')   return t.showPhoto
     if (layoutFilter === 'nophoto') return !t.showPhoto
-    if (layoutFilter === 'single')  return SINGLE_LAYOUTS.has(t.layout)
-    if (layoutFilter === 'double')  return !SINGLE_LAYOUTS.has(t.layout)
+    if (layoutFilter === 'single')  return isSingleColumn(t.layout)
+    if (layoutFilter === 'double')  return !isSingleColumn(t.layout)
     return true
   })
 
