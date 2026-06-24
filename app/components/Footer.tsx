@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import logoWhite from "../../public/logo-white.png";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
@@ -282,7 +283,8 @@ export default function Footer() {
             gap: "20px",
           }}
         >
-          <div
+          <Link
+            href="/"
             style={{
               fontSize: "20px",
               color: "var(--paper)",
@@ -291,6 +293,7 @@ export default function Footer() {
               alignItems: "center",
               gap: "8px",
               lineHeight: 1,
+              textDecoration: "none",
             }}
           >
             <Image
@@ -302,7 +305,7 @@ export default function Footer() {
             <span style={{ display: "flex", alignItems: "center" }}>
               ResumeRight
             </span>
-          </div>
+          </Link>
           <div style={{ display: "flex", gap: "24px" }}>
             {LINKS.map((l) => (
               <button

@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { inflateRaw } from 'zlib'
 import { promisify } from 'util'
 import { guardAI, checkServerQuota, incrementQuota } from '../_guard'
-import { aiFetch } from '../_fetch'
 
 const inflateRawAsync = promisify(inflateRaw)
-const QWEN_BASE = process.env.QWEN_BASE_URL || 'https://api.deepseek.com'
-const MODEL     = process.env.QWEN_MODEL    || 'deepseek-chat'
 
-// ── Parse prompt (for editor pre-fill only — not for ATS scoring) ─────────────
-const PARSE_SYSTEM = `You are a resume parser. Extract all information and return ONLY valid JSON (no markdown):
-{"isResume":true,"name":string,"jobtitle":string,"email":string,"phone":string,"city":string,"website":string,"extraWebsites":string[],"photo":"","summary":string,"hasSummary":boolean,"hasSkills":boolean,"hasProject":boolean,"hasLanguage":boolean,"hasAward":boolean,"hasCert":boolean,"hasVolunteer":boolean,"hasInterest":boolean,"exp":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"edu":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"project":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"award":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"cert":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"volunteer":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"interest":[{"id":string,"title":string,"sub":string,"date":string,"bullets":string[]}],"language":[{"id":string,"title":string,"sub":string,"date":"","bullets":[]}],"skills":string[],"skillCategories":null}
-Generate unique ids like "e1","d1","p1"; photo always ""; set hasXxx true if section has content; preserve original language.
-If NOT a resume return ONLY: {"isResume":false}`
+// NOTE: ATS scoring is 100% rule-based (runATSChecks) — no AI, no API key needed.
+// The resume parse (for editor pre-fill) is now done on demand via /api/ai/parse-resume
+// only when the user clicks through to the editor, not on every scan.
 
 // ── DOCX text extraction ──────────────────────────────────────────────────────
 async function extractDocxText(buf: Buffer): Promise<string> {
@@ -237,9 +232,6 @@ function runATSChecks(text: string, buf: Buffer, mime: string): {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.QWEN_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })
-
   try {
     const formData = await req.formData()
     const file     = formData.get('file') as File | null
@@ -272,49 +264,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please upload a PDF or Word (.docx/.doc) resume' }, { status: 415 })
     }
 
-    // ── Rule-based ATS analysis (instant, no AI needed) ──
+    // ── Rule-based ATS analysis (instant, no AI) ──
     const { dims, totalScore, overview, name: hName, jobtitle: hTitle } =
       runATSChecks(resumeText, buffer, mime)
 
-    // ── AI parse call (for editor pre-fill, runs in background) ──
-    let parsedData: Record<string, unknown> | null = null
-    let aiName = hName, aiTitle = hTitle
-    if (resumeText.length >= 30) {
-      try {
-        const parseText = resumeText.slice(0, 12000)
-        const parseRes = await aiFetch(`${QWEN_BASE}/chat/completions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: MODEL, temperature: 0.1,
-            response_format: { type: 'json_object' },
-            messages: [
-              { role: 'system', content: PARSE_SYSTEM },
-              { role: 'user',   content: `Parse this resume:\n\n${parseText}` },
-            ],
-          }),
-        })
-        if (parseRes.ok) {
-          const pd = await parseRes.json()
-          const raw = JSON.parse(pd.choices?.[0]?.message?.content ?? '{}')
-          if (raw.isResume !== false) {
-            parsedData = raw
-            if (raw.name)    aiName  = String(raw.name)
-            if (raw.jobtitle) aiTitle = String(raw.jobtitle)
-          }
-        }
-      } catch { /* ignore — ATS result still returned */ }
-    }
-
     await incrementQuota(req, 'ats-score', deviceId)
 
+    // Resume parsing for the editor is deferred — the client calls /api/ai/parse-resume
+    // only when the user actually clicks through to the editor.
     return NextResponse.json({
-      name:       aiName,
-      jobtitle:   aiTitle,
+      name:       hName,
+      jobtitle:   hTitle,
       totalScore: Math.min(100, Math.max(0, totalScore)),
       overview,
       dimensions: dims,
-      parsedData,
     })
   } catch (e) {
     console.error('ats-score error:', e)

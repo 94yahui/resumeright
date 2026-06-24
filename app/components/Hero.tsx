@@ -1,20 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Upload, Pencil, Cloud, FileText, Target } from "lucide-react";
-import TemplateThumbnail from "../lib/TemplateThumbnail";
-import { getTemplate } from "../lib/templates-config";
-import { sampleResumeData } from "../lib/types";
-
-// Hero preview: single-column sample, 3 bullets per project entry, no Languages section.
-const heroSample = (() => {
-  const d = sampleResumeData({ single: true });
-  return {
-    ...d,
-    hasLanguage: false,
-    project: d.project.map((p) => ({ ...p, bullets: p.bullets.slice(0, 3) })),
-  };
-})();
+import { Upload, Cloud, FileText, Target } from "lucide-react";
+import HeroDemo from "./HeroDemo";
 
 // Adjectives cycled in the hero headline ("___ resume"). First word matches the
 // original copy so the initial paint is unchanged. Each carries a distinct meaning.
@@ -66,7 +54,7 @@ function useTypewriter(words: string[]) {
 function TypedWord({ text, words }: { text: string; words: string[] }) {
   const longest = words.reduce((a, b) => (b.length > a.length ? b : a), "");
   return (
-    <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap" }}>
+    <span translate="no" className="notranslate" style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap" }}>
       <span aria-hidden style={{ visibility: "hidden" }}>{longest}</span>
       <span style={{ position: "absolute", left: 0, top: 0, color: "var(--paper)" }}>
         {text}
@@ -257,136 +245,8 @@ export default function Hero({ onUploadClick }: { onUploadClick: () => void }) {
           </div>
         </div>
 
-        {/* Right: Resume preview card */}
-        <div
-          className="hero-right fade-in"
-          style={{ position: "relative", transitionDelay: "0.2s" }}
-        >
-          {/* Stacked background cards */}
-          <div style={{
-            position: "absolute",
-            top: "16px", left: "16px", right: "-16px", bottom: "-16px",
-            background: "rgba(255,255,255,0.45)",
-            borderRadius: "0",
-            border: "1px solid rgba(255,255,255,0.5)",
-            boxShadow: "0 6px 24px rgba(26,24,20,0.08)",
-            animation: "heroTilt5 0.9s cubic-bezier(0.34,1.56,0.64,1) .8s both",
-            zIndex: 0,
-          }} />
-          <div style={{
-            position: "absolute",
-            top: "8px", left: "8px", right: "-8px", bottom: "-8px",
-            background: "rgba(255,255,255,0.65)",
-            borderRadius: "0",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow: "0 6px 20px rgba(26,24,20,0.08)",
-            animation: "heroTilt2 0.7s cubic-bezier(0.34,1.56,0.64,1) .9s both",
-            zIndex: 1,
-          }} />
-
-          <div
-            style={{
-              background: "rgba(255, 255, 255, 0.2)",
-              backdropFilter: "blur(5px)",
-              borderRadius: "0",
-              boxShadow:
-                "0 16px 50px rgba(26,24,20,0.18), 0 4px 12px rgba(26,24,20,0.08)",
-              overflow: "hidden",
-              border: "1px solid var(--paper3)",
-              position: "relative",
-              zIndex: 2,
-            }}
-          >
-            {/* Real no-photo resume template preview (top portion) */}
-            <div style={{ position: "relative", maxHeight: "680px", overflow: "hidden", background: "#ffffff" }}>
-              <TemplateThumbnail template={getTemplate("classic-pro")} fillWidth data={heroSample} />
-              {/* Soften the bottom clip so the page looks like it continues */}
-              <div style={{
-                position: "absolute", left: 0, right: 0, bottom: 0, height: "90px",
-                background: "linear-gradient(rgba(255,255,255,0), #ffffff)",
-                pointerEvents: "none",
-              }} />
-            </div>
-          </div>
-
-          <div
-            className="animate-float"
-            style={{
-              position: "absolute",
-              zIndex: 5,
-              top: "150px",
-              right: "-16px",
-              background: "linear-gradient(90deg, #ff6b35, #ef4444)",
-              color: "var(--paper)",
-              padding: "10px 14px",
-              border: "1px white solid",
-              borderRadius: "10px",
-              fontSize: "12px",
-              fontWeight: 500,
-              whiteSpace: "nowrap",
-              boxShadow: "0 4px 16px rgba(26,24,20,0.15)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Pencil
-              size={15}
-              style={{
-                display: "inline",
-                verticalAlign: "middle",
-                marginRight: "4px",
-              }}
-            />{" "}
-            Click any block to start editing
-            {/* Arrow: rotated square with consistent 1px white border */}
-            <div style={{
-              position: "absolute",
-              left: "-7px",
-              top: "50%",
-              transform: "translateY(-50%) rotate(45deg)",
-              width: "12px",
-              height: "12px",
-              background: "#ff6b35",
-              borderLeft: "1px solid white",
-              borderBottom: "1px solid white",
-              borderRadius: "1px",
-            }} />
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              zIndex: 5,
-              bottom: "-20px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              background:
-                "linear-gradient(135deg, var(--ai-color-1), var(--theme-blue))",
-              color: "white",
-              padding: "8px 18px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 4px 20px rgba(45,125,110,0.4)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <div
-              className="animate-pulse-dot"
-              style={{
-                width: "6px",
-                height: "6px",
-                background: "white",
-                borderRadius: "50%",
-              }}
-            />
-            Optimizing your experience…
-          </div>
-        </div>
+        {/* Right: interactive editing demo (scripted cursor + glowing panels) */}
+        <HeroDemo />
       </section>
     </div>
   );

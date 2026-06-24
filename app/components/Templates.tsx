@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { TEMPLATES, TemplateConfig, AccentStyle, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES } from '../lib/templates-config'
+import { TEMPLATES, TemplateConfig, AccentStyle, ORDERED_TEMPLATES, ACCENT_COLOR_PRESETS, ACCENT_STYLES, isSingleColumn } from '../lib/templates-config'
 import TemplateThumbnail from '../lib/TemplateThumbnail'
 import AccentStylePreview from '../lib/AccentStylePreview'
 import Dropdown from './Dropdown'
@@ -16,18 +16,14 @@ const TOTAL_COUNT = TEMPLATES.length
 const PAGE_WIDTH = 794
 const PAGE_HEIGHT = 1123
 
-const SINGLE_LAYOUTS = new Set([
-  'single-classic', 'single-centered', 'top-banner-photo', 'header-card',
-  'accent-stripe', 'bottom-strip', 'namecard-header', 'linkedin-banner', 'diagonal-photo',
-])
 // Landing-page filters by layout shape / photo, not industry.
 const FILTERS = ['All', 'With photo', 'No photo', 'One column', 'Two column']
 function matchesFilter(t: TemplateConfig, filter: string): boolean {
   switch (filter) {
     case 'With photo': return t.showPhoto
     case 'No photo':   return !t.showPhoto
-    case 'One column': return SINGLE_LAYOUTS.has(t.layout)
-    case 'Two column': return !SINGLE_LAYOUTS.has(t.layout)
+    case 'One column': return isSingleColumn(t.layout)
+    case 'Two column': return !isSingleColumn(t.layout)
     default:           return true
   }
 }

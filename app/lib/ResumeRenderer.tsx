@@ -719,7 +719,7 @@ export default function ResumeRenderer({
   }
 
   // ============ CONTACT BAR ============
-  const ContactInline = ({ onDark = false, vertical = false, centered = false, noScale = false }: { onDark?: boolean; vertical?: boolean; centered?: boolean; noScale?: boolean }) => {
+  const ContactInline = ({ onDark = false, vertical = false, centered = false, right = false, noScale = false }: { onDark?: boolean; vertical?: boolean; centered?: boolean; right?: boolean; noScale?: boolean }) => {
     const c = onDark ? 'rgba(255,255,255,0.85)' : '#475569'
     const toWebHref = (url: string) =>
       /^https?:\/\//i.test(url) ? url : `https://${url}`
@@ -774,7 +774,7 @@ export default function ResumeRenderer({
           display: 'flex',
           flexDirection: vertical ? 'column' : 'row',
           flexWrap: vertical ? 'nowrap' : 'wrap',
-          justifyContent: centered ? 'center' : undefined,
+          justifyContent: centered ? 'center' : right ? 'flex-end' : undefined,
           gap: vertical ? '6px' : '6px 18px',
           fontSize: _s(11.5),
           color: c,
@@ -868,14 +868,14 @@ export default function ResumeRenderer({
   }
 
   // ============ NAME / JOB TITLE ============
-  const NameBlock = ({ onDark = false, centered = false, big = true }: { onDark?: boolean; centered?: boolean; big?: boolean }) => (
+  const NameBlock = ({ onDark = false, centered = false, right = false, big = true }: { onDark?: boolean; centered?: boolean; right?: boolean; big?: boolean }) => (
     <div onClick={click({ kind: 'contact' })}
       style={{
         ...editStyle({ kind: 'contact' }),
         padding: interactive ? '4px' : 0,
         margin: interactive ? '-4px' : 0,
-        textAlign: centered ? 'center' : 'left',
-        display: centered ? 'block' : 'inline-block',
+        textAlign: right ? 'right' : centered ? 'center' : 'left',
+        display: (centered || right) ? 'block' : 'inline-block',
       }}>
       <div style={{
         fontFamily: headingFont,
@@ -1606,6 +1606,31 @@ export default function ResumeRenderer({
           </div>
         </div>
         <div style={{ padding: '22px 48px 40px' }}>
+          <MainBody />
+          <SkillsBlock />
+        </div>
+      </div>
+    )
+  }
+
+  // ============ LAYOUT: RIGHT MASTHEAD (right-aligned name + accent bar on the right edge) ============
+  if (template.layout === 'right-masthead') {
+    return (
+      <div style={rootStyle}>
+        <div style={{ padding: '40px 48px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {template.showPhoto && <PhotoBlock size={92} />}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <NameBlock big right />
+              <div style={{ height: '10px' }} />
+              <ContactInline right />
+            </div>
+            {/* Vertical accent bar pinned to the right edge of the header */}
+            <div style={{ width: '5px', borderRadius: '3px', background: accent, alignSelf: 'stretch', flexShrink: 0 }} />
+          </div>
+          <div style={{ height: '2px', background: accent, marginTop: '20px' }} />
+        </div>
+        <div style={{ padding: '14px 48px 40px' }}>
           <MainBody />
           <SkillsBlock />
         </div>
