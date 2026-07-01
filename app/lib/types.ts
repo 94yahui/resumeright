@@ -395,6 +395,8 @@ export function parsedToResumeData(raw: Record<string, unknown>): ResumeData {
     hasVolunteer: !!raw.hasVolunteer || volunteer.length > 0,
     hasInterest: !!raw.hasInterest || interest.length > 0,
     resumeLang,
+    // Filled-template flows (landing import / resume analysis / ATS) use the plain language style.
+    languageStyle: 'plain',
     exp, edu, project, award, cert, volunteer, interest, language, skills,
     ...(skillCategories !== undefined ? { skillCategories } : {}),
     // Categorized skills default to the plain style and open category mode in the editor.

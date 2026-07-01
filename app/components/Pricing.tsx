@@ -75,7 +75,7 @@ export default function Pricing() {
   }
 
   return (
-    <section style={{ background: '#f8fafc', padding: '72px 24px 96px' }}>
+    <section id="pricing" style={{ background: '#f8fafc', padding: '72px 24px 96px' }}>
       <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
         {/* Heading */}
         <div style={{ textAlign: 'center', marginBottom: '44px' }}>

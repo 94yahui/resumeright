@@ -61,8 +61,8 @@ export default function Templates() {
 
   useEffect(() => { setExtraLoads(0) }, [isMobile])
 
-  const step = isMobile ? 6 : 8
-  const defaultCount = isMobile ? 6 : 8
+  const step = 6
+  const defaultCount = 6
   const showCount = defaultCount + extraLoads * step
 
   const filtered = ORDERED_TEMPLATES.filter(t => matchesFilter(t, activeFilter))
@@ -218,7 +218,7 @@ export default function Templates() {
       <div className="templates-grid" style={{
         maxWidth: '1280px', margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(270px, 1fr))',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
         gap: isMobile ? '14px' : '28px',
       }}>
         {visible.map((tpl, i) => (

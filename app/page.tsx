@@ -7,6 +7,7 @@ import Templates from './components/Templates'
 import AISection from './components/AISection'
 import ATSSection from './components/ATSSection'
 import ResumeTips from './components/ResumeTips'
+import Pricing from './components/Pricing'
 import Footer from './components/Footer'
 import UploadModal from './components/UploadModal'
 import ScrollObserver from './components/ScrollObserver'
@@ -25,6 +26,7 @@ export default function Home() {
         <AISection />
         <ATSSection />
         <ResumeTips />
+        <Pricing />
       </main>
       <Footer />
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} />}

@@ -84,7 +84,7 @@ export default function Navbar() {
           { label: "✦ Resume Analysis", href: "/#analysis" },
           { label: "Templates", href: "/#templates" },
           { label: "ATS Check", href: "/#ats" },
-          { label: "Pricing", href: "/pricing" },
+          { label: "Pricing", href: "/#pricing" },
         ].map(({ label, href }) => (
           <a
             key={label}
